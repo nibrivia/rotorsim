@@ -3,9 +3,9 @@ import random
 N_TOR   = 4
 N_ROTOR = 1
 
-def generate_matchings():
-    # TODO hard coded
+random.seed(375620)
 
+def generate_matchings():
     all_matchings = []
     for offset in range(1, N_TOR):
         slot_matching = [-1 for _ in range(N_TOR)]
@@ -16,7 +16,7 @@ def generate_matchings():
     return all_matchings
 
 def generate_demand():
-    #random.seed(375620)
+    # Demand is scaled: 1 how much can be sent in 1 matching slot
     return [[random.random() for dst in range(N_TOR)] for src in range(N_TOR)]
 
 def add_demand(old, new):
@@ -24,9 +24,6 @@ def add_demand(old, new):
         for col, _ in enumerate(old):
             old[row][col] += new[row][col]
     return old
-
-def run_slot(matching, demand):
-    return demand
 
 
 def print_demand(demand, prefix = ""):
