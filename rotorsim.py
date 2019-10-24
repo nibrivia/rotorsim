@@ -73,8 +73,9 @@ if __name__ == "__main__":
 
     demand = generate_demand(max_demand = frac*1.5)
     run_demand = sum(sum(d) for d in demand)
+    run_delivered = 0
 
-    double_hop = False
+    double_hop = True
     verbose = False
 
     # Buffers
@@ -82,22 +83,27 @@ if __name__ == "__main__":
     all_tor_buffers = [[[0 for dst in range(N_TOR)] for src in range(N_TOR)] for _ in range(N_TOR)]
 
     print()
-    N_CYCLES = 200
+    N_CYCLES = 300
     for cycle in range(N_CYCLES):
-        print("Cycle %d/%d" % (cycle+1, N_CYCLES))
+        if verbose:
+            print("Cycle %d/%d" % (cycle+1, N_CYCLES))
 
         # Send data
         for slot in range(N_SLOTS):
-            print("  Slot %d/%d" % (slot+1, N_SLOTS))
-            print("     Demand")
-            print_demand(demand, prefix = "       ", verbose=verbose)
+            slot_sent_dir = 0
+            slot_sent_ind = 0
             if verbose:
-                print_buffer(all_tor_buffers, prefix = "     ")
-            remaining = [[1 for _ in range(N_TOR)] for _ in range(N_TOR)]
+                print("  Slot %d/%d" % (slot+1, N_SLOTS))
+                print("     Demand")
+                print_demand(demand, prefix = "       ", verbose=verbose)
+                if double_hop:
+                    print_buffer(all_tor_buffers, prefix = "     ")
 
-            print()
+            if verbose:
+                print()
             # Go through each Rotor switch
             for rotor_n in range(N_ROTOR):
+                remaining = [[1 for _ in range(N_TOR)] for _ in range(N_TOR)]
                 # Rotor n gets matchings that are n modulo N_SLOTS
                 matching_i = (slot + rotor_n*N_SLOTS) % N_MATCHINGS
                 rotor_matchings = matchings_by_slot[matching_i]
@@ -106,19 +112,19 @@ if __name__ == "__main__":
 
                 # Received indirect traffic: first send what we have stored
                 #remaining = [1 for _ in range(N_TOR)]
-                for src, dst in enumerate(rotor_matchings):
-                    if not double_hop:
-                        break
-
-                    for dta_src, _ in enumerate(all_tor_buffers[src]):
-                        to_send = all_tor_buffers[src][dta_src][dst]
-                        if to_send > 0:
-                            data_sent = min(max(0, to_send), remaining[src][dst])
-                            if data_sent > 0 and verbose:
-                                print("        (%2d->)%-2d->%-2d: sending %3d" %
-                                        (dta_src+1, src+1, dst+1, round(100*data_sent)))
-                            all_tor_buffers[src][dta_src][dst] -= data_sent
-                            remaining[src][dst] -= data_sent
+                if double_hop:
+                    for src, dst in enumerate(rotor_matchings):
+                        for dta_src, _ in enumerate(all_tor_buffers[src]):
+                            to_send = all_tor_buffers[src][dta_src][dst]
+                            if to_send > 0:
+                                data_sent = min(max(0, to_send), remaining[src][dst])
+                                if data_sent > 0 and verbose:
+                                    print("        (%2d->)%-2d->%-2d: sending %3d" %
+                                            (dta_src+1, src+1, dst+1, round(100*data_sent)))
+                                all_tor_buffers[src][dta_src][dst] -= data_sent
+                                remaining[src][dst] -= data_sent
+                                run_delivered += data_sent
+                                slot_sent_ind += data_sent
 
 
                 # Direct traffic: go through every matching and send as much as we can
@@ -129,39 +135,47 @@ if __name__ == "__main__":
                         print("        %2d->%-2d: sending %3d" % (src+1, dst+1, round(100*data_sent)))
                     demand[src][dst] -= data_sent
                     remaining[src][dst] -= data_sent
+                    run_delivered += data_sent
+                    slot_sent_dir += data_sent
 
 
                 # New indirect traffic: use the spare capacity
-                for src, ind in sorted(enumerate(rotor_matchings), key = lambda k: random.random()):
-                    if not double_hop:
-                        break
-                    # If we still have demand, indirect it somewhere
-                    for dst in range(N_TOR):
-                        if remaining[src][ind] > 0:
-                            data_sent = max(min(demand[src][dst],
-                                                remaining[src][ind],
-                                                available(dst, all_tor_buffers[ind], demand[ind][dst])),
-                                    0)
-                            if verbose and data_sent > 0:
-                                print("        %2d->%-2d(->%-2d): sending (%3d) %3d/%d available" %
-                                        (src+1, ind+1, dst+1, round(100*demand[src][dst]),
-                                            round(100*data_sent), round(100*remaining[src][ind])))
+                if double_hop:
+                    for src, ind in sorted(enumerate(rotor_matchings), key = lambda k: random.random()):
+                        # If we still have demand, indirect it somewhere
+                        for dst in range(N_TOR):
+                            if remaining[src][ind] > 0:
+                                data_sent = max(min(demand[src][dst],
+                                                    remaining[src][ind],
+                                                    available(dst, all_tor_buffers[ind], demand[ind][dst])),
+                                        0)
+                                if verbose and data_sent > 0:
+                                    print("        %2d->%-2d(->%-2d): sending (%3d) %3d/%d available" %
+                                            (src+1, ind+1, dst+1, round(100*demand[src][dst]),
+                                                round(100*data_sent), round(100*remaining[src][ind])))
 
-                            demand[src][dst] -= data_sent
-                            all_tor_buffers[ind][src][dst] += data_sent
-                            remaining[src][ind] -= data_sent
+                                demand[src][dst] -= data_sent
+                                all_tor_buffers[ind][src][dst] += data_sent
+                                remaining[src][ind] -= data_sent
 
-            print()
+            if verbose:
+                print()
             #print("     Demand")
             #print_demand(demand, prefix = "       ")
             #print_buffer(all_tor_buffers, prefix = "     ")
 
             # Generate demand on every slot
-            new_d = generate_demand(max_demand = frac*1.3)
+            waiting = run_demand-run_delivered
+            slot_sent = slot_sent_dir + slot_sent_ind
+            print("%3d, %d: sent %d (%3d +%3d), waiting %d " %
+                    (cycle, slot, slot_sent, slot_sent_dir, slot_sent_ind, waiting))
+
+            new_d = generate_demand(max_demand = frac*1.8)
             run_demand += sum(sum(d) for d in new_d)
             demand = add_demand(demand, new_d)
 
     print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
-    print("%d/%d=%.2f links are active at any time" % (active_links, total_links, frac))
     print("There are %d matchings, with %d slots per cycle" % (N_MATCHINGS, N_SLOTS))
+    print("%d/%d=%.2f links are active at any time" % (active_links, total_links, frac))
+    print("Average slot delivered is %d" % (100*run_delivered/ N_CYCLES / N_SLOTS))
 
