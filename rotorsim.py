@@ -72,6 +72,7 @@ if __name__ == "__main__":
     frac = active_links/total_links
 
     demand = generate_demand(max_demand = frac*1.5)
+    run_demand = sum(sum(d) for d in demand)
 
     double_hop = False
     verbose = False
@@ -156,7 +157,9 @@ if __name__ == "__main__":
             #print_buffer(all_tor_buffers, prefix = "     ")
 
             # Generate demand on every slot
-            demand = add_demand(demand, generate_demand(max_demand = frac*1.3))
+            new_d = generate_demand(max_demand = frac*1.3)
+            run_demand += sum(sum(d) for d in new_d)
+            demand = add_demand(demand, new_d)
 
     print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
     print("%d/%d=%.2f links are active at any time" % (active_links, total_links, frac))
