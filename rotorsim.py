@@ -1,5 +1,6 @@
 import random
 import math
+from switches import *
 
 N_TOR   = 5
 N_ROTOR = 2
@@ -10,12 +11,19 @@ VERBOSE = False
 
 #random.seed(375620)
 
-def generate_matchings():
+def generate_matchings(tors):
     all_matchings = []
-    for offset in range(1, N_TOR):
-        slot_matching = [-1 for _ in range(N_TOR)]
-        for src in range(N_TOR):
-            slot_matching[src] = (src+offset) % N_TOR
+    n_tors = len(tors)
+
+    for offset in range(1, n_tors):
+        # Compute the indices
+        slot_matching_is = [(src_i, (src_i+offset) % n_tors)
+                for src_i in range(n_tors)]
+
+        # Actually set it to be a ToR switch
+        slot_matching = [(tors[src], tors[dst]) for src, dst in slot_matching_is]
+
+        # Add to the list of matchings
         all_matchings.append(slot_matching)
 
     return all_matchings
@@ -53,54 +61,25 @@ def available(dst, buffer, demand):
 
     return a
 
-class TorSwitch:
-    def __init__(self):
-        self.buffer_dir =  [0 for dst in range(N_TOR)]
-        self.buffer_ind = [[0 for dst in range(N_TOR)] for src in range(N_TOR)]
-
-class RotorSwitch:
-    def __init__(self, tors):
-        self.tors = tors
-        self.remaining  = [[0 for dst in self.tors] for src in self.tors]
-
-    def start_slot(self, matchings):
-        # Reset link availabilities
-        self.remaining = [[0 for dst in self.tors] for src in self.tors]
-        self.matchings = matchings
-
-    def send_old_indirect(self, matchings):
-        new_buffer = [[[v for v in j] for j in i] for i in buffer]
-
-        # For each matching, look through our buffer, deliver what we have stored
-        for src, dst in enumerate(matchings):
-            for dta_src, _ in enumerate(src.buffer):
-                # Try to send what we have
-                to_send = src.buffer[dta_src][dst]
-
-                if to_send > 0:
-                    data_sent = min(max(0, to_send), remaining[src][dst])
-                    if data_sent > 0 and verbose:
-                        print("        (%2d->)%-2d->%-2d: sending %3d" %
-                                (dta_src+1, src+1, dst+1, round(100*data_sent)))
-                    new_buffer[src][dta_src][dst] -= data_sent
-                    remaining[src][dst] -= data_sent
-                    #run_delivered += data_sent
-                    #slot_sent_ind += data_sent
+LINK_CAPACITY = 100
 
 
 def main():
-    print("Starting simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
-    print("There are %d matchings, with %d slots per cycle" % (N_MATCHINGS, N_SLOTS))
+    print("Starting simulation with %d ToR switches and %d rotor switches" %
+            (N_TOR, N_ROTOR))
+    print("There are %d matchings, with %d slots per cycle" %
+            (N_MATCHINGS, N_SLOTS))
 
-    matchings_by_slot = generate_matchings()
 
-    print()
-    print("matchings")
-    for slot, matches in enumerate(matchings_by_slot):
-        slot_str = "slot %d: " % slot
-        for src, dst in enumerate(matches):
-            slot_str += "%d->%d " % (src+1, dst+1)
-        print(slot_str)
+
+    # Rotor switches
+    rotors = [RotorSwitch() for _ in range(N_ROTOR)]
+
+    # ToR switches
+    tors = [ToRSwitch() for _ in range(N_TOR)]
+
+    # Matchings
+    matchings_by_slot = generate_matchings(tors)
 
     # Initial demand
     active_links = N_TOR*N_ROTOR
@@ -126,6 +105,13 @@ def main():
 
         # Send data
         for slot in range(N_SLOTS):
+            for r_n, rotor in enumerate(rotors):
+                matching_i = (slot + r_n*N_SLOTS) % N_MATCHINGS
+                rotor_matchings = matchings_by_slot[matching_i]
+                print(rotor_matchings)
+
+                rotor.init_slot(rotor_matchings)
+            """
             slot_sent_dir = 0
             slot_sent_ind = 0
             if verbose:
@@ -156,7 +142,7 @@ def main():
                 # Received indirect traffic: first send what we have stored
                 #remaining = [1 for _ in range(N_TOR)]
                 if double_hop:
-                    send_new_indirect(rotor_matchings, all_tor_buffers, remaining, verbose)
+                    rotors[rotor_n].send_old_indirect(rotor_matchings, all_tor_buffers, remaining, verbose)
 
 
                 # Direct traffic: go through every matching and send as much as we can
@@ -198,6 +184,7 @@ def main():
             #print("     Demand")
             #print_demand(demand, prefix = "       ")
             #print_buffer(all_tor_buffers, prefix = "     ")
+            """
 
             # Generate demand on every slot
             waiting = run_demand-run_delivered
