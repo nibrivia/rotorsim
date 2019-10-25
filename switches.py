@@ -17,6 +17,10 @@ class Buffer():
     def add(self, val):
         self.amount += val
 
+    @property
+    def size(self):
+        return self.amount
+
     def __float__(self):
         return float(self.amount)
 
@@ -69,7 +73,11 @@ def send(src, dst, amount):
         print("%s -> %s: %.2f" % (src, dst, amount))
 
 def bound(lo, val, hi):
-    return max(float(lo), min(float(val), float(hi)))
+    return max(lo, min(val, hi))
+
+def shuffle(generator):
+    return sorted(generator, key = lambda k: random.random())
+
 
 class RotorSwitch:
     def __init__(self, tors, name = ""):
@@ -91,7 +99,7 @@ class RotorSwitch:
             # For this link, find all old indirect traffic who wants to go
             for dta_src, ind_buffer in enumerate(ind.indirect):
                 # How much can we send?
-                amount = bound(0, ind_buffer[dst_i], self.remaining[link])
+                amount = bound(0, ind_buffer[dst_i].size, self.remaining[link])
 
                 # Actually send
                 ind_buffer[dst_i].send(dst.incoming[dta_src], amount)
@@ -105,7 +113,7 @@ class RotorSwitch:
             src,   dst   = self.tors[src_i], self.tors[dst_i]
 
             # How much to send?
-            amount = bound(0, src.outgoing[dst_i], self.remaining[link])
+            amount = bound(0, src.outgoing[dst_i].size, self.remaining[link])
 
             # Actually send
             src.outgoing[dst_i].send(dst.incoming[src_i], amount)
@@ -115,18 +123,14 @@ class RotorSwitch:
     def send_new_indirect(self):
         print("      %s" % self)
         # Go through matchings randomly, would be better if fair
-        for link in sorted(self.matchings, key = lambda k: random.random()):
+        for link in shuffle(self.matchings):
             src_i, ind_i = link
             src,   ind   = self.tors[src_i], self.tors[ind_i]
 
             # If we still have demand, indirect it somewhere
-            for dst_i, src_buffer in enumerate(src.outgoing):
+            for dst_i, src_buffer in shuffle(enumerate(src.outgoing)):
                 available = min(self.remaining[link], 1)
-                amount = bound(0, src_buffer, available)
-                #max(min(demand[src][dst],
-                                    #remaining[src][ind],
-                                    #available(dst, all_tor_buffers[ind], demand[ind][dst])),
-                        #0)
+                amount = bound(0, src_buffer.size, available)
 
                 src.outgoing[dst_i].send(ind.indirect[src_i][dst_i], amount)
                 self.remaining[link] -= amount

@@ -30,7 +30,8 @@ def generate_demand(min_demand = 0, max_demand = 1):
     assert min_demand <= max_demand
     # Demand is scaled: 1 how much can be sent in 1 matching slot
     # Intra-rack traffic doesn't go over RotorNet
-    return [[random.uniform(min_demand, max_demand) if dst != src else 0 for dst in range(N_TOR)] for src in range(N_TOR)]
+    return [[random.uniform(min_demand, max_demand) if dst != src else 0
+        for dst in range(N_TOR)] for src in range(N_TOR)]
 
 def add_demand(old, new):
     for row, _ in enumerate(old):
@@ -39,19 +40,26 @@ def add_demand(old, new):
     return old
 
 
-def print_demand(tors, prefix = ""):
-    print("    Demand")
+def print_demand(tors, prefix = "", print_buffer = False):
+    print("      Demand")
+    print("        Direct")
     for src_i, src in enumerate(tors):
-        line_str = "      " + str(src) + " -> "
+        line_str = "          " + str(src) + " -> "
         for dst_i, dst in enumerate(tors):
-            line_str += "%.2f " % src.outgoing[dst_i]
+            line_str += "%.2f " % src.outgoing[dst_i].size
         print(line_str)
-    print()
 
-def print_buffer(buffer, prefix = ""):
-    for tor_n, buffer2d in enumerate(buffer):
-        print("%sBuffer %d" % (prefix, tor_n+1))
-        print_demand(buffer2d, prefix = prefix + "  ")
+    if print_buffer:
+        print("        Indirect")
+        for ind_i, ind in enumerate(tors):
+            line_str = "          ToR " + str(ind_i+1) + "\n"
+            for src_i, src in enumerate(tors):
+                line_str += "            " + str(src_i+1) + " -> "
+                for dst_i, dst in enumerate(tors):
+                    line_str += "%.2f " % ind.indirect[src_i][dst_i].size
+                line_str += "\n"
+            print(line_str)
+    print()
 
 def available(dst, buffer, demand):
     a = demand
@@ -70,10 +78,12 @@ def main():
             (N_MATCHINGS, N_SLOTS))
 
     # ToR switches
-    tors = [ToRSwitch(name = "%s" % (i+1), n_tor = N_TOR) for i in range(N_TOR)]
+    tors = [ToRSwitch(name = "%s" % (i+1), n_tor = N_TOR)
+            for i in range(N_TOR)]
 
     # Rotor switches
-    rotors = [RotorSwitch(tors, name = "%s/%s" % (i+1, N_ROTOR)) for i in range(N_ROTOR)]
+    rotors = [RotorSwitch(tors, name = "%s/%s" % (i+1, N_ROTOR))
+            for i in range(N_ROTOR)]
 
     # Matchings
     matchings_by_slot = generate_matchings(tors)
@@ -83,7 +93,7 @@ def main():
     total_links = N_TOR*(N_TOR-1)
     frac = active_links/total_links
 
-    demand = generate_demand(max_demand = frac*1.5)
+    demand = generate_demand(max_demand = frac)
     run_demand = sum(sum(d) for d in demand)
     run_delivered = 0
 
@@ -91,7 +101,7 @@ def main():
     verbose = True
 
     print()
-    N_CYCLES = 10
+    N_CYCLES = 100
     for cycle in range(N_CYCLES):
         if verbose:
             print()
@@ -107,7 +117,7 @@ def main():
                 for dst_i, dst in enumerate(tors):
                     if dst_i == src_i:
                         continue
-                    src.outgoing[dst_i].add(random.uniform(0, frac*1.5))
+                    src.outgoing[dst_i].add(random.uniform(0, frac*1.7))
 
             if verbose:
                 print_demand(tors)
