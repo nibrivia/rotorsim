@@ -17,11 +17,8 @@ def generate_matchings(tors):
 
     for offset in range(1, n_tors):
         # Compute the indices
-        slot_matching_is = [(src_i, (src_i+offset) % n_tors)
+        slot_matching = [(src_i, (src_i+offset) % n_tors)
                 for src_i in range(n_tors)]
-
-        # Actually set it to be a ToR switch
-        slot_matching = [(tors[src], tors[dst]) for src, dst in slot_matching_is]
 
         # Add to the list of matchings
         all_matchings.append(slot_matching)
@@ -42,12 +39,14 @@ def add_demand(old, new):
     return old
 
 
-def print_demand(demand, prefix = "", verbose = True):
-    if verbose:
-        for src, d in enumerate(demand):
-            print("%s%2d -> %s" % (prefix, src+1, " ".join(["%3d" % round(i*100) for i in d])))
-    else:
-        print("%s%d" % (prefix, sum(sum(100*d) for d in demand)/(N_TOR*(N_TOR-1))))
+def print_demand(tors, prefix = ""):
+    print("    Demand")
+    for src_i, src in enumerate(tors):
+        line_str = "      " + str(src) + " -> "
+        for dst_i, dst in enumerate(tors):
+            line_str += "%.2f " % src.outgoing[dst_i]
+        print(line_str)
+    print()
 
 def print_buffer(buffer, prefix = ""):
     for tor_n, buffer2d in enumerate(buffer):
@@ -70,13 +69,11 @@ def main():
     print("There are %d matchings, with %d slots per cycle" %
             (N_MATCHINGS, N_SLOTS))
 
-
+    # ToR switches
+    tors = [ToRSwitch(name = "%s" % (i+1), n_tor = N_TOR) for i in range(N_TOR)]
 
     # Rotor switches
-    rotors = [RotorSwitch() for _ in range(N_ROTOR)]
-
-    # ToR switches
-    tors = [ToRSwitch() for _ in range(N_TOR)]
+    rotors = [RotorSwitch(tors, name = "%s/%s" % (i+1, N_ROTOR)) for i in range(N_ROTOR)]
 
     # Matchings
     matchings_by_slot = generate_matchings(tors)
@@ -91,26 +88,67 @@ def main():
     run_delivered = 0
 
     double_hop = True
-    verbose = False
-
-    # Buffers
-    # buffer[rotor_n][src][dst]
-    all_tor_buffers = [[[0 for dst in range(N_TOR)] for src in range(N_TOR)] for _ in range(N_TOR)]
+    verbose = True
 
     print()
-    N_CYCLES = 3000
+    N_CYCLES = 10
     for cycle in range(N_CYCLES):
         if verbose:
+            print()
             print("Cycle %d/%d" % (cycle+1, N_CYCLES))
 
         # Send data
         for slot in range(N_SLOTS):
+            if verbose:
+                print("  Slot %d/%d" % (slot+1, N_SLOTS))
+
+            # Generate new demand
+            for src_i, src in enumerate(tors):
+                for dst_i, dst in enumerate(tors):
+                    if dst_i == src_i:
+                        continue
+                    src.outgoing[dst_i].add(random.uniform(0, frac*1.5))
+
+            if verbose:
+                print_demand(tors)
+
+            # Initialize each rotor
             for r_n, rotor in enumerate(rotors):
+                # Rotor n gets matchings that are n modulo N_SLOTS
                 matching_i = (slot + r_n*N_SLOTS) % N_MATCHINGS
                 rotor_matchings = matchings_by_slot[matching_i]
-                print(rotor_matchings)
 
                 rotor.init_slot(rotor_matchings)
+
+            # Old indirect traffic
+            if double_hop:
+                if verbose:
+                    print("    1. Old Indirect")
+                for rotor in rotors:
+                    rotor.send_old_indirect()
+
+                if verbose:
+                    print_demand(tors)
+
+            # Direct traffic
+            if verbose:
+                print("    2. Direct")
+            for rotor in rotors:
+                rotor.send_direct()
+
+            if verbose:
+                print_demand(tors)
+
+            # New indirect traffic
+            if double_hop:
+                if verbose:
+                    print("    3. New Indirect")
+                for rotor in rotors:
+                    rotor.send_new_indirect()
+
+                if verbose:
+                    print_demand(tors)
+
             """
             slot_sent_dir = 0
             slot_sent_ind = 0
@@ -129,7 +167,6 @@ def main():
 
             # Go through each Rotor switch
             for rotor_n in range(N_ROTOR):
-                # Rotor n gets matchings that are n modulo N_SLOTS
                 matching_i = (slot + rotor_n*N_SLOTS) % N_MATCHINGS
                 rotor_matchings = matchings_by_slot[matching_i]
 
@@ -146,15 +183,6 @@ def main():
 
 
                 # Direct traffic: go through every matching and send as much as we can
-                for src, dst in enumerate(rotor_matchings):
-                    # Send to remote destination
-                    data_sent = min(max(0, demand[src][dst]), remaining[src][dst])
-                    if verbose:
-                        print("        %2d->%-2d: sending %3d" % (src+1, dst+1, round(100*data_sent)))
-                    demand[src][dst] -= data_sent
-                    remaining[src][dst] -= data_sent
-                    run_delivered += data_sent
-                    slot_sent_dir += data_sent
 
 
                 # New indirect traffic: use the spare capacity
@@ -188,10 +216,10 @@ def main():
 
             # Generate demand on every slot
             waiting = run_demand-run_delivered
-            slot_sent = slot_sent_dir + slot_sent_ind
-            print("%3d, %d: sent %2d (%3d +%3d), waiting %d " %
-                    (cycle, slot, slot_sent, slot_sent_dir, slot_sent_ind, waiting))
-
+            #slot_sent = slot_sent_dir + slot_sent_ind
+            #print("%3d, %d: sent %2d (%3d +%3d), waiting %d " %
+                    #(cycle, slot, slot_sent, slot_sent_dir, slot_sent_ind, waiting))
+#
             new_d = generate_demand(max_demand = frac*1.9)
             run_demand += sum(sum(d) for d in new_d)
             demand = add_demand(demand, new_d)
