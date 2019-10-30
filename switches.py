@@ -21,9 +21,6 @@ class Buffer():
     def size(self):
         return self.amount
 
-    def __float__(self):
-        return float(self.amount)
-
     def __str__(self):
         return "%s" % self.name
 
@@ -63,14 +60,6 @@ class ToRSwitch:
     def __str__(self):
         return "ToR %s" % self.name
 
-
-def send(src, dst, amount):
-    """
-    Will actually modify src and dst, using array for pointer properties...
-    """
-    src.send(dst, amount)
-    if VERBOSE:
-        print("%s -> %s: %.2f" % (src, dst, amount))
 
 def bound(lo, val, hi):
     return max(lo, min(val, hi))

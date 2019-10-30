@@ -33,12 +33,6 @@ def generate_demand(min_demand = 0, max_demand = 1):
     return [[random.uniform(min_demand, max_demand) if dst != src else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
 
-def add_demand(old, new):
-    for row, _ in enumerate(old):
-        for col, _ in enumerate(old):
-            old[row][col] += new[row][col]
-    return old
-
 
 def print_demand(tors, prefix = "", print_buffer = False):
     print("      Demand")
@@ -60,15 +54,6 @@ def print_demand(tors, prefix = "", print_buffer = False):
                 line_str += "\n"
             print(line_str)
     print()
-
-def available(dst, buffer, demand):
-    a = demand
-    for src, dst_buffers in enumerate(buffer):
-        a -= dst_buffers[dst]
-
-    return a
-
-LINK_CAPACITY = 100
 
 
 def main():
