@@ -2,6 +2,28 @@ import random
 
 VERBOSE = True
 
+class Time:
+    def __init__(self):
+        self.T = 0
+
+    def add(self, inc):
+        self.T += inc
+
+    def __str__(self):
+        return str(self.T)
+    def __int__(self):
+        return int(self.T)
+    def __float__(self):
+        return float(self.T)
+
+global T
+T = Time()
+
+def log(src, dst, packets):
+    for p in packets:
+        print("\033[01;35m%.3f, %s, %s, %d\033[00m" % (T, src, dst, p))
+
+
 PACKETS_PER_SLOT = 1
 class Buffer():
     def __init__(self, name = ""):
@@ -11,10 +33,12 @@ class Buffer():
 
     def send(self, to, num_packets):
         assert len(self.packets) >= num_packets
-        to.recv(self.packets[0:num_packets])
-        self.packets = self.packets[num_packets:]
         if VERBOSE and num_packets > 0:
             print("        \033[01m%s -> %s: %2d\033[00m" % (self, to, num_packets))
+            log(self, to, self.packets[0:num_packets])
+
+        to.recv(self.packets[0:num_packets])
+        self.packets = self.packets[num_packets:]
 
     def recv(self, packets):
         self.packets.extend(packets)
@@ -25,6 +49,7 @@ class Buffer():
 
     def add(self, val):
         self.packets.extend([self.count+i for i in range(val)])
+        log("demand", self, self.packets[-val:])
         #self.packets.extend([self.name + "-" + str(self.count + i)
         #    for i in range(val)])
         self.count += val
@@ -80,6 +105,7 @@ def bound(lo, val, hi):
 
 def shuffle(generator):
     return sorted(generator, key = lambda k: random.random())
+    #return generator
 
 
 class RotorSwitch:

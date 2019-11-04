@@ -9,8 +9,6 @@ N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 
 VERBOSE = False
 
-#random.seed(375620)
-
 def generate_matchings(tors):
     all_matchings = []
     n_tors = len(tors)
@@ -100,8 +98,11 @@ def main():
 
         # Send data
         for slot in range(N_SLOTS):
+            global T
+            T.add(1/N_SLOTS)
             if verbose:
                 print("  \033[0;31mSlot %d/%d\033[00m" % (slot+1, N_SLOTS))
+                print("  %f" % T)
 
             # Generate new demand
             #for src_i, src in enumerate(tors):
@@ -158,14 +159,16 @@ def main():
             if i.size > 0:
                 p_str = "  "
                 print(" %s" % i)
-                start = i.packets[0]
-                prev  = i.packets[0]
-                for p in i.packets[1:]:
-                    if p != prev+1:
-                        p_str += "%2d " % (start)
-                        start = p
-                    prev = p
-                p_str += "%2d " % (start)
+                for p in i.packets:
+                    p_str += str(p) + " "
+                #start = i.packets[0]
+                #prev  = i.packets[0]
+                #for p in i.packets[1:]:
+                #    if p != prev+1:
+                #        p_str += "%2d-%-2d " % (start, prev)
+                #        start = p
+                #    prev = p
+                #p_str += "%2-%-2d " % (start, prev)
                 print(p_str)
 
 
