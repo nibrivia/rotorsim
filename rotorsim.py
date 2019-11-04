@@ -33,14 +33,20 @@ def generate_demand(min_demand = 0, max_demand = 1):
     return [[random.uniform(min_demand, max_demand) if dst != src else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
 
+def generate_static_demand(matching, max_demand = 1):
+    return [[1 if matching[src] == dst else 0
+        for dst in range(N_TOR)] for src in range(N_TOR)]
+
+
 
 def print_demand(tors, prefix = "", print_buffer = False):
-    print("      Demand")
+    print()
+    print("\033[0;32m      Demand")
     print("        Direct")
     for src_i, src in enumerate(tors):
         line_str = "          " + str(src) + " -> "
         for dst_i, dst in enumerate(tors):
-            line_str += "%.2f " % src.outgoing[dst_i].size
+            line_str += "%2d " % src.outgoing[dst_i].size
         print(line_str)
 
     if print_buffer:
@@ -50,10 +56,10 @@ def print_demand(tors, prefix = "", print_buffer = False):
             for src_i, src in enumerate(tors):
                 line_str += "            " + str(src_i+1) + " -> "
                 for dst_i, dst in enumerate(tors):
-                    line_str += "%.2f " % ind.indirect[src_i][dst_i].size
+                    line_str += "%2d " % ind.indirect[src_i][dst_i].size
                 line_str += "\n"
             print(line_str)
-    print()
+    print("\033[00m")
 
 
 def main():
@@ -78,7 +84,7 @@ def main():
     total_links = N_TOR*(N_TOR-1)
     frac = active_links/total_links
 
-    demand = generate_demand(max_demand = frac)
+    demand = generate_static_demand(matchings_by_slot[-1], max_demand = frac)
     run_demand = sum(sum(d) for d in demand)
     run_delivered = 0
 
@@ -86,23 +92,25 @@ def main():
     verbose = True
 
     print()
-    N_CYCLES = 100
+    N_CYCLES = 5
     for cycle in range(N_CYCLES):
         if verbose:
             print()
-            print("Cycle %d/%d" % (cycle+1, N_CYCLES))
+            print("\033[01;31mCycle %d/%d\033[00m" % (cycle+1, N_CYCLES))
 
         # Send data
         for slot in range(N_SLOTS):
             if verbose:
-                print("  Slot %d/%d" % (slot+1, N_SLOTS))
+                print("  \033[0;31mSlot %d/%d\033[00m" % (slot+1, N_SLOTS))
 
             # Generate new demand
-            for src_i, src in enumerate(tors):
-                for dst_i, dst in enumerate(tors):
-                    if dst_i == src_i:
-                        continue
-                    src.outgoing[dst_i].add(random.uniform(0, frac*1.7))
+            #for src_i, src in enumerate(tors):
+            #    for dst_i, dst in enumerate(tors):
+            #        if dst_i == src_i:
+            #            continue
+            #        src.outgoing[dst_i].add(random.uniform(0, frac*1.7))
+            for src, dst in matchings_by_slot[0]:
+                tors[src].outgoing[dst].add(N_ROTOR*PACKETS_PER_SLOT)
 
             if verbose:
                 print_demand(tors)
@@ -143,6 +151,22 @@ def main():
 
                 if verbose:
                     print_demand(tors)
+
+    for tor in tors:
+        print(tor)
+        for i in tor.incoming:
+            if i.size > 0:
+                p_str = "  "
+                print(" %s" % i)
+                start = i.packets[0]
+                prev  = i.packets[0]
+                for p in i.packets[1:]:
+                    if p != prev+1:
+                        p_str += "%2d " % (start)
+                        start = p
+                    prev = p
+                p_str += "%2d " % (start)
+                print(p_str)
 
 
     print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))

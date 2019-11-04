@@ -2,24 +2,37 @@ import random
 
 VERBOSE = True
 
+PACKETS_PER_SLOT = 1
 class Buffer():
     def __init__(self, name = ""):
-        self.amount = 0
-        self.name = name
+        self.packets = []
+        self.name = str(name)
+        self.count = 0
 
-    def send(self, to, amount):
-        assert self.amount >= amount
-        to.amount += amount
-        self.amount -= amount
-        if VERBOSE and amount > 0:
-            print("        %s -> %s: %.2f" % (self, to, amount))
+    def send(self, to, num_packets):
+        assert len(self.packets) >= num_packets
+        to.recv(self.packets[0:num_packets])
+        self.packets = self.packets[num_packets:]
+        if VERBOSE and num_packets > 0:
+            print("        \033[01m%s -> %s: %2d\033[00m" % (self, to, num_packets))
+
+    def recv(self, packets):
+        self.packets.extend(packets)
+        if len(packets) > 0 and False:
+            print("%s: received [%s]" %
+                    (self.name, ", ".join([str(p) for p in packets])))
+            print(self.packets)
 
     def add(self, val):
-        self.amount += val
+        self.packets.extend([self.count+i for i in range(val)])
+        #self.packets.extend([self.name + "-" + str(self.count + i)
+        #    for i in range(val)])
+        self.count += val
+        #self.amount += val
 
     @property
     def size(self):
-        return self.amount
+        return len(self.packets)
 
     def __str__(self):
         return "%s" % self.name
@@ -34,7 +47,7 @@ class ToRSwitch:
         # Index by who to send to
         self.outgoing =  [Buffer(name = "%s.t%s" %(name, dst+1))
                 for dst in range(n_tor)]
-        # Index by who to send to
+        # Index by who send to me
         self.incoming =  [Buffer(name = "%s.r%s" % (name, src+1))
                 for src in range(n_tor)]
 
@@ -45,15 +58,16 @@ class ToRSwitch:
         self.name = name
 
     def available(self, dst):
+        raise Error
         # Initially full capacity
-        available = 1
+        available = PACKETS_PER_SLOT
 
         # Remove old indirect traffic
         for src_buffer_ind in self.buffer_ind:
             available -= src_buffer_ind[dst]
 
         # Remove direct traffic
-        available -= self.buffer_dir[dst]
+        available -= self.incoming[dst]
 
         return available
 
@@ -75,7 +89,7 @@ class RotorSwitch:
 
     def init_slot(self, matchings):
         # Reset link availabilities
-        self.remaining = {link: 1 for link in matchings}
+        self.remaining = {link: PACKETS_PER_SLOT for link in matchings}
         self.matchings = matchings
 
     def send_old_indirect(self):
@@ -118,7 +132,7 @@ class RotorSwitch:
 
             # If we still have demand, indirect it somewhere
             for dst_i, src_buffer in shuffle(enumerate(src.outgoing)):
-                available = min(self.remaining[link], 1)
+                available = min(self.remaining[link], PACKETS_PER_SLOT)
                 amount = bound(0, src_buffer.size, available)
 
                 src.outgoing[dst_i].send(ind.indirect[src_i][dst_i], amount)
