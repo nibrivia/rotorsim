@@ -1,0 +1,39 @@
+---
+title: "RoToR viz"
+author: "Olivia Brode-Roger"
+date: "11/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(hrbrthemes)
+```
+
+# Data
+
+```{r data, }
+sim <- read_csv("data/out.csv")
+```
+
+# Plot
+
+```{r plot, }
+# Remove initial add and intermediate queues
+dst_view <- sim %>%
+    filter(src != "demand", # remove init
+           !grepl(pattern = "-", x = dst_queue))
+
+dst_view %>% 
+    ggplot(aes(x = time,
+               y = packet,
+               color = dst_queue)) +
+    geom_point(size = .2) +
+    facet_grid(dst_queue~dst) +
+    labs(x = NULL,
+         y = "packet number",
+         title = "Packet arrival time per (src, dst) pair",
+         subtitle = "Rows are sources, columns are destinations") +
+    guides(color = F) +
+    theme_ipsum_rc()
+```
