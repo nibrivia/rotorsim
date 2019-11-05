@@ -89,9 +89,6 @@ def main():
     double_hop = True
     verbose = True
 
-    # Initialize the log
-    init_log()
-
     print()
     N_CYCLES = 5
     for cycle in range(N_CYCLES):
@@ -177,6 +174,7 @@ def main():
                 #p_str += "%2-%-2d " % (start, prev)
                 print(p_str)
 
+    close_log()
 
     print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
     print("There are %d matchings, with %d slots per cycle" % (N_MATCHINGS, N_SLOTS))

@@ -20,10 +20,24 @@ class Time:
 global T
 T = Time()
 
-def init_log():
-    with open("data/out.csv", "w") as f:
+class Log:
+    def __init__(self, fn = "data/out.csv"):
+        self.fn = fn
+        self.file = open(fn, "a")
         print("time, src, src_queue, dst, dst_queue, packet",
-                file = f)
+                file = self.file)
+
+    def log(self, msg):
+        print(msg, file = self.file)
+
+    def close_log(self):
+        self.file.close()
+
+LOG = Log()
+
+def close_log():
+    LOG.close_log()
+
 
 # TODO use logger
 def log(src, dst, packets):
@@ -31,15 +45,13 @@ def log(src, dst, packets):
         t = float(T)
         if isinstance(src, str):
             for p in packets:
-                print("%.3f, %s, %s, %s, %s, %d" %
-                        (t, src, "0", dst.owner, dst.q_name, p),
-                    file = f)
+                LOG.log("%.3f, %s, %s, %s, %s, %d" %
+                        (t, src, "0", dst.owner, dst.q_name, p))
                 t += 1/(PACKETS_PER_SLOT*2)
         else:
             for p in packets:
-                print("%.3f, %s, %s, %s, %s, %d" %
-                        (t, src.owner, src.q_name, dst.owner, dst.q_name, p),
-                    file = f)
+                LOG.log("%.3f, %s, %s, %s, %s, %d" %
+                        (t, src.owner, src.q_name, dst.owner, dst.q_name, p))
                 t += 1/(PACKETS_PER_SLOT*2)
 
 
