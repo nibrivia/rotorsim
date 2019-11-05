@@ -1,7 +1,7 @@
 import random
 import sys
 
-VERBOSE = True
+VERBOSE = False
 
 class Time:
     def __init__(self):
@@ -21,17 +21,30 @@ global T
 T = Time()
 
 class Log:
+    # TODO, use an actual logger class, this is just to avoid
+    # many open/closes that can significantly degrade performance
     def __init__(self, fn = "data/out.csv"):
         self.fn = fn
-        self.file = open(fn, "a")
-        print("time, src, src_queue, dst, dst_queue, packet",
-                file = self.file)
+        self.file = open(fn, "w")
+        self.using_cache = True
+        self.cache = [] # Use array to avoid n^2 string append
 
     def log(self, msg):
-        print(msg, file = self.file)
+        if self.using_cache:
+            self.cache.append(msg)
+        else:
+            print(msg, file = self.file)
 
     def close_log(self):
-        self.file.close()
+        if self.using_cache:
+            with open(self.fn, "w") as f:
+                print("time, src, src_queue, dst, dst_queue, packet",
+                        file = f)
+                print('\n'.join(self.cache), file = f)
+            print("Logged {:,} lines to {}".format(len(self.cache), self.fn))
+        else:
+            self.file.close()
+
 
 LOG = Log()
 
@@ -41,18 +54,17 @@ def close_log():
 
 # TODO use logger
 def log(src, dst, packets):
-    with open("data/out.csv", "a") as f:
-        t = float(T)
-        if isinstance(src, str):
-            for p in packets:
-                LOG.log("%.3f, %s, %s, %s, %s, %d" %
-                        (t, src, "0", dst.owner, dst.q_name, p))
-                t += 1/(PACKETS_PER_SLOT*2)
-        else:
-            for p in packets:
-                LOG.log("%.3f, %s, %s, %s, %s, %d" %
-                        (t, src.owner, src.q_name, dst.owner, dst.q_name, p))
-                t += 1/(PACKETS_PER_SLOT*2)
+    t = float(T)
+    if isinstance(src, str):
+        for p in packets:
+            LOG.log("%.3f, %s, %s, %s, %s, %d" %
+                    (t, src, "0", dst.owner, dst.q_name, p))
+            t += 1/(PACKETS_PER_SLOT*2)
+    else:
+        for p in packets:
+            LOG.log("%.3f, %s, %s, %s, %s, %d" %
+                    (t, src.owner, src.q_name, dst.owner, dst.q_name, p))
+            t += 1/(PACKETS_PER_SLOT*2)
 
 
 PACKETS_PER_SLOT = 10
@@ -149,7 +161,8 @@ class RotorSwitch:
         self.matchings = matchings
 
     def send_old_indirect(self):
-        print("      %s" % self)
+        if VERBOSE:
+            print("      %s" % self)
         # For each matching, look through our buffer, deliver old stuff
         for link in self.matchings:
             ind_i, dst_i = link
@@ -165,7 +178,8 @@ class RotorSwitch:
                 self.remaining[link] -= amount
 
     def send_direct(self):
-        print("      %s" % self)
+        if VERBOSE:
+            print("      %s" % self)
 
         for link in self.matchings:
             src_i, dst_i = link
@@ -180,7 +194,8 @@ class RotorSwitch:
 
 
     def send_new_indirect(self):
-        print("      %s" % self)
+        if VERBOSE:
+            print("      %s" % self)
         # Go through matchings randomly, would be better if fair
         for link in shuffle(self.matchings):
             src_i, ind_i = link
