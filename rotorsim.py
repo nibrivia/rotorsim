@@ -2,12 +2,12 @@ import random
 import math
 from switches import *
 
-N_TOR   = 5
-N_ROTOR = 2
+N_TOR   = 17
+N_ROTOR = 4
 N_MATCHINGS = N_TOR - 1 #don't link back to yourself
 N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 
-VERBOSE = False
+#VERBOSE = False
 
 def generate_matchings(tors):
     all_matchings = []
@@ -87,17 +87,14 @@ def main():
     run_delivered = 0
 
     double_hop = True
-    verbose = True
-
-    # Initialize the log
-    init_log()
+    verbose = VERBOSE
 
     print()
-    N_CYCLES = 5
+    N_CYCLES = 20
     for cycle in range(N_CYCLES):
         if verbose:
             print()
-            print("\033[01;31mCycle %d/%d\033[00m" % (cycle+1, N_CYCLES))
+        print("\033[01;31mCycle %d/%d\033[00m" % (cycle+1, N_CYCLES))
 
         # Send data
         for slot in range(N_SLOTS):
@@ -159,24 +156,26 @@ def main():
                 if verbose:
                     print_demand(tors)
 
-    for tor in tors:
-        print(tor)
-        for i in tor.incoming:
-            if i.size > 0:
-                p_str = "  "
-                print(" %s" % i)
-                for p in i.packets:
-                    p_str += str(p) + " "
-                #start = i.packets[0]
-                #prev  = i.packets[0]
-                #for p in i.packets[1:]:
-                #    if p != prev+1:
-                #        p_str += "%2d-%-2d " % (start, prev)
-                #        start = p
-                #    prev = p
-                #p_str += "%2-%-2d " % (start, prev)
-                print(p_str)
+    if verbose:
+        for tor in tors:
+            print(tor)
+            for i in tor.incoming:
+                if i.size > 0:
+                    p_str = "  "
+                    print(" %s" % i)
+                    for p in i.packets:
+                        p_str += str(p) + " "
+                    #start = i.packets[0]
+                    #prev  = i.packets[0]
+                    #for p in i.packets[1:]:
+                    #    if p != prev+1:
+                    #        p_str += "%2d-%-2d " % (start, prev)
+                    #        start = p
+                    #    prev = p
+                    #p_str += "%2-%-2d " % (start, prev)
+                    print(p_str)
 
+    close_log()
 
     print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
     print("There are %d matchings, with %d slots per cycle" % (N_MATCHINGS, N_SLOTS))
