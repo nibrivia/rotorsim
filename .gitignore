@@ -4,3 +4,4 @@ Session.vim
 *.pyc
 __pycache__
 data
+.Rproj.user
