@@ -89,6 +89,9 @@ def main():
     double_hop = True
     verbose = True
 
+    # Initialize the log
+    init_log()
+
     print()
     N_CYCLES = 5
     for cycle in range(N_CYCLES):
@@ -105,13 +108,16 @@ def main():
                 print("  %f" % T)
 
             # Generate new demand
-            #for src_i, src in enumerate(tors):
-            #    for dst_i, dst in enumerate(tors):
-            #        if dst_i == src_i:
-            #            continue
-            #        src.outgoing[dst_i].add(random.uniform(0, frac*1.7))
-            for src, dst in matchings_by_slot[0]:
-                tors[src].outgoing[dst].add(N_ROTOR*PACKETS_PER_SLOT)
+            for src_i, src in enumerate(tors):
+                for dst_i, dst in enumerate(tors):
+                    if dst_i == src_i:
+                        continue
+                    src.outgoing[dst_i].add(
+                            round(random.uniform(
+                                0,
+                                frac*1.7*PACKETS_PER_SLOT)))
+            #for src, dst in matchings_by_slot[0]:
+            #    tors[src].outgoing[dst].add(N_ROTOR*PACKETS_PER_SLOT)
 
             if verbose:
                 print_demand(tors)

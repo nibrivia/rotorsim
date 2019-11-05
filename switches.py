@@ -1,4 +1,5 @@
 import random
+import sys
 
 VERBOSE = True
 
@@ -19,19 +20,27 @@ class Time:
 global T
 T = Time()
 
+def init_log():
+    with open("data/out.csv", "w") as f:
+        print("time, src, src_queue, dst, dst_queue, packet",
+                file = f)
+
+# TODO use logger
 def log(src, dst, packets):
-    if isinstance(src, str):
-        for p in packets:
-            print("\033[01;35m%.3f, %s, %s, %s, %s, %d\033[00m" %
-                    (T, src, "0", dst.owner, dst.q_name, p))
-        return
+    with open("data/out.csv", "a") as f:
+        if isinstance(src, str):
+            for p in packets:
+                print("%.3f, %s, %s, %s, %s, %d" %
+                        (T, src, "0", dst.owner, dst.q_name, p),
+                    file = f)
+        else:
+            for p in packets:
+                print("%.3f, %s, %s, %s, %s, %d" %
+                        (T, src.owner, src.q_name, dst.owner, dst.q_name, p),
+                    file = f)
 
-    for p in packets:
-        print("\033[01;35m%.3f, %s, %s, %s, %s, %d\033[00m" %
-                (T, src.owner, src.q_name, dst.owner, dst.q_name, p))
 
-
-PACKETS_PER_SLOT = 1
+PACKETS_PER_SLOT = 10
 class Buffer():
     def __init__(self, name = ""):
         self.packets = []
