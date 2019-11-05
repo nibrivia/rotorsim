@@ -16,24 +16,71 @@ library(hrbrthemes)
 sim <- read_csv("data/out.csv")
 ```
 
+# lkj
+```{r buffer, }
+cur_ack <- function(rx) {
+    buffer <- c()
+    cur_ack <- 0
+    acks <- c()
+    for (r in rx) {
+        if (r == cur_ack+1) {
+            cur_ack <- cur_ack + 1
+            while (TRUE) {
+                if ((cur_ack + 1) %in% buffer) {
+                    cur_ack <- cur_ack + 1
+                } else {
+                    break
+                }
+            }
+        } else {
+            buffer <- c(buffer, r)
+        }
+        acks <- c(acks, cur_ack)
+    }
+    return(acks)
+}
+cur_ack(xs)
+```
 # Plot
 
 ```{r plot, }
 # Remove initial add and intermediate queues
 dst_view <- sim %>%
     filter(src != "demand", # remove init
-           !grepl(pattern = "-", x = dst_queue))
+           !grepl(pattern = "-", x = dst_queue)) %>% 
+    arrange(time) %>% 
+    group_by(dst, dst_queue) %>% 
+        mutate(ack = cur_ack(packet)) %>% 
+        ungroup()
+    
 
 dst_view %>% 
     ggplot(aes(x = time,
                y = packet,
                color = dst_queue)) +
-    geom_point(size = .2) +
+    geom_step(aes(y = ack)) +
+    geom_point(size = .2,
+               color = "black") +
     facet_grid(dst_queue~dst) +
     labs(x = NULL,
          y = "packet number",
-         title = "Packet arrival time per (src, dst) pair",
-         subtitle = "Rows are sources, columns are destinations") +
+         title = "Packet arrival time and current ack per RoToRnet flow",
+         subtitle = "Uniformly random all-to-all flow, 2 slots/cycle, bandwidth 10 packets/slot",
+         caption = "https://github.com/nibrivia/rotorsim") +
+    guides(color = F) +
+    theme_ipsum_rc()
+
+dst_view %>% 
+    filter(packet - ack >= 0 ) %>% 
+    ggplot(aes(x = time,
+               y = packet-ack,
+               color = dst_queue)) +
+    geom_step() +
+    facet_grid(dst_queue~dst) +
+    labs(x = NULL,
+         y = "packet number",
+         title = "Necessary buffer size at end host",
+         caption = "https://github.com/nibrivia/rotorsim") +
     guides(color = F) +
     theme_ipsum_rc()
 ```
