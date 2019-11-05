@@ -28,16 +28,19 @@ def init_log():
 # TODO use logger
 def log(src, dst, packets):
     with open("data/out.csv", "a") as f:
+        t = float(T)
         if isinstance(src, str):
             for p in packets:
                 print("%.3f, %s, %s, %s, %s, %d" %
-                        (T, src, "0", dst.owner, dst.q_name, p),
+                        (t, src, "0", dst.owner, dst.q_name, p),
                     file = f)
+                t += 1/(PACKETS_PER_SLOT*2)
         else:
             for p in packets:
                 print("%.3f, %s, %s, %s, %s, %d" %
-                        (T, src.owner, src.q_name, dst.owner, dst.q_name, p),
+                        (t, src.owner, src.q_name, dst.owner, dst.q_name, p),
                     file = f)
+                t += 1/(PACKETS_PER_SLOT*2)
 
 
 PACKETS_PER_SLOT = 10
@@ -60,10 +63,6 @@ class Buffer():
 
     def recv(self, packets):
         self.packets.extend(packets)
-        if len(packets) > 0 and False:
-            print("%s: received [%s]" %
-                    (self.name, ", ".join([str(p) for p in packets])))
-            print(self.packets)
 
     def add(self, val):
         self.packets.extend([self.count+i for i in range(val)])
