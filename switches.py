@@ -20,8 +20,15 @@ global T
 T = Time()
 
 def log(src, dst, packets):
+    if isinstance(src, str):
+        for p in packets:
+            print("\033[01;35m%.3f, %s, %s, %s, %s, %d\033[00m" %
+                    (T, src, "0", dst.owner, dst.q_name, p))
+        return
+
     for p in packets:
-        print("\033[01;35m%.3f, %s, %s, %d\033[00m" % (T, src, dst, p))
+        print("\033[01;35m%.3f, %s, %s, %s, %s, %d\033[00m" %
+                (T, src.owner, src.q_name, dst.owner, dst.q_name, p))
 
 
 PACKETS_PER_SLOT = 1
@@ -29,12 +36,14 @@ class Buffer():
     def __init__(self, name = ""):
         self.packets = []
         self.name = str(name)
+        self.owner, self.q_name = str(name).split(".")
         self.count = 0
 
     def send(self, to, num_packets):
         assert len(self.packets) >= num_packets
         if VERBOSE and num_packets > 0:
-            print("        \033[01m%s -> %s: %2d\033[00m" % (self, to, num_packets))
+            print("        \033[01m%s -> %s: %2d\033[00m"
+                    % (self, to, num_packets))
             log(self, to, self.packets[0:num_packets])
 
         to.recv(self.packets[0:num_packets])
@@ -70,14 +79,15 @@ class EndPoint:
 class ToRSwitch:
     def __init__(self, name = "", n_tor = 0):
         # Index by who to send to
-        self.outgoing =  [Buffer(name = "%s.t%s" %(name, dst+1))
+        self.outgoing =  [Buffer(name = "%s.dst%s" %(name, dst+1))
                 for dst in range(n_tor)]
         # Index by who send to me
-        self.incoming =  [Buffer(name = "%s.r%s" % (name, src+1))
+        self.incoming =  [Buffer(name = "%s.src%s" % (name, src+1))
                 for src in range(n_tor)]
 
         # self.ind[orig][dest]
-        self.indirect = [[ Buffer(name = "%s.(s%s->d%s)" % (name, src+1, dst+1))
+        self.indirect = [[ Buffer(name = "%s.(src%s->dst%s)"
+            % (name, src+1, dst+1))
             for dst in range(n_tor)] for src in range(n_tor)]
 
         self.name = name

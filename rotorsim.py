@@ -128,7 +128,7 @@ def main():
             if double_hop:
                 if verbose:
                     print("    1. Old Indirect")
-                for rotor in rotors:
+                for rotor in shuffle(rotors):
                     rotor.send_old_indirect()
 
                 if verbose:
@@ -137,7 +137,7 @@ def main():
             # Direct traffic
             if verbose:
                 print("    2. Direct")
-            for rotor in rotors:
+            for rotor in shuffle(rotors):
                 rotor.send_direct()
 
             if verbose:
@@ -147,7 +147,7 @@ def main():
             if double_hop:
                 if verbose:
                     print("    3. New Indirect")
-                for rotor in rotors:
+                for rotor in shuffle(rotors):
                     rotor.send_new_indirect()
 
                 if verbose:
