@@ -1,5 +1,11 @@
 import random
+import math
 import sys
+
+N_TOR   = 17
+N_ROTOR = 4
+N_MATCHINGS = N_TOR - 1 #don't link back to yourself
+N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 
 VERBOSE = False
 
@@ -59,7 +65,7 @@ def log(src, dst, packets):
         for p in packets:
             LOG.log("%.3f, %s, %s, %s, %s, %d" %
                     (t, src, "0", dst.owner, dst.q_name, p))
-            t += 1/(PACKETS_PER_SLOT*2)
+            t += 1/(PACKETS_PER_SLOT*N_SLOTS)
     else:
         for p in packets:
             LOG.log("%.3f, %s, %s, %s, %s, %d" %
@@ -80,7 +86,7 @@ class Buffer():
         if VERBOSE and num_packets > 0:
             print("        \033[01m%s -> %s: %2d\033[00m"
                     % (self, to, num_packets))
-            log(self, to, self.packets[0:num_packets])
+        log(self, to, self.packets[0:num_packets])
 
         to.recv(self.packets[0:num_packets])
         self.packets = self.packets[num_packets:]
