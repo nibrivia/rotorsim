@@ -59,9 +59,9 @@ def print_demand(tors, prefix = "", print_buffer = False):
 
 
 def main():
-    print("Starting simulation with %d ToR switches and %d rotor switches" %
-            (N_TOR, N_ROTOR))
-    print("There are %d matchings, with %d slots per cycle" %
+    print("%d ToRs, %d rotors, %d packets/slot" %
+            (N_TOR, N_ROTOR, PACKETS_PER_SLOT))
+    print("  => %d matchings, %d slots/cycle" %
             (N_MATCHINGS, N_SLOTS))
 
     # ToR switches
@@ -87,8 +87,7 @@ def main():
     double_hop = True
     verbose = VERBOSE
 
-    print()
-    N_CYCLES = 1
+    print("---")
     for cycle in range(N_CYCLES):
         if verbose:
             print()
@@ -110,7 +109,7 @@ def main():
                     src.outgoing[dst_i].add(
                             round(random.uniform(
                                 0,
-                                frac*1.7*PACKETS_PER_SLOT)))
+                                frac*0.7*PACKETS_PER_SLOT)))
             #for src, dst in matchings_by_slot[0]:
             #    tors[src].outgoing[dst].add(N_ROTOR*PACKETS_PER_SLOT)
 
@@ -156,12 +155,7 @@ def main():
 
     close_log()
 
-    print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
-    print("There are %d matchings, with %d slots per cycle" % (N_MATCHINGS, N_SLOTS))
-    print("%d/%d=%.2f links are active at any time" % (active_links, total_links, frac))
-    average_delivered = 100*run_delivered/N_CYCLES/N_SLOTS
-    print("Average slot delivered is %d/%d utilization %d%%" %
-            (average_delivered, active_links, average_delivered/active_links ))
+    print("done")
 
 if __name__ == "__main__":
     main()

@@ -4,12 +4,13 @@ import sys
 import collections
 from logger import *
 
-N_TOR   = 5
-N_ROTOR = 2
+N_TOR   = 17
+N_ROTOR = 4
 N_MATCHINGS = N_TOR - 1 #don't link back to yourself
 N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
+N_CYCLES = 5
 
-VERBOSE = True
+VERBOSE = False
 
 LOG = Log()
 
@@ -60,12 +61,16 @@ class Buffer():
         self.owner, self.q_name = str(name).split(".")
         self.count = 0
 
+        # Cached, this is used a lot
+        self.size = 0
+
     def send(self, to, num_packets):
-        #assert len(self.packets) >= num_packets
+        assert len(self.packets) >= num_packets, "Sending more packets than in queue %s" % self
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         to.recv(moving_packets)
 
+        self.size = len(self.packets)
         log(self, to, moving_packets)
 
         if VERBOSE and num_packets > 0:
@@ -74,18 +79,16 @@ class Buffer():
 
     def recv(self, packets):
         self.packets.extend(packets)
+        self.size = len(self.packets)
 
     def add(self, val):
         new_packets = [self.count+i for i in range(val)]
         self.count += val
         self.packets.extend(new_packets)
+        self.size = len(self.packets)
 
         log("demand", self, new_packets)
 
-
-    @property
-    def size(self):
-        return len(self.packets)
 
     def __str__(self):
         return "%s" % self.name
@@ -112,15 +115,11 @@ class ToRSwitch:
         self.name = name
 
     def available_to(self, dst):
-        #raise Error
-        # Initially full capacity
-        available = PACKETS_PER_SLOT
+        # Initially full capacity, w/out direct traffic
+        available = PACKETS_PER_SLOT - self.outgoing[dst].size
 
         # Remove old indirect traffic
         available -= sum(b.size for b in self.indirect[dst])
-
-        # Remove direct traffic
-        available -= self.outgoing[dst].size
 
         return max(available, 0)
 
@@ -154,9 +153,7 @@ class RotorSwitch:
             ind_i, dst_i = link
             ind,   dst   = self.tors[ind_i], self.tors[dst_i]
             s = sum(b.size for b in ind.indirect[dst_i])
-            if s > PACKETS_PER_SLOT:
-                print(str(self) + str(s))
-                raise E
+            assert s <= PACKETS_PER_SLOT, "More old indirect than can send %s" % self
 
             # For this link, find all old indirect traffic who wants to go
             for dta_src, ind_buffer in enumerate(ind.indirect[dst_i]):
@@ -188,21 +185,26 @@ class RotorSwitch:
         # against other indirect traffic
         if VERBOSE:
             print("      %s" % self)
-        # Go through matchings randomly, would be better if fair
-        for link in shuffle(self.matchings):
-            src_i, ind_i = link
-            src,   ind   = self.tors[src_i], self.tors[ind_i]
-            print("         %s->%s    %d" % (src_i+1, ind_i+1, self.remaining[link]))
 
-            # If we still have demand, indirect it somewhere
-            for dst_i, src_buffer in shuffle(enumerate(src.outgoing)):
-                available = src.available_to(dst_i)
-                print("            %s->%d %d" % (ind_i+1, dst_i+1, available))
-                available = min(self.remaining[link], available)
-                amount = bound(0, src_buffer.size, available)
+        # Because sending traffic indirectly then allows us to receive more,
+        # we need to keep iterating until we can't send any more
+        sent = 1
+        while sent > 0:
+            sent = 0
+            # Go through matchings randomly, would be better if fair
+            for link in shuffle(self.matchings):
+                src_i, ind_i = link
+                src,   ind   = self.tors[src_i], self.tors[ind_i]
 
-                src.outgoing[dst_i].send(ind.indirect[dst_i][src_i], amount)
-                self.remaining[link] -= amount
+                # If we still have demand, indirect it somewhere
+                for dst_i, src_buffer in shuffle(enumerate(src.outgoing)):
+                    available = src.available_to(dst_i)
+                    available = min(self.remaining[link], available)
+                    amount = bound(0, src_buffer.size, available)
+
+                    src.outgoing[dst_i].send(ind.indirect[dst_i][src_i], amount)
+                    self.remaining[link] -= amount
+                    sent += amount
 
     def __str__(self):
         return "Rotor %s" % self.name
