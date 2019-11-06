@@ -42,17 +42,18 @@ class Log:
 
     def log(self, msg):
         self.cache.append(msg)
-        if len(self.cache) > 10000:
+        if len(self.cache) > 100:
             self.flush()
 
     def flush(self):
-        with open(self.fn, "w") as f:
-            print('\n'.join(self.cache), file = f)
+        #print("FLUSH")
+        self.file.writelines(self.cache)
         self.cache = []
 
 
     def close_log(self):
         self.flush()
+        self.file.close()
 
 
 LOG = Log()
@@ -61,17 +62,17 @@ def close_log():
     LOG.close_log()
 
 
-# TODO use logger
+# TODO use logger process
 def log(src, dst, packets):
-    t = float(T)
+    t = T.T
     if isinstance(src, str):
         for p in packets:
-            LOG.log("%.3f, %s, 0, %s, %s, %d" %
+            LOG.log("%.3f, %s, 0, %s, %s, %d\n" %
                     (t, src, dst.owner, dst.q_name, p))
             t += 1/(PACKETS_PER_SLOT*N_SLOTS)
     else:
         for p in packets:
-            LOG.log("%.3f, %s, %s, %s, %s, %d" %
+            LOG.log("%.3f, %s, %s, %s, %s, %d\n" %
                     (t, src.owner, src.q_name, dst.owner, dst.q_name, p))
             t += 1/(PACKETS_PER_SLOT*2)
 
@@ -85,7 +86,7 @@ class Buffer():
         self.count = 0
 
     def send(self, to, num_packets):
-        assert len(self.packets) >= num_packets
+        #assert len(self.packets) >= num_packets
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         to.recv(moving_packets)
