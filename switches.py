@@ -1,6 +1,7 @@
 import random
 import math
 import sys
+import collections
 
 N_TOR   = 17
 N_ROTOR = 4
@@ -29,27 +30,29 @@ T = Time()
 class Log:
     # TODO, use an actual logger class, this is just to avoid
     # many open/closes that can significantly degrade performance
-    def __init__(self, fn = "data/out.csv"):
+    def __init__(self, fn = "out.csv"):
         self.fn = fn
         self.file = open(fn, "w")
-        self.using_cache = True
         self.cache = [] # Use array to avoid n^2 string append
 
+        # Initialize the .csv
+        with open(self.fn, "w") as f:
+            print("time, src, src_queue, dst, dst_queue, packet",
+                    file = f)
+
     def log(self, msg):
-        if self.using_cache:
-            self.cache.append(msg)
-        else:
-            print(msg, file = self.file)
+        self.cache.append(msg)
+        if len(self.cache) > 10000:
+            self.flush()
+
+    def flush(self):
+        with open(self.fn, "w") as f:
+            print('\n'.join(self.cache), file = f)
+        self.cache = []
+
 
     def close_log(self):
-        if self.using_cache:
-            with open(self.fn, "w") as f:
-                print("time, src, src_queue, dst, dst_queue, packet",
-                        file = f)
-                print('\n'.join(self.cache), file = f)
-            print("Logged {:,} lines to {}".format(len(self.cache), self.fn))
-        else:
-            self.file.close()
+        self.flush()
 
 
 LOG = Log()
@@ -63,8 +66,8 @@ def log(src, dst, packets):
     t = float(T)
     if isinstance(src, str):
         for p in packets:
-            LOG.log("%.3f, %s, %s, %s, %s, %d" %
-                    (t, src, "0", dst.owner, dst.q_name, p))
+            LOG.log("%.3f, %s, 0, %s, %s, %d" %
+                    (t, src, dst.owner, dst.q_name, p))
             t += 1/(PACKETS_PER_SLOT*N_SLOTS)
     else:
         for p in packets:
@@ -76,31 +79,33 @@ def log(src, dst, packets):
 PACKETS_PER_SLOT = 10
 class Buffer():
     def __init__(self, name = ""):
-        self.packets = []
+        self.packets = collections.deque()
         self.name = str(name)
         self.owner, self.q_name = str(name).split(".")
         self.count = 0
 
     def send(self, to, num_packets):
         assert len(self.packets) >= num_packets
+
+        moving_packets = [self.packets.popleft() for _ in range(num_packets)]
+        to.recv(moving_packets)
+
+        log(self, to, moving_packets)
+
         if VERBOSE and num_packets > 0:
             print("        \033[01m%s -> %s: %2d\033[00m"
                     % (self, to, num_packets))
-        log(self, to, self.packets[0:num_packets])
-
-        to.recv(self.packets[0:num_packets])
-        self.packets = self.packets[num_packets:]
 
     def recv(self, packets):
         self.packets.extend(packets)
 
     def add(self, val):
-        self.packets.extend([self.count+i for i in range(val)])
-        log("demand", self, self.packets[-val:])
-        #self.packets.extend([self.name + "-" + str(self.count + i)
-        #    for i in range(val)])
+        new_packets = [self.count+i for i in range(val)]
         self.count += val
-        #self.amount += val
+        self.packets.extend(new_packets)
+
+        log("demand", self, new_packets)
+
 
     @property
     def size(self):

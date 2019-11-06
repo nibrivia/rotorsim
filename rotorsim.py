@@ -2,10 +2,6 @@ import random
 import math
 from switches import *
 
-N_TOR   = 17
-N_ROTOR = 4
-N_MATCHINGS = N_TOR - 1 #don't link back to yourself
-N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 
 #VERBOSE = False
 
