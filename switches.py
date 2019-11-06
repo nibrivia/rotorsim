@@ -2,6 +2,7 @@ import random
 import math
 import sys
 import collections
+from logger import *
 
 N_TOR   = 17
 N_ROTOR = 4
@@ -9,6 +10,25 @@ N_MATCHINGS = N_TOR - 1 #don't link back to yourself
 N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 
 VERBOSE = False
+
+LOG = Log()
+
+# TODO use logger process
+def log(src, dst, packets):
+    t = T.T
+    if isinstance(src, str):
+        for p in packets:
+            LOG.log("%.3f, %s, 0, %s, %s, %d\n" %
+                    (t, src, dst.owner, dst.q_name, p))
+            t += 1/(PACKETS_PER_SLOT*N_SLOTS)
+    else:
+        for p in packets:
+            LOG.log("%.3f, %s, %s, %s, %s, %d\n" %
+                    (t, src.owner, src.q_name, dst.owner, dst.q_name, p))
+            t += 1/(PACKETS_PER_SLOT*2)
+
+def close_log():
+    LOG.close_log()
 
 class Time:
     def __init__(self):
@@ -26,56 +46,6 @@ class Time:
 
 global T
 T = Time()
-
-class Log:
-    # TODO, use an actual logger class, this is just to avoid
-    # many open/closes that can significantly degrade performance
-    def __init__(self, fn = "out.csv"):
-        self.fn = fn
-        self.file = open(fn, "w")
-        self.cache = [] # Use array to avoid n^2 string append
-
-        # Initialize the .csv
-        with open(self.fn, "w") as f:
-            print("time, src, src_queue, dst, dst_queue, packet",
-                    file = f)
-
-    def log(self, msg):
-        self.cache.append(msg)
-        if len(self.cache) > 100:
-            self.flush()
-
-    def flush(self):
-        #print("FLUSH")
-        self.file.writelines(self.cache)
-        self.cache = []
-
-
-    def close_log(self):
-        self.flush()
-        self.file.close()
-
-
-LOG = Log()
-
-def close_log():
-    LOG.close_log()
-
-
-# TODO use logger process
-def log(src, dst, packets):
-    t = T.T
-    if isinstance(src, str):
-        for p in packets:
-            LOG.log("%.3f, %s, 0, %s, %s, %d\n" %
-                    (t, src, dst.owner, dst.q_name, p))
-            t += 1/(PACKETS_PER_SLOT*N_SLOTS)
-    else:
-        for p in packets:
-            LOG.log("%.3f, %s, %s, %s, %s, %d\n" %
-                    (t, src.owner, src.q_name, dst.owner, dst.q_name, p))
-            t += 1/(PACKETS_PER_SLOT*2)
-
 
 PACKETS_PER_SLOT = 10
 class Buffer():
