@@ -4,17 +4,22 @@ import sys
 import collections
 from logger import *
 
-N_TOR   = 17
-N_ROTOR = 4
+N_TOR   = 5
+N_ROTOR = 2
 N_MATCHINGS = N_TOR - 1 #don't link back to yourself
 N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 
-VERBOSE = False
+VERBOSE = True
 
 LOG = Log()
 
+DO_LOG = False
+
 # TODO use logger process
 def log(src, dst, packets):
+    if not DO_LOG:
+        return
+
     t = T.T
     if isinstance(src, str):
         for p in packets:
@@ -47,7 +52,7 @@ class Time:
 global T
 T = Time()
 
-PACKETS_PER_SLOT = 10
+PACKETS_PER_SLOT = 100
 class Buffer():
     def __init__(self, name = ""):
         self.packets = collections.deque()
@@ -99,26 +104,25 @@ class ToRSwitch:
         self.incoming =  [Buffer(name = "%s.src%s" % (name, src+1))
                 for src in range(n_tor)]
 
-        # self.ind[orig][dest]
+        # self.ind[dst][src]
         self.indirect = [[ Buffer(name = "%s.(src%s->dst%s)"
             % (name, src+1, dst+1))
-            for dst in range(n_tor)] for src in range(n_tor)]
+            for src in range(n_tor)] for dst in range(n_tor)]
 
         self.name = name
 
-    def available(self, dst):
-        raise Error
+    def available_to(self, dst):
+        #raise Error
         # Initially full capacity
         available = PACKETS_PER_SLOT
 
         # Remove old indirect traffic
-        for src_buffer_ind in self.buffer_ind:
-            available -= src_buffer_ind[dst]
+        available -= sum(b.size for b in self.indirect[dst])
 
         # Remove direct traffic
-        available -= self.incoming[dst]
+        available -= self.outgoing[dst].size
 
-        return available
+        return max(available, 0)
 
     def __str__(self):
         return "ToR %s" % self.name
@@ -149,14 +153,18 @@ class RotorSwitch:
         for link in self.matchings:
             ind_i, dst_i = link
             ind,   dst   = self.tors[ind_i], self.tors[dst_i]
+            s = sum(b.size for b in ind.indirect[dst_i])
+            if s > PACKETS_PER_SLOT:
+                print(str(self) + str(s))
+                raise E
 
             # For this link, find all old indirect traffic who wants to go
-            for dta_src, ind_buffer in enumerate(ind.indirect):
+            for dta_src, ind_buffer in enumerate(ind.indirect[dst_i]):
                 # How much can we send?
-                amount = bound(0, ind_buffer[dst_i].size, self.remaining[link])
+                amount = bound(0, ind_buffer.size, self.remaining[link])
 
                 # Actually send
-                ind_buffer[dst_i].send(dst.incoming[dta_src], amount)
+                ind_buffer.send(dst.incoming[dta_src], amount)
                 self.remaining[link] -= amount
 
     def send_direct(self):
@@ -176,19 +184,24 @@ class RotorSwitch:
 
 
     def send_new_indirect(self):
+        # TODO bug where things that are about to be indirected count
+        # against other indirect traffic
         if VERBOSE:
             print("      %s" % self)
         # Go through matchings randomly, would be better if fair
         for link in shuffle(self.matchings):
             src_i, ind_i = link
             src,   ind   = self.tors[src_i], self.tors[ind_i]
+            print("         %s->%s    %d" % (src_i+1, ind_i+1, self.remaining[link]))
 
             # If we still have demand, indirect it somewhere
             for dst_i, src_buffer in shuffle(enumerate(src.outgoing)):
-                available = min(self.remaining[link], PACKETS_PER_SLOT)
+                available = src.available_to(dst_i)
+                print("            %s->%d %d" % (ind_i+1, dst_i+1, available))
+                available = min(self.remaining[link], available)
                 amount = bound(0, src_buffer.size, available)
 
-                src.outgoing[dst_i].send(ind.indirect[src_i][dst_i], amount)
+                src.outgoing[dst_i].send(ind.indirect[dst_i][src_i], amount)
                 self.remaining[link] -= amount
 
     def __str__(self):

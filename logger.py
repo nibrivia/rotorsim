@@ -12,7 +12,7 @@ class Log:
 
     def log(self, msg):
         self.cache.append(msg)
-        if len(self.cache) > 100:
+        if len(self.cache) > 100000:
             self.flush()
 
     def flush(self):
