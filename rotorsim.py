@@ -2,12 +2,6 @@ import random
 import math
 from switches import *
 
-N_TOR   = 17
-N_ROTOR = 4
-N_MATCHINGS = N_TOR - 1 #don't link back to yourself
-N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
-
-#VERBOSE = False
 
 def generate_matchings(tors):
     all_matchings = []
@@ -41,6 +35,7 @@ def print_demand(tors, prefix = "", print_buffer = False):
     print()
     print("\033[0;32m      Demand")
     print("        Direct")
+    print_buffer = True
     for src_i, src in enumerate(tors):
         line_str = "          " + str(src) + " -> "
         for dst_i, dst in enumerate(tors):
@@ -51,19 +46,22 @@ def print_demand(tors, prefix = "", print_buffer = False):
         print("        Indirect")
         for ind_i, ind in enumerate(tors):
             line_str = "          ToR " + str(ind_i+1) + "\n"
-            for src_i, src in enumerate(tors):
-                line_str += "            " + str(src_i+1) + " -> "
-                for dst_i, dst in enumerate(tors):
-                    line_str += "%2d " % ind.indirect[src_i][dst_i].size
-                line_str += "\n"
+            for dst_i, dst in enumerate(tors):
+                tot = 0
+                line_str += "            " 
+                for src_i, src in enumerate(tors):
+                    qty = ind.indirect[dst_i][src_i].size
+                    tot += qty
+                    line_str += "%2d " % qty
+                line_str += "-> %d  =%2d\n" % (dst_i+1, tot)
             print(line_str)
     print("\033[00m")
 
 
 def main():
-    print("Starting simulation with %d ToR switches and %d rotor switches" %
-            (N_TOR, N_ROTOR))
-    print("There are %d matchings, with %d slots per cycle" %
+    print("%d ToRs, %d rotors, %d packets/slot" %
+            (N_TOR, N_ROTOR, PACKETS_PER_SLOT))
+    print("  => %d matchings, %d slots/cycle" %
             (N_MATCHINGS, N_SLOTS))
 
     # ToR switches
@@ -89,8 +87,7 @@ def main():
     double_hop = True
     verbose = VERBOSE
 
-    print()
-    N_CYCLES = 20
+    print("---")
     for cycle in range(N_CYCLES):
         if verbose:
             print()
@@ -112,7 +109,7 @@ def main():
                     src.outgoing[dst_i].add(
                             round(random.uniform(
                                 0,
-                                frac*1.7*PACKETS_PER_SLOT)))
+                                frac*0.7*PACKETS_PER_SLOT)))
             #for src, dst in matchings_by_slot[0]:
             #    tors[src].outgoing[dst].add(N_ROTOR*PACKETS_PER_SLOT)
 
@@ -156,33 +153,9 @@ def main():
                 if verbose:
                     print_demand(tors)
 
-    if verbose:
-        for tor in tors:
-            print(tor)
-            for i in tor.incoming:
-                if i.size > 0:
-                    p_str = "  "
-                    print(" %s" % i)
-                    for p in i.packets:
-                        p_str += str(p) + " "
-                    #start = i.packets[0]
-                    #prev  = i.packets[0]
-                    #for p in i.packets[1:]:
-                    #    if p != prev+1:
-                    #        p_str += "%2d-%-2d " % (start, prev)
-                    #        start = p
-                    #    prev = p
-                    #p_str += "%2-%-2d " % (start, prev)
-                    print(p_str)
-
     close_log()
 
-    print("End of simulation with %d ToR switches and %d rotor switches" % (N_TOR, N_ROTOR))
-    print("There are %d matchings, with %d slots per cycle" % (N_MATCHINGS, N_SLOTS))
-    print("%d/%d=%.2f links are active at any time" % (active_links, total_links, frac))
-    average_delivered = 100*run_delivered/N_CYCLES/N_SLOTS
-    print("Average slot delivered is %d/%d utilization %d%%" %
-            (average_delivered, active_links, average_delivered/active_links ))
+    print("done")
 
 if __name__ == "__main__":
     main()
