@@ -32,6 +32,7 @@ cur_ack <- function(rx) {
                     break
                 }
             }
+            buffer <- buffer[cur_ack < buffer]
         } else {
             buffer <- c(buffer, r)
         }
@@ -40,6 +41,30 @@ cur_ack <- function(rx) {
     return(acks)
 }
 cur_ack(xs)
+
+buf_size <- function(rx) {
+    buffer <- c()
+    cur_ack <- 0
+    b_size <- c()
+    for (r in rx) {
+        if (r == cur_ack+1) {
+            cur_ack <- cur_ack + 1
+            while (TRUE) {
+                if ((cur_ack + 1) %in% buffer) {
+                    cur_ack <- cur_ack + 1
+                } else {
+                    break
+                }
+            }
+            buffer <- buffer[cur_ack < buffer]
+        } else {
+            buffer <- c(buffer, r)
+        }
+        b_size <- c(b_size, length(buffer))
+    }
+    return(b_size)
+}
+buf_size(xs)
 ```
 # Plot
 
@@ -50,11 +75,13 @@ dst_view <- sim %>%
            !grepl(pattern = "-", x = dst_queue)) %>% 
     arrange(time) %>% 
     group_by(dst, dst_queue) %>% 
-        mutate(ack = cur_ack(packet)) %>% 
+        mutate(ack = cur_ack(packet),
+               buffer_size = buf_size(packet)) %>% 
         ungroup()
     
 
 dst_view %>% 
+    filter(time < 3) %>% 
     ggplot(aes(x = time,
                y = packet,
                color = dst_queue)) +
@@ -71,16 +98,33 @@ dst_view %>%
     theme_ipsum_rc()
 
 dst_view %>% 
-    filter(packet - ack >= 0 ) %>% 
     ggplot(aes(x = time,
-               y = packet-ack,
-               color = dst_queue)) +
+               y = buffer_size,
+               color = paste(dst, dst_queue))) +
     geom_step() +
     facet_grid(dst_queue~dst) +
     labs(x = NULL,
-         y = "packet number",
+         y = "Buffer size (packets)",
          title = "Necessary buffer size at end host",
          caption = "https://github.com/nibrivia/rotorsim") +
     guides(color = F) +
+    theme_ipsum_rc()
+
+dst_view %>% 
+    group_by(buffer_size) %>% 
+        summarize(count = n()) %>% 
+        ungroup() %>% 
+    mutate(frac = count/sum(count)) %>% 
+    arrange(buffer_size) %>% 
+    ggplot(aes(x = buffer_size,
+               y = 1-cumsum(frac))) +
+    geom_line() +
+    geom_point() +
+    scale_y_log10(labels = partial(scales::percent, accuracy = .001)) +
+    labs(title = "Drop probability by buffer size",
+         subtitle = "RoToRnet guarantees 0 drops for buffers larger than XXX",
+         y = NULL,
+         x = "Buffer size (packets)",
+         caption = "https://github.com/nibrivia/rotorsim") +
     theme_ipsum_rc()
 ```
