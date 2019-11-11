@@ -69,6 +69,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles):
             net.do_slot()
 
     #close_log()
+    logger.close()
 
     print("done")
 
