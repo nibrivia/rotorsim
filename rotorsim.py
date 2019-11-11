@@ -1,8 +1,7 @@
-import random
-import math
 from network import RotorNet
 from logger import Log
 from helpers import *
+import click
 
 
 
@@ -18,8 +17,33 @@ def generate_static_demand(matching, max_demand = 1):
     return [[1 if matching[src] == dst else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
 
-
-def main():
+@click.command()
+@click.option(
+        "--n_tor",
+        type=int,
+        default=4
+)
+@click.option(
+        "--n_rotor",
+        type=int,
+        default=2
+)
+@click.option(
+        "--packets_per_slot",
+        type=int,
+        default=10
+)
+@click.option(
+        "--log",
+        type=str,
+        default="out.csv"
+)
+@click.option(
+        "--n_cycles",
+        type=int,
+        default=5
+)
+def main(n_tor, n_rotor, packets_per_slot, log, n_cycles):
     #print("%d ToRs, %d rotors, %d packets/slot" %
     #        (N_TOR, N_ROTOR, PACKETS_PER_SLOT))
     #print("  => %d matchings, %d slots/cycle" %
@@ -30,9 +54,8 @@ def main():
     #total_links = N_TOR*(N_TOR-1)
     #frac = active_links/total_links
 
-    logger = Log()
-    net = RotorNet(n_rotor = 2, n_tor = 5, logger = logger)
-    n_cycles = 5
+    logger = Log(fn = log)
+    net = RotorNet(n_rotor = n_rotor, n_tor = n_tor, logger = logger)
 
     #demand = generate_static_demand(matchings_by_slot[-1], max_demand = frac)
     #run_demand = sum(sum(d) for d in demand)
