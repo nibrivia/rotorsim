@@ -11,21 +11,21 @@ def print_demand(tors, prefix = "", print_buffer = False):
     for src_i, src in enumerate(tors):
         line_str = "          " + str(src) + " -> "
         for dst_i, dst in enumerate(tors):
-            line_str += "%2d " % src.outgoing[dst_i].size
+            line_str += "%2d " % src.buffers[(src_i, dst_i)].size
         print(line_str)
 
     if print_buffer:
         print("        Indirect")
         for ind_i, ind in enumerate(tors):
-            line_str = "          ToR " + str(ind_i+1) + "\n"
+            line_str = "          ToR " + str(ind_i) + "\n"
             for dst_i, dst in enumerate(tors):
                 tot = 0
                 line_str += "            " 
                 for src_i, src in enumerate(tors):
-                    qty = ind.indirect[dst_i][src_i].size
+                    qty = ind.buffers[(src_i, dst_i)].size
                     tot += qty
                     line_str += "%2d " % qty
-                line_str += "-> %d  =%2d\n" % (dst_i+1, tot)
+                line_str += "-> %d  =%2d\n" % (dst_i, tot)
             print(line_str)
     print("\033[00m")
 
@@ -39,9 +39,10 @@ class RotorNet:
         # Internal variables
         self.n_slots = 1
         self.tors = [ToRSwitch(
-                            name = i,
-                            n_tor = n_tor,
-                            logger = logger,
+                            name    = i,
+                            n_tor   = n_tor,
+                            n_rotor = n_rotor,
+                            logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
         #self.rotors = [RotorSwitch(
@@ -86,8 +87,8 @@ class RotorNet:
 
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):
-            for dst_i, n_packets in enumerate(new_demand[src_i]):
-                src.add_demand_to(dst_i, n_packets)
+            for dst_i, dst in enumerate(self.tors):
+                src.add_demand_to(dst, new_demand[src_i][dst_i])
 
     def vprint(self, s = "", indent = 0):
         indent_str = "  " * indent
@@ -95,7 +96,7 @@ class RotorNet:
             print(indent_str + str(s))
 
     def print_demand(self):
-        if self.verbose and False:
+        if self.verbose or False:
             print_demand(self.tors)
 
     def do_slot(self):
@@ -111,10 +112,7 @@ class RotorNet:
 
         self.print_demand()
 
-        # Initialize rotors for this slot
-        for t in self.tors:
-            t.disconnect_all()
-
+        # Initialize tors for this slot
         for r_n in range(self.n_rotor):
             # Rotor n gets matchings that are n modulo N_SLOTS
             matching_i = (current_slot + r_n*self.n_slots) % len(self.matchings)

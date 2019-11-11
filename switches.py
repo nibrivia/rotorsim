@@ -7,7 +7,7 @@ from helpers import *
 PACKETS_PER_SLOT = 4
 
 class ToRSwitch:
-    def __init__(self, name, n_tor, logger, verbose):
+    def __init__(self, name, n_tor, n_rotor, logger, verbose):
         # Index by who to send to
         self.id = int(name)
 
@@ -37,31 +37,36 @@ class ToRSwitch:
             logger = logger,
             verbose = verbose) for src in range(n_tor) for dst in range(n_tor) }
 
-        self.disconnect_all()
+        # Watch out, some might be (intentional) duplicates
+        # each item has the form (tor, link_remaining)
+        self.connections = dict()
 
 
     def add_demand_to(self, dst, amount):
-        self.buffers[(self.id, dst)].add_n(amount)
+        self.buffers[(self.id, dst.id)].add_n(amount)
 
-    def send(self, to, flow, n_packets):
-        assert self.link_remaining[to] >= n_packets, "Link capacity violation"
+    def send(self, rotor_id, dst, flow, amount):
+        dst, link_remaining = self.connections[rotor_id]
+        flow = (self.id, dst.id)
 
-        self.buffers[flow].send_to(to.buffers[flow], n_packets)
-        self.link_remaining[to] -= n_packets
+        assert link_remaining >= amount, "Link capacity violation"
 
-    def connect_to(self, tor_id, tor):
-        self.connected_tors.add((tor_id, tor))
-        self.link_remaining[tor] = PACKETS_PER_SLOT
+        # Move the actual packets
+        self.buffers[flow].send_to(dst.buffers[flow], amount)
 
-    def disconnect_all(self):
-        self.connected_tors = set()
-        self.link_remaining = dict()
+        # Update link remaining
+        link_remaining -= amount
+        self.connections[rotor_id] = (dst, link_remaining)
+
+    def connect_to(self, rotor_id, tor):
+        self.connections[rotor_id] = (tor, PACKETS_PER_SLOT)
 
     def send_direct(self):
-        for dst_id, dst in self.connected_tors:
-            flow = (self.id, dst_id)
+        for rotor_id, (dst, remaining) in self.connections.items():
+            flow = (self.id, dst.id)
             n_sending = bound(0, self.buffers[flow].size, PACKETS_PER_SLOT)
-            self.send(dst, flow, n_sending)
+            self.send(rotor_id = rotor_id, dst = dst,
+                    flow = flow, amount = n_sending)
 
 
 
