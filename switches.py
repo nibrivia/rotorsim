@@ -28,10 +28,35 @@ class ToRSwitch:
                             verbose = verbose)
             for src in range(n_tor)] for dst in range(n_tor)]
 
+        self.buffers = { (src, dst) : Buffer(
+            name = "%s.%s->%s" % (name, src+1, dst+1),
+            logger = logger,
+            verbose = verbose) for src in range(n_tor) for dst in range(n_tor) }
+
         self.name = name
+        self.connected_to = []
 
     def add_demand_to(self, dst, amount):
         self.outgoing[dst].add_n(amount)
+
+    def send(self, to, flow, n_packets):
+        assert self.link_remaining[to] >= n_packets, "Link capacity violation"
+
+        self.buffers[flow].send_to(to.buffers[flow], n_packets)
+        self.link_remaining[to] -= n_packets
+
+    def init_slot(self, connected_tors):
+        self.connected_to = connected_tors
+        self.link_remaining = {to: PACKETS_PER_SLOT for to in connected_tors}
+
+    def send_direct(self):
+        for dst in self.connected_tors:
+            flow = (self.name, dst)
+            n_sending = bound(0, self.buffers[flow], PACKETS_PER_SLOT)
+            self.send(dst, flow, n_sending)
+
+
+
 
     def available_to(self, dst):
         # Initially full capacity, w/out direct traffic
