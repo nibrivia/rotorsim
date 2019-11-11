@@ -39,7 +39,7 @@ class RotorNet:
         # Internal variables
         self.n_slots = 1
         self.tors = [ToRSwitch(
-                            name = "%s" % (i+1),
+                            name = i+1,
                             n_tor = n_tor,
                             logger = logger,
                             verbose = verbose)
@@ -62,7 +62,7 @@ class RotorNet:
 
         for offset in range(1, n_tors):
             # Compute the indices
-            slot_matching = [(src_i, (src_i+offset) % n_tors)
+            slot_matching = [(src_i+1, ((src_i+offset) % n_tors + 1))
                     for src_i in range(n_tors)]
 
             # Add to the list of matchings
@@ -87,7 +87,7 @@ class RotorNet:
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):
             for dst_i, n_packets in enumerate(new_demand[src_i]):
-                src.add_demand_to(dst_i, n_packets)
+                src.add_demand_to(dst_i+1, n_packets)
 
     def vprint(self, s = "", indent = 0):
         indent_str = "  " * indent
