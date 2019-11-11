@@ -5,3 +5,4 @@ Session.vim
 __pycache__
 data
 .Rproj.user
+*.csv
