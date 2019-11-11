@@ -7,12 +7,18 @@ class Log:
         self.cache = [] # Use array to avoid n^2 string append
 
         # Initialize the .csv
-        print("time, src, src_queue, dst, dst_queue, packet",
+        print("time, packet_num, src, src_queue, dst, dst_queue, packet",
                 file = self.file)
 
-    def log(self, msg):
-        self.cache.append(msg)
-        if len(self.cache) > 100000:
+    def log(self, t, src, dst, packet_nums):
+        for p in packet_nums:
+            msg = ("%.3f, %d, %s, 0, %s, %s, %d\n" %
+                    (t, packet_num,
+                        src.owner, src.q_name,
+                        dst.owner, dst.q_name,
+                        p))
+            self.cache.append(msg)
+        if len(self.cache) > 10:
             self.flush()
 
     def flush(self):
@@ -20,9 +26,7 @@ class Log:
         self.file.writelines(self.cache)
         self.cache = []
 
-
     def close_log(self):
         self.flush()
         self.file.close()
-
 

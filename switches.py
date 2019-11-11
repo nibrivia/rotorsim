@@ -1,33 +1,34 @@
-import random
-import math
 import sys
-from logger import *
 from buffer import *
 from timetracker import *
+from helpers import *
 
-N_TOR   = 17
-N_ROTOR = 4
-N_MATCHINGS = N_TOR - 1 #don't link back to yourself
-N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
-N_CYCLES = 5
 
-T = Time()
-PACKETS_PER_SLOT = 100
+PACKETS_PER_SLOT = 4
+
 class ToRSwitch:
-    def __init__(self, name = "", n_tor = 0):
+    def __init__(self, name, n_tor, logger):
         # Index by who to send to
-        self.outgoing =  [Buffer(name = "%s.dst%s" %(name, dst+1))
+        self.outgoing =  [Buffer(
+                            name = "%s.dst%s" %(name, dst+1),
+                            logger = logger)
                 for dst in range(n_tor)]
         # Index by who send to me
-        self.incoming =  [Buffer(name = "%s.src%s" % (name, src+1))
+        self.incoming =  [Buffer(
+                            name = "%s.src%s" % (name, src+1),
+                            logger = logger)
                 for src in range(n_tor)]
 
-        # self.ind[dst][src]
-        self.indirect = [[ Buffer(name = "%s.(src%s->dst%s)"
-            % (name, src+1, dst+1))
+        # self.indirect[dst][src]
+        self.indirect = [[ Buffer(
+                            name = "%s.(src%s->dst%s)" % (name, src+1, dst+1),
+                            logger = logger)
             for src in range(n_tor)] for dst in range(n_tor)]
 
         self.name = name
+
+    def add_demand_to(self, dst, amount):
+        self.outgoing[dst].add_n(amount)
 
     def available_to(self, dst):
         # Initially full capacity, w/out direct traffic
@@ -36,22 +37,15 @@ class ToRSwitch:
         # Remove old indirect traffic
         available -= sum(b.size for b in self.indirect[dst])
 
-        return max(available, 0)
+        return max(0, available)
 
     def __str__(self):
         return "ToR %s" % self.name
 
 
-def bound(lo, val, hi):
-    return max(lo, min(val, hi))
-
-def shuffle(generator):
-    return sorted(generator, key = lambda k: random.random())
-    #return generator
-
 
 class RotorSwitch:
-    def __init__(self, tors, name = ""):
+    def __init__(self, tors, name):
         self.name = name
         self.tors = tors
 
@@ -61,8 +55,7 @@ class RotorSwitch:
         self.matchings = matchings
 
     def send_old_indirect(self):
-        if VERBOSE:
-            print("      %s" % self)
+        vprint("      %s" % self)
         # For each matching, look through our buffer, deliver old stuff
         for link in self.matchings:
             ind_i, dst_i = link
@@ -80,8 +73,7 @@ class RotorSwitch:
                 self.remaining[link] -= amount
 
     def send_direct(self):
-        if VERBOSE:
-            print("      %s" % self)
+        vprint("      %s" % self)
 
         for link in self.matchings:
             src_i, dst_i = link
@@ -96,10 +88,7 @@ class RotorSwitch:
 
 
     def send_new_indirect(self):
-        # TODO bug where things that are about to be indirected count
-        # against other indirect traffic
-        if VERBOSE:
-            print("      %s" % self)
+        vprint("      %s" % self)
 
         # Because sending traffic indirectly then allows us to receive more,
         # we need to keep iterating until we can't send any more
