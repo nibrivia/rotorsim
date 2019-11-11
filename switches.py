@@ -3,6 +3,7 @@ import math
 import sys
 from logger import *
 from buffer import *
+from timetracker import *
 
 N_TOR   = 17
 N_ROTOR = 4
@@ -10,31 +11,7 @@ N_MATCHINGS = N_TOR - 1 #don't link back to yourself
 N_SLOTS = math.ceil(N_MATCHINGS / N_ROTOR)
 N_CYCLES = 5
 
-VERBOSE = False
-
-
-
-
-def close_log():
-    LOG.close_log()
-
-class Time:
-    def __init__(self):
-        self.T = 0
-
-    def add(self, inc):
-        self.T += inc
-
-    def __str__(self):
-        return str(self.T)
-    def __int__(self):
-        return int(self.T)
-    def __float__(self):
-        return float(self.T)
-
-global T
 T = Time()
-
 PACKETS_PER_SLOT = 100
 class ToRSwitch:
     def __init__(self, name = "", n_tor = 0):

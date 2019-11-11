@@ -153,9 +153,10 @@ def main():
                 if verbose:
                     print_demand(tors)
 
-    close_log()
+    #close_log()
 
     print("done")
 
 if __name__ == "__main__":
+
     main()

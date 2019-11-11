@@ -44,11 +44,6 @@ class Buffer():
     def __str__(self):
         return "%s" % self.name
 
-class EndPoint:
-    def __init__(self):
-        self.to_send = []
-        self.received = []
-
 # TODO use logger process
 def log(src, dst, packets):
     if not DO_LOG:
