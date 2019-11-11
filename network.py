@@ -4,18 +4,18 @@ from helpers import *
 from switches import ToRSwitch, RotorSwitch
 
 def print_demand(tors, prefix = "", print_buffer = False):
-    vprint()
-    vprint("\033[0;32m      Demand")
-    vprint("        Direct")
+    print()
+    print("\033[0;32m      Demand")
+    print("        Direct")
     print_buffer = True
     for src_i, src in enumerate(tors):
         line_str = "          " + str(src) + " -> "
         for dst_i, dst in enumerate(tors):
             line_str += "%2d " % src.outgoing[dst_i].size
-        vprint(line_str)
+        print(line_str)
 
     if print_buffer:
-        vprint("        Indirect")
+        print("        Indirect")
         for ind_i, ind in enumerate(tors):
             line_str = "          ToR " + str(ind_i+1) + "\n"
             for dst_i, dst in enumerate(tors):
@@ -26,15 +26,15 @@ def print_demand(tors, prefix = "", print_buffer = False):
                     tot += qty
                     line_str += "%2d " % qty
                 line_str += "-> %d  =%2d\n" % (dst_i+1, tot)
-            vprint(line_str)
-    vprint("\033[00m")
+            print(line_str)
+    print("\033[00m")
 
 
 class RotorNet:
-    def __init__(self, n_rotor, n_tor, logger):
+    def __init__(self, n_rotor, n_tor, logger, verbose = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
-        self.slot_time = 0
+        self.slot_time = -1
 
         # Internal variables
         self.n_slots = 1
@@ -53,7 +53,7 @@ class RotorNet:
 
         # Printing stuff
         self.logger = logger
-        self.verbose = False
+        self.verbose = verbose
 
     def generate_matchings(self):
         self.matchings = []
@@ -79,7 +79,7 @@ class RotorNet:
     def run(self, n_cycles = 1):
         """Run the simulation for n_cycles cycles"""
         for c in range(n_cycles):
-            vprint("\n\033[01;31mCycle %d/%d\033[00m" % (cycle+1, n_cycles))
+            self.vprint("\n\033[01;31mCycle %d/%d\033[00m" % (cycle+1, n_cycles))
             for s in range(self.slots_per_cycle):
                 self.do_slot(verbose = verbose)
 
@@ -88,17 +88,21 @@ class RotorNet:
             for dst_i, demand in enumerate(src_demand):
                 src.add_demand_to(dst_i, demand)
 
-    def print_console(self, s):
+    def vprint(self, s = ""):
         if self.verbose:
             print(s)
+
+    def print_demand(self):
+        if self.verbose:
+            print_demand(self.tors)
 
     def do_slot(self):
         self.slot_time += 1
         current_slot = self.slot_time % self.slots_per_cycle
 
-        vprint("  \033[0;31mSlot %d/%d\033[00m" % (current_slot+1, self.n_slots))
+        self.vprint("  \033[0;31mSlot %d/%d\033[00m" % (current_slot+1, self.n_slots))
 
-        print_demand(self.tors)
+        self.print_demand()
 
         # Initialize rotors for this slot
         for r_n, rotor in enumerate(self.rotors):
@@ -109,21 +113,21 @@ class RotorNet:
             rotor.init_slot(rotor_matchings) # TODO
 
         # Old indirect traffic
-        vprint("    1. Old Indirect")
+        self.vprint("    1. Old Indirect")
         for rotor in shuffle(self.rotors):
             rotor.send_old_indirect()
-        print_demand(self.tors)
+        self.print_demand()
 
         # Direct traffic
-        vprint("    2. Direct")
+        self.vprint("    2. Direct")
         for rotor in shuffle(self.rotors):
             rotor.send_direct()
-        print_demand(self.tors)
+        self.print_demand()
 
         # New indirect traffic
-        vprint("    3. New Indirect")
+        self.vprint("    3. New Indirect")
         for rotor in shuffle(self.rotors):
             rotor.send_new_indirect()
-        print_demand(self.tors)
+        self.print_demand()
 
 

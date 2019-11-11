@@ -43,7 +43,11 @@ def generate_static_demand(matching, max_demand = 1):
         type=int,
         default=5
 )
-def main(n_tor, n_rotor, packets_per_slot, log, n_cycles):
+@click.option(
+        "--verbose",
+        is_flag=True
+)
+def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
     #print("%d ToRs, %d rotors, %d packets/slot" %
     #        (N_TOR, N_ROTOR, PACKETS_PER_SLOT))
     #print("  => %d matchings, %d slots/cycle" %
@@ -54,8 +58,9 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles):
     #total_links = N_TOR*(N_TOR-1)
     #frac = active_links/total_links
 
+
     logger = Log(fn = log)
-    net = RotorNet(n_rotor = n_rotor, n_tor = n_tor, logger = logger)
+    net = RotorNet(n_rotor = n_rotor, n_tor = n_tor, logger = logger, verbose = verbose)
 
     #demand = generate_static_demand(matchings_by_slot[-1], max_demand = frac)
     #run_demand = sum(sum(d) for d in demand)

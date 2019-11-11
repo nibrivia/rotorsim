@@ -19,14 +19,14 @@ class Log:
                         p))
             self.cache.append(msg)
         if len(self.cache) > 10:
-            self.flush()
+            self._flush()
 
-    def flush(self):
+    def _flush(self):
         #print("FLUSH")
         self.file.writelines(self.cache)
         self.cache = []
 
-    def close_log(self):
-        self.flush()
+    def close(self):
+        self._flush()
         self.file.close()
 
