@@ -50,7 +50,9 @@ class ToRSwitch:
         flow = (self.id, dst.id)
 
         # Check link capacity
-        assert link_remaining >= amount, "Link capacity violation"
+        assert link_remaining >= amount, \
+            "%s, flow%s, rotor%s attempting to send %d, but capacity %s" % (
+                self, flow, rotor_id, amount, link_remaining)
 
         # Move the actual packets
         self.buffers[flow].send_to(dst.buffers[flow], amount)
@@ -70,16 +72,11 @@ class ToRSwitch:
             self.send(rotor_id = rotor_id, dst = dst,
                     flow = flow, amount = n_sending)
 
+    def offer(self):
+        pass
 
-
-    def available_to(self, dst):
-        # Initially full capacity, w/out direct traffic
-        available = PACKETS_PER_SLOT - self.outgoing[dst].size
-
-        # Remove old indirect traffic
-        available -= sum(b.size for b in self.indirect[dst])
-
-        return max(0, available)
+    def accept(self):
+        pass
 
     def __str__(self):
         return "ToR %s" % self.id

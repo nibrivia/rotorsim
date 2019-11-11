@@ -33,8 +33,8 @@ class Buffer():
                 packets = moving_packets)
 
         if num_packets > 0:
-            self.vprint("        \033[01m%s -> %s: %2d\033[00m"
-                    % (self, to, num_packets))
+            self.vprint("        \033[01m%s to %s\033[00m, [%s]: %2d pkts\033[00m"
+                    % (self.src, to.src, self.flow, num_packets))
 
     def recv(self, packets):
         self.packets.extend(packets)
