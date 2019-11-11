@@ -75,7 +75,7 @@ class RotorNet:
 
     @property
     def time_in_cycles(self):
-        return self.slot_time / len(self.matchings)
+        return self.slot_time / self.slots_per_cycle
 
     def run(self, n_cycles = 1):
         """Run the simulation for n_cycles cycles"""
@@ -89,9 +89,10 @@ class RotorNet:
             for dst_i, n_packets in enumerate(new_demand[src_i]):
                 src.add_demand_to(dst_i, n_packets)
 
-    def vprint(self, s = ""):
+    def vprint(self, s = "", indent = 0):
+        indent_str = "  " * indent
         if self.verbose:
-            print(s)
+            print(indent_str + str(s))
 
     def print_demand(self):
         if self.verbose and False:
@@ -101,7 +102,12 @@ class RotorNet:
         self.slot_time += 1
         current_slot = self.slot_time % self.slots_per_cycle
 
-        self.vprint("  \033[0;31mSlot %d/%d\033[00m" % (current_slot+1, self.n_slots))
+        # It's a new cycle
+        if self.time_in_slots % self.slots_per_cycle == 0:
+            self.vprint("\033[1;31mCycle %d\033[00m" % (self.time_in_cycles))
+
+        # Print slot
+        self.vprint("\033[0;31mSlot %d/%d\033[00m" % (current_slot+1, self.n_slots), 1)
 
         self.print_demand()
 
@@ -114,19 +120,19 @@ class RotorNet:
             rotor.init_slot(rotor_matchings) # TODO
 
         # Old indirect traffic
-        self.vprint("    1. Old Indirect")
+        self.vprint("1. Old Indirect", 2)
         for rotor in shuffle(self.rotors):
             rotor.send_old_indirect()
         self.print_demand()
 
         # Direct traffic
-        self.vprint("    2. Direct")
+        self.vprint("2. Direct", 2)
         for rotor in shuffle(self.rotors):
             rotor.send_direct()
         self.print_demand()
 
         # New indirect traffic
-        self.vprint("    3. New Indirect")
+        self.vprint("3. New Indirect", 2)
         for rotor in shuffle(self.rotors):
             rotor.send_new_indirect()
         self.print_demand()

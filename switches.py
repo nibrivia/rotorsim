@@ -10,20 +10,20 @@ class ToRSwitch:
     def __init__(self, name, n_tor, logger, verbose):
         # Index by who to send to
         self.outgoing =  [Buffer(
-                            name = "%s.dst%s" %(name, dst+1),
+                            name = "%s.%s->%s" %(name, name, dst+1),
                             logger = logger,
                             verbose = verbose)
                 for dst in range(n_tor)]
         # Index by who send to me
         self.incoming =  [Buffer(
-                            name = "%s.src%s" % (name, src+1),
+                            name = "%s.%s->%s" % (name, src+1, name),
                             logger = logger,
                             verbose = verbose)
                 for src in range(n_tor)]
 
         # self.indirect[dst][src]
         self.indirect = [[ Buffer(
-                            name = "%s.(src%s->dst%s)" % (name, src+1, dst+1),
+                            name = "%s.%s->%s" % (name, src+1, dst+1),
                             logger = logger,
                             verbose = verbose)
             for src in range(n_tor)] for dst in range(n_tor)]

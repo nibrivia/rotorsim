@@ -1,19 +1,15 @@
 import collections 
 from logger import Log
 
-LOG = Log()
-DO_LOG = False
-VERBOSE = False
-
-
 
 class Buffer():
     def __init__(self, name, logger, verbose):
         self.packets = collections.deque()
         self.name = str(name)
-        self.owner, self.q_name = str(name).split(".")
+        self.src, self.flow = str(name).split(".")
         self.count = 0
         self.packet_num = 0
+
         self.logger = logger
         self.verbose = verbose
 
@@ -33,7 +29,7 @@ class Buffer():
 
         self.size = len(self.packets)
         self.logger.log(t = 0,
-                src = self, dst = to,
+                src = self.src, dst = to.src, flow = self.flow,
                 packets = moving_packets)
 
         if num_packets > 0:
@@ -51,7 +47,7 @@ class Buffer():
         self.size = len(self.packets)
 
         self.logger.log(t = 0,
-                src = DEMAND_NODE, dst = self,
+                src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
                 packets = new_packets)
 
 
