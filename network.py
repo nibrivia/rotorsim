@@ -6,27 +6,34 @@ from switches import ToRSwitch
 def print_demand(tors, prefix = "", print_buffer = False):
     print()
     print("\033[0;32m      Demand")
-    print("        Direct")
-    print_buffer = True
-    for src_i, src in enumerate(tors):
-        line_str = "          " + str(src) + " -> "
-        for dst_i, dst in enumerate(tors):
-            line_str += "%2d " % src.buffers[(src_i, dst_i)].size
-        print(line_str)
 
-    if print_buffer:
-        print("        Indirect")
-        for ind_i, ind in enumerate(tors):
-            line_str = "          ToR " + str(ind_i) + "\n"
-            for dst_i, dst in enumerate(tors):
-                tot = 0
-                line_str += "            " 
-                for src_i, src in enumerate(tors):
-                    qty = ind.buffers[(src_i, dst_i)].size
-                    tot += qty
-                    line_str += "%2d " % qty
-                line_str += "-> %d  =%2d\n" % (dst_i, tot)
-            print(line_str)
+    for ind_i, ind in enumerate(tors):
+        line_str = "          ToR " + str(ind_i) + "\n"
+        for dst_i, dst in enumerate(tors):
+            tot = 0
+            if dst_i == ind_i:
+                line_str += "\033[1;32m"
+            line_str += "            " 
+            for src_i, src in enumerate(tors):
+
+                if src_i == dst_i:
+                    line_str += " - "
+                    continue
+
+                if src_i == ind_i:
+                    line_str += "\033[1;32m"
+
+                qty = ind.buffers[(src_i, dst_i)].size
+                tot += qty
+                line_str += "%2d " % qty
+
+                if src_i == ind_i:
+                    line_str += "\033[0;32m"
+            line_str += "-> %d  =%2d" % (dst_i, tot)
+            if dst_i == ind_i:
+                line_str += "\033[0;32m  rx'd"
+            line_str += "\n"
+        print(line_str)
     print("\033[00m")
 
 
@@ -99,7 +106,7 @@ class RotorNet:
             print(indent_str + str(s))
 
     def print_demand(self):
-        if self.verbose and False:
+        if self.verbose and True:
             print_demand(self.tors)
 
     def do_slot(self):
