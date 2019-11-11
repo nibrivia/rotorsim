@@ -75,7 +75,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
         net.add_demand(ones)
 
         # Send data
-        for slot in range(net.slots_per_cycle):
+        for slot in range(net.n_slots):
             net.do_slot()
 
     #close_log()

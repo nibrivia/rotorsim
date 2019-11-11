@@ -49,6 +49,7 @@ class ToRSwitch:
         dst, link_remaining = self.connections[rotor_id]
         flow = (self.id, dst.id)
 
+        # Check link capacity
         assert link_remaining >= amount, "Link capacity violation"
 
         # Move the actual packets
@@ -62,6 +63,7 @@ class ToRSwitch:
         self.connections[rotor_id] = (tor, PACKETS_PER_SLOT)
 
     def send_direct(self):
+        # For each connection (some may be intentional duplicates)
         for rotor_id, (dst, remaining) in self.connections.items():
             flow = (self.id, dst.id)
             n_sending = bound(0, self.buffers[flow].size, PACKETS_PER_SLOT)

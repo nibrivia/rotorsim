@@ -37,7 +37,6 @@ class RotorNet:
         self.slot_time = -1
 
         # Internal variables
-        self.n_slots = 1
         self.tors = [ToRSwitch(
                             name    = i,
                             n_tor   = n_tor,
@@ -50,11 +49,16 @@ class RotorNet:
         #                    name = "%s/%s" % (i+1, n_rotor))
         #        for i in range(n_rotor)]
 
+        # Hack-y, generates matchings, and matches those to ToRs
         self.generate_matchings()
-        self.slots_per_cycle = ceil(len(self.matchings) / self.n_rotor)
+        self.matchings = [[(self.tors[src], self.tors[dst]) for src, dst in m]
+                for m in self.matchings]
 
-        # Printing stuff
-        self.logger = logger
+        # Number of slots depends on number of matchings
+        self.n_slots = ceil(len(self.matchings) / self.n_rotor)
+
+        # I/O stuff
+        self.logger  = logger
         self.verbose = verbose
 
     def generate_matchings(self):
@@ -76,13 +80,12 @@ class RotorNet:
 
     @property
     def time_in_cycles(self):
-        return self.slot_time / self.slots_per_cycle
+        return self.slot_time / self.n_slots
 
     def run(self, n_cycles = 1):
         """Run the simulation for n_cycles cycles"""
         for c in range(n_cycles):
-            self.vprint("\n\033[01;31mCycle %d/%d\033[00m" % (cycle+1, n_cycles))
-            for s in range(self.slots_per_cycle):
+            for s in range(self.n_slots):
                 self.do_slot(verbose = verbose)
 
     def add_demand(self, new_demand):
@@ -96,15 +99,15 @@ class RotorNet:
             print(indent_str + str(s))
 
     def print_demand(self):
-        if self.verbose or False:
+        if self.verbose and False:
             print_demand(self.tors)
 
     def do_slot(self):
         self.slot_time += 1
-        current_slot = self.slot_time % self.slots_per_cycle
+        current_slot = self.slot_time % self.n_slots
 
         # It's a new cycle
-        if self.time_in_slots % self.slots_per_cycle == 0:
+        if self.time_in_slots % self.n_slots == 0:
             self.vprint("\033[1;31mCycle %d\033[00m" % (self.time_in_cycles))
 
         # Print slot
@@ -113,12 +116,12 @@ class RotorNet:
         self.print_demand()
 
         # Initialize tors for this slot
-        for r_n in range(self.n_rotor):
+        for rotor_id in range(self.n_rotor):
             # Rotor n gets matchings that are n modulo N_SLOTS
-            matching_i = (current_slot + r_n*self.n_slots) % len(self.matchings)
+            matching_i = (current_slot + rotor_id*self.n_slots) % len(self.matchings)
             rotor_matchings = self.matchings[matching_i]
             for src, dst in rotor_matchings:
-                self.tors[src].connect_to(dst, self.tors[dst])
+                src.connect_to(rotor_id = rotor_id, tor = dst)
 
             #rotor.init_slot(rotor_matchings) # TODO
 
