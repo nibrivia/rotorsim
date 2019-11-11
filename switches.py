@@ -35,7 +35,7 @@ class ToRSwitch:
         self.buffers = { (src, dst) : Buffer(
             name = "%s.%s->%s" % (self.id, src, dst),
             logger = logger,
-            verbose = verbose) for src in range(1, n_tor+1) for dst in range(1, n_tor+1) }
+            verbose = verbose) for src in range(n_tor) for dst in range(n_tor) }
 
         self.disconnect_all()
 
@@ -49,18 +49,18 @@ class ToRSwitch:
         self.buffers[flow].send_to(to.buffers[flow], n_packets)
         self.link_remaining[to] -= n_packets
 
-    def connect_to(self, tor):
-        self.connected_to.append(tor)
+    def connect_to(self, tor_id, tor):
+        self.connected_tors.add((tor_id, tor))
         self.link_remaining[tor] = PACKETS_PER_SLOT
 
     def disconnect_all(self):
-        self.connected_to = []
+        self.connected_tors = set()
         self.link_remaining = dict()
 
     def send_direct(self):
-        for dst in self.connected_tors:
-            flow = (self.id, dst)
-            n_sending = bound(0, self.buffers[flow], PACKETS_PER_SLOT)
+        for dst_id, dst in self.connected_tors:
+            flow = (self.id, dst_id)
+            n_sending = bound(0, self.buffers[flow].size, PACKETS_PER_SLOT)
             self.send(dst, flow, n_sending)
 
 
@@ -78,13 +78,14 @@ class ToRSwitch:
         return "ToR %s" % self.id
 
 
-
+"""
 class RotorSwitch:
     def __init__(self, tors, name):
         self.name = name
         self.tors = tors
 
     def init_slot(self, matchings):
+        raise Error
         # Reset link availabilities
         self.remaining = {link: PACKETS_PER_SLOT for link in matchings}
         for src, dst in matchings:
@@ -112,6 +113,7 @@ class RotorSwitch:
                 self.remaining[link] -= amount
 
     def send_direct(self):
+        raise Error
         vprint("      %s" % self)
 
         for link in self.matchings:
@@ -153,3 +155,4 @@ class RotorSwitch:
 
     def __str__(self):
         return "Rotor %s" % self.name
+"""

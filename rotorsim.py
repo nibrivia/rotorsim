@@ -68,6 +68,8 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
 
     print("---")
     ones = [[1 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
+    for row in ones:
+        print(row)
     
     for cycle in range(n_cycles):
         net.add_demand(ones)

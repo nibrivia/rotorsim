@@ -21,7 +21,7 @@ class Buffer():
             print(s)
 
 
-    def send(self, to, num_packets):
+    def send_to(self, to, num_packets):
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]

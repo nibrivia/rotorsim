@@ -1,7 +1,7 @@
 import random
 from math import ceil
 from helpers import *
-from switches import ToRSwitch, RotorSwitch
+from switches import ToRSwitch
 
 def print_demand(tors, prefix = "", print_buffer = False):
     print()
@@ -39,15 +39,15 @@ class RotorNet:
         # Internal variables
         self.n_slots = 1
         self.tors = [ToRSwitch(
-                            name = i+1,
+                            name = i,
                             n_tor = n_tor,
                             logger = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
-        self.rotors = [RotorSwitch(
-                            self.tors,
-                            name = "%s/%s" % (i+1, n_rotor))
-                for i in range(n_rotor)]
+        #self.rotors = [RotorSwitch(
+        #                    self.tors,
+        #                    name = "%s/%s" % (i+1, n_rotor))
+        #        for i in range(n_rotor)]
 
         self.generate_matchings()
         self.slots_per_cycle = ceil(len(self.matchings) / self.n_rotor)
@@ -62,7 +62,7 @@ class RotorNet:
 
         for offset in range(1, n_tors):
             # Compute the indices
-            slot_matching = [(src_i+1, ((src_i+offset) % n_tors + 1))
+            slot_matching = [(src_i, ((src_i+offset) % n_tors))
                     for src_i in range(n_tors)]
 
             # Add to the list of matchings
@@ -87,7 +87,7 @@ class RotorNet:
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):
             for dst_i, n_packets in enumerate(new_demand[src_i]):
-                src.add_demand_to(dst_i+1, n_packets)
+                src.add_demand_to(dst_i, n_packets)
 
     def vprint(self, s = "", indent = 0):
         indent_str = "  " * indent
@@ -112,29 +112,36 @@ class RotorNet:
         self.print_demand()
 
         # Initialize rotors for this slot
-        for r_n, rotor in enumerate(self.rotors):
+        for t in self.tors:
+            t.disconnect_all()
+
+        for r_n in range(self.n_rotor):
             # Rotor n gets matchings that are n modulo N_SLOTS
             matching_i = (current_slot + r_n*self.n_slots) % len(self.matchings)
             rotor_matchings = self.matchings[matching_i]
+            for src, dst in rotor_matchings:
+                self.tors[src].connect_to(dst, self.tors[dst])
 
-            rotor.init_slot(rotor_matchings) # TODO
+            #rotor.init_slot(rotor_matchings) # TODO
 
         # Old indirect traffic
-        self.vprint("1. Old Indirect", 2)
-        for rotor in shuffle(self.rotors):
-            rotor.send_old_indirect()
-        self.print_demand()
+        if False:
+            self.vprint("1. Old Indirect", 2)
+            for tor in shuffle(self.tors):
+                rotor.send_old_indirect()
+            self.print_demand()
 
         # Direct traffic
         self.vprint("2. Direct", 2)
-        for rotor in shuffle(self.rotors):
-            rotor.send_direct()
+        for tor in shuffle(self.tors):
+            tor.send_direct()
         self.print_demand()
 
         # New indirect traffic
-        self.vprint("3. New Indirect", 2)
-        for rotor in shuffle(self.rotors):
-            rotor.send_new_indirect()
-        self.print_demand()
+        if False:
+            self.vprint("3. New Indirect", 2)
+            for rotor in shuffle(self.rotors):
+                rotor.send_new_indirect()
+            self.print_demand()
 
 
