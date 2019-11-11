@@ -7,22 +7,25 @@ from helpers import *
 PACKETS_PER_SLOT = 4
 
 class ToRSwitch:
-    def __init__(self, name, n_tor, logger):
+    def __init__(self, name, n_tor, logger, verbose):
         # Index by who to send to
         self.outgoing =  [Buffer(
                             name = "%s.dst%s" %(name, dst+1),
-                            logger = logger)
+                            logger = logger,
+                            verbose = verbose)
                 for dst in range(n_tor)]
         # Index by who send to me
         self.incoming =  [Buffer(
                             name = "%s.src%s" % (name, src+1),
-                            logger = logger)
+                            logger = logger,
+                            verbose = verbose)
                 for src in range(n_tor)]
 
         # self.indirect[dst][src]
         self.indirect = [[ Buffer(
                             name = "%s.(src%s->dst%s)" % (name, src+1, dst+1),
-                            logger = logger)
+                            logger = logger,
+                            verbose = verbose)
             for src in range(n_tor)] for dst in range(n_tor)]
 
         self.name = name

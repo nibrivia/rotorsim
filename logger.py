@@ -10,10 +10,10 @@ class Log:
         print("time, packet_num, src, src_queue, dst, dst_queue, packet",
                 file = self.file)
 
-    def log(self, t, src, dst, packet_nums):
-        for p in packet_nums:
-            msg = ("%.3f, %d, %s, 0, %s, %s, %d\n" %
-                    (t, packet_num,
+    def log(self, t, src, dst, packets):
+        for p in packets:
+            msg = ("%.3f, %s, %s, %s, %s, %d\n" %
+                    (t,
                         src.owner, src.q_name,
                         dst.owner, dst.q_name,
                         p))

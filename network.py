@@ -41,7 +41,8 @@ class RotorNet:
         self.tors = [ToRSwitch(
                             name = "%s" % (i+1),
                             n_tor = n_tor,
-                            logger = logger)
+                            logger = logger,
+                            verbose = verbose)
                 for i in range(n_tor)]
         self.rotors = [RotorSwitch(
                             self.tors,
@@ -84,16 +85,16 @@ class RotorNet:
                 self.do_slot(verbose = verbose)
 
     def add_demand(self, new_demand):
-        for src_i, src_demand in enumerate(new_demand):
-            for dst_i, demand in enumerate(src_demand):
-                src.add_demand_to(dst_i, demand)
+        for src_i, src in enumerate(self.tors):
+            for dst_i, n_packets in enumerate(new_demand[src_i]):
+                src.add_demand_to(dst_i, n_packets)
 
     def vprint(self, s = ""):
         if self.verbose:
             print(s)
 
     def print_demand(self):
-        if self.verbose:
+        if self.verbose and False:
             print_demand(self.tors)
 
     def do_slot(self):

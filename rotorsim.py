@@ -67,6 +67,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
 
 
     print("---")
+    net.add_demand([[1 for _ in range(n_tor)] for j in range(n_tor)])
     for cycle in range(n_cycles):
 
         # Send data
