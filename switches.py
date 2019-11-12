@@ -46,7 +46,9 @@ class ToRSwitch:
 
 
     def add_demand_to(self, dst, amount):
-        self.buffers[(self.id, dst.id)].add_n(amount)
+        if dst.id != self.id:
+            self.buffers[(self.id, dst.id)].add_n(amount)
+            self.capacity[dst.id] -= amount
 
     def send(self, rotor_id, flow, amount):
         dst, link_remaining = self.connections[rotor_id]
@@ -66,7 +68,8 @@ class ToRSwitch:
         # Update our + destination capacity
         flow_src, flow_dst = flow
         dst.recv(flow_dst, amount)
-        self.capacity[dst.id] += amount
+        cur_capacity = self.capacity[dst.id]
+        self.capacity[dst.id] = min(cur_capacity+amount, PACKETS_PER_SLOT)
 
         # Return remaining link capacity
         return link_remaining
@@ -142,6 +145,7 @@ class ToRSwitch:
                 for flow, b in traffic.items():
                     flow_src, flow_dst = flow
                     current = amounts[flow]
+                    assert capacities[flow_dst] <= PACKETS_PER_SLOT
                     new = bound(0, current+1, min(b.size, remaining, capacities[flow_dst]))
                     amounts[flow] = new
 
