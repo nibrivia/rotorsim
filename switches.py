@@ -4,7 +4,7 @@ from timetracker import *
 from helpers import *
 
 
-PACKETS_PER_SLOT = 4
+PACKETS_PER_SLOT = 5
 
 class ToRSwitch:
     def __init__(self, name, n_tor, n_rotor, logger, verbose):
@@ -40,14 +40,15 @@ class ToRSwitch:
         # Watch out, some might be (intentional) duplicates
         # each item has the form (tor, link_remaining)
         self.connections = dict()
+        self.offers = dict()
+        self.capacities = dict()
 
 
     def add_demand_to(self, dst, amount):
         self.buffers[(self.id, dst.id)].add_n(amount)
 
-    def send(self, rotor_id, dst, flow, amount):
+    def send(self, rotor_id, flow, amount):
         dst, link_remaining = self.connections[rotor_id]
-        flow = (self.id, dst.id)
 
         # Check link capacity
         assert link_remaining >= amount, \
@@ -61,21 +62,103 @@ class ToRSwitch:
         link_remaining -= amount
         self.connections[rotor_id] = (dst, link_remaining)
 
+        # Return remaining link capacity
+        return link_remaining
+
     def connect_to(self, rotor_id, tor):
         self.connections[rotor_id] = (tor, PACKETS_PER_SLOT)
+
+        # TODO when this is more decentralized
+        if False:
+            self.offer()
+            self.accept()
+            self.send_old_indirect()
+            self.send_direct()
+            self.send_new_indirect()
+
+
+    def indirect_traffic_to(self, dst):
+        # Returns indirect traffic to dst
+        return {(s, d) : b for (s, d), b in self.buffers.items()
+                    if d == dst.id and s != self.id and b.size > 0}
+
+    def direct_traffic(self, dst):
+        # Returns direct traffic except to dst
+        return {(s, d) : b for (s, d), b in self.buffers.items()
+                    if s == self.id and d != dst.id and b.size > 0}
+
+    def send_old_indirect(self):
+        for rotor_id, (dst, remaining) in self.connections.items():
+
+            # All indirect traffic to dst
+            buffers = self.indirect_traffic_to(dst)
+
+            # Verify link violations
+            total_send = sum(b.size for b in buffers.values())
+            assert total_send <= PACKETS_PER_SLOT, "More old indirect than capacity"
+
+            # Send the data
+            for flow, b in buffers.items():
+                self.send(rotor_id = rotor_id,
+                          flow     = flow,
+                          amount   = b.size)
 
     def send_direct(self):
         # For each connection (some may be intentional duplicates)
         for rotor_id, (dst, remaining) in self.connections.items():
             flow = (self.id, dst.id)
-            n_sending = bound(0, self.buffers[flow].size, PACKETS_PER_SLOT)
-            self.send(rotor_id = rotor_id, dst = dst,
-                    flow = flow, amount = n_sending)
+            n_sending = bound(0, self.buffers[flow].size, remaining)
+            self.send(rotor_id = rotor_id,
+                      flow = flow,
+                      amount = n_sending)
+
+    def send_new_indirect(self):
+        for rotor_id, (dst, remaining) in self.connections.items():
+            # Get indirect-able traffic
+            traffic = self.direct_traffic(dst)
+
+            # Send what we can along the remaining capacity
+            # TODO offer/accept protocol
+
+            # This iterates to balance the remaining capacity equally across flows
+            amounts = {flow:0 for flow in traffic}
+            change = 1
+            while change > 0:
+                change = 0
+
+                # TODO, not just +1, do it the (faster) divide way
+                for flow, b in traffic.items():
+                    current = amounts[flow]
+                    new = bound(0, current+1, min(b.size, remaining))
+                    amounts[flow] = new
+
+                    # Update tracking vars
+                    delta = new - current
+                    change    += delta
+                    remaining -= delta
+
+
+            # Send the amounts we decided on
+            for flow, amount in amounts.items():
+                remaining = self.send(
+                        rotor_id = rotor_id,
+                        flow     = flow,
+                        amount   = amount)
 
     def offer(self):
-        pass
+        for rotor_id, (dst, _) in self.connections.items():
+            traffic = self.direct_traffic(dst)
+            offer = {(s,d): b.size for (s,d), b in traffic.items()}
+            capacity = None
+            dst.offer_rx(rotor_id, offer, capacity)
+
+    def offer_rx(self, rotor_id, offer, capacity):
+        self.offers[rotor_id] = offer
+        self.capacities[rotor_id] = capacity
 
     def accept(self):
+        pass
+    def accept_rx(self):
         pass
 
     def __str__(self):

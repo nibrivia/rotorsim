@@ -22,6 +22,10 @@ class Buffer():
 
 
     def send_to(self, to, num_packets):
+        if num_packets > 0:
+            self.vprint("        \033[01m%s to %s\033[00m, [%s]: %2d pkts\033[00m"
+                    % (self.src, to.src, self.flow, num_packets))
+
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
@@ -31,10 +35,6 @@ class Buffer():
         self.logger.log(t = 0,
                 src = self.src, dst = to.src, flow = self.flow,
                 packets = moving_packets)
-
-        if num_packets > 0:
-            self.vprint("        \033[01m%s to %s\033[00m, [%s]: %2d pkts\033[00m"
-                    % (self.src, to.src, self.flow, num_packets))
 
     def recv(self, packets):
         self.packets.extend(packets)

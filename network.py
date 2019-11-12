@@ -118,14 +118,16 @@ class RotorNet:
             self.vprint("\033[1;31mCycle %d\033[00m" % (self.time_in_cycles))
 
         # Print slot
-        self.vprint("\033[0;31mSlot %d/%d\033[00m" % (current_slot+1, self.n_slots), 1)
+        self.vprint("\033[0;31mSlot %d/%d\033[00m" %
+                (current_slot+1, self.n_slots), 1)
 
         self.print_demand()
 
         # Initialize tors for this slot
         for rotor_id in range(self.n_rotor):
             # Rotor n gets matchings that are n modulo N_SLOTS
-            matching_i = (current_slot + rotor_id*self.n_slots) % len(self.matchings)
+            matching_i = (current_slot + rotor_id*self.n_slots) % \
+                    len(self.matchings)
             rotor_matchings = self.matchings[matching_i]
             for src, dst in rotor_matchings:
                 src.connect_to(rotor_id = rotor_id, tor = dst)
@@ -133,23 +135,31 @@ class RotorNet:
             #rotor.init_slot(rotor_matchings) # TODO
 
         # Old indirect traffic
-        if False:
-            self.vprint("1. Old Indirect", 2)
-            for tor in shuffle(self.tors):
-                rotor.send_old_indirect()
-            self.print_demand()
+        self.vprint("1. Old Indirect", 2)
+        for tor in shuffle(self.tors):
+            tor.send_old_indirect()
+        #self.print_demand()
 
         # Direct traffic
         self.vprint("2. Direct", 2)
         for tor in shuffle(self.tors):
             tor.send_direct()
-        self.print_demand()
+        #self.print_demand()
+
+        # Offers
+        self.vprint("3a. Offers", 2)
+        for tor in shuffle(self.tors):
+            tor.offer()
+
+        # Accepts
+        self.vprint("3b. Accepts", 2)
+        for tor in shuffle(self.tors):
+            tor.accept()
 
         # New indirect traffic
-        if False:
-            self.vprint("3. New Indirect", 2)
-            for rotor in shuffle(self.rotors):
-                rotor.send_new_indirect()
-            self.print_demand()
+        self.vprint("3c. New Indirect", 2)
+        for tor in shuffle(self.tors):
+            tor.send_new_indirect()
+        #self.print_demand()
 
 
