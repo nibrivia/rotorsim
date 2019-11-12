@@ -12,26 +12,6 @@ class ToRSwitch:
         self.id = int(name)
         self.n_tor = n_tor
 
-        """
-        self.outgoing =  [Buffer(
-                            name = "%s.%s->%s" %(name, name, dst+1),
-                            logger = logger,
-                            verbose = verbose)
-                for dst in range(n_tor)]
-        # Index by who send to me
-        self.incoming =  [Buffer(
-                            name = "%s.%s->%s" % (name, src+1, name),
-                            logger = logger,
-                            verbose = verbose)
-                for src in range(n_tor)]
-
-        # self.indirect[dst][src]
-        self.indirect = [[ Buffer(
-                            name = "%s.%s->%s" % (name, src+1, dst+1),
-                            logger = logger,
-                            verbose = verbose)
-            for src in range(n_tor)] for dst in range(n_tor)]
-        """
 
         self.buffers = { (src, dst) : Buffer(
             name = "%s.%s->%s" % (self.id, src, dst),
@@ -44,6 +24,9 @@ class ToRSwitch:
         self.offers = dict()
         self.capacity = self.compute_capacity()
 
+
+    def print_capacity(self):
+        return "%s\nstate: %s\ncompu: %s" % (self, self.capacity, self.compute_capacity())
 
     def add_demand_to(self, dst, amount):
         if dst.id != self.id:
@@ -68,15 +51,14 @@ class ToRSwitch:
         # Update our + destination capacity
         flow_src, flow_dst = flow
         dst.recv(flow_dst, amount)
-        cur_capacity = self.capacity[dst.id]
-        self.capacity[dst.id] = min(cur_capacity+amount, PACKETS_PER_SLOT)
+        self.capacity[flow_dst] += amount
 
         # Return remaining link capacity
         return link_remaining
 
-    def recv(self, dst, amount):
-        if dst != self.id:
-            self.capacity[dst] -= amount
+    def recv(self, dst_id, amount):
+        if dst_id != self.id:
+            self.capacity[dst_id] -= amount
 
     def connect_to(self, rotor_id, tor):
         self.connections[rotor_id] = (tor, PACKETS_PER_SLOT)
@@ -178,10 +160,12 @@ class ToRSwitch:
 
 
     def offer(self):
+        raise Error
         # TODO offer
         return self.capacity()
 
     def offer_rx(self, rotor_id, offer, capacity):
+        raise Error
         self.offers[rotor_id] = offer
         self.capacities[rotor_id] = capacity
 
