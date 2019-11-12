@@ -10,6 +10,7 @@ class ToRSwitch:
     def __init__(self, name, n_tor, n_rotor, logger, verbose):
         # Index by who to send to
         self.id = int(name)
+        self.n_tor = n_tor
 
         """
         self.outgoing =  [Buffer(
@@ -41,7 +42,7 @@ class ToRSwitch:
         # each item has the form (tor, link_remaining)
         self.connections = dict()
         self.offers = dict()
-        self.capacities = dict()
+        self.capacity = self.compute_capacity()
 
 
     def add_demand_to(self, dst, amount):
@@ -62,8 +63,17 @@ class ToRSwitch:
         link_remaining -= amount
         self.connections[rotor_id] = (dst, link_remaining)
 
+        # Update our + destination capacity
+        flow_src, flow_dst = flow
+        dst.recv(flow_dst, amount)
+        self.capacity[dst.id] += amount
+
         # Return remaining link capacity
         return link_remaining
+
+    def recv(self, dst, amount):
+        if dst != self.id:
+            self.capacity[dst] -= amount
 
     def connect_to(self, rotor_id, tor):
         self.connections[rotor_id] = (tor, PACKETS_PER_SLOT)
@@ -95,7 +105,8 @@ class ToRSwitch:
 
             # Verify link violations
             total_send = sum(b.size for b in buffers.values())
-            assert total_send <= PACKETS_PER_SLOT, "More old indirect than capacity"
+            assert total_send <= PACKETS_PER_SLOT, \
+                    "%s->%s old indirect %d > capacity" % (self, dst, total_send)
 
             # Send the data
             for flow, b in buffers.items():
@@ -116,6 +127,7 @@ class ToRSwitch:
         for rotor_id, (dst, remaining) in self.connections.items():
             # Get indirect-able traffic
             traffic = self.direct_traffic(dst)
+            capacities = dst.capacity
 
             # Send what we can along the remaining capacity
             # TODO offer/accept protocol
@@ -128,8 +140,9 @@ class ToRSwitch:
 
                 # TODO, not just +1, do it the (faster) divide way
                 for flow, b in traffic.items():
+                    flow_src, flow_dst = flow
                     current = amounts[flow]
-                    new = bound(0, current+1, min(b.size, remaining))
+                    new = bound(0, current+1, min(b.size, remaining, capacities[flow_dst]))
                     amounts[flow] = new
 
                     # Update tracking vars
@@ -145,21 +158,28 @@ class ToRSwitch:
                         flow     = flow,
                         amount   = amount)
 
+    def compute_capacity(self):
+        capacity = dict()
+        #capacity[self.id] = PACKETS_PER_SLOT
+        for flow, b in self.buffers.items():
+            src, dst = flow
+            if dst == self.id:
+                continue
+
+            current = capacity.get(dst, PACKETS_PER_SLOT)
+            current -= b.size
+            capacity[dst] = current
+
+        return capacity
+
+
     def offer(self):
-        for rotor_id, (dst, _) in self.connections.items():
-            traffic = self.direct_traffic(dst)
-            offer = {(s,d): b.size for (s,d), b in traffic.items()}
-            capacity = None
-            dst.offer_rx(rotor_id, offer, capacity)
+        # TODO offer
+        return self.capacity()
 
     def offer_rx(self, rotor_id, offer, capacity):
         self.offers[rotor_id] = offer
         self.capacities[rotor_id] = capacity
-
-    def accept(self):
-        pass
-    def accept_rx(self):
-        pass
 
     def __str__(self):
         return "ToR %s" % self.id

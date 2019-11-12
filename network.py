@@ -115,7 +115,7 @@ class RotorNet:
 
         # It's a new cycle
         if self.time_in_slots % self.n_slots == 0:
-            self.vprint("\033[1;31mCycle %d\033[00m" % (self.time_in_cycles))
+            print("\033[1;31mCycle %d\033[00m" % (self.time_in_cycles))
 
         # Print slot
         self.vprint("\033[0;31mSlot %d/%d\033[00m" %
@@ -132,8 +132,6 @@ class RotorNet:
             for src, dst in rotor_matchings:
                 src.connect_to(rotor_id = rotor_id, tor = dst)
 
-            #rotor.init_slot(rotor_matchings) # TODO
-
         # Old indirect traffic
         self.vprint("1. Old Indirect", 2)
         for tor in shuffle(self.tors):
@@ -145,16 +143,6 @@ class RotorNet:
         for tor in shuffle(self.tors):
             tor.send_direct()
         #self.print_demand()
-
-        # Offers
-        self.vprint("3a. Offers", 2)
-        for tor in shuffle(self.tors):
-            tor.offer()
-
-        # Accepts
-        self.vprint("3b. Accepts", 2)
-        for tor in shuffle(self.tors):
-            tor.accept()
 
         # New indirect traffic
         self.vprint("3c. New Indirect", 2)
