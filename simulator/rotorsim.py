@@ -48,10 +48,8 @@ def generate_static_demand(matching, max_demand = 1):
         is_flag=True
 )
 def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
-    #print("%d ToRs, %d rotors, %d packets/slot" %
-    #        (N_TOR, N_ROTOR, PACKETS_PER_SLOT))
-    #print("  => %d matchings, %d slots/cycle" %
-    #        (N_MATCHINGS, N_SLOTS))
+    print("%d ToRs, %d rotors, %d packets/slot" %
+            (n_tor, n_rotor, packets_per_slot))
 
     # Initial demand
     #active_links = N_TOR*N_ROTOR
@@ -59,6 +57,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
     #frac = active_links/total_links
 
 
+    print("Setup network...")
     logger = Log(fn = log)
     net = RotorNet(n_rotor = n_rotor, n_tor = n_tor, logger = logger, verbose = verbose)
 
@@ -66,9 +65,9 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
     #run_demand = sum(sum(d) for d in demand)
 
 
-    print("---")
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
     
+    print("Start simulator...")
     for cycle in range(n_cycles):
         net.add_demand(ones)
 
