@@ -4,7 +4,6 @@ from helpers import *
 import click
 
 
-
 def generate_demand(min_demand = 0, max_demand = 1):
     assert 0 <= min_demand
     assert min_demand <= max_demand
@@ -51,19 +50,9 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
     print("%d ToRs, %d rotors, %d packets/slot" %
             (n_tor, n_rotor, packets_per_slot))
 
-    # Initial demand
-    #active_links = N_TOR*N_ROTOR
-    #total_links = N_TOR*(N_TOR-1)
-    #frac = active_links/total_links
-
-
     print("Setup network...")
     logger = Log(fn = log)
     net = RotorNet(n_rotor = n_rotor, n_tor = n_tor, logger = logger, verbose = verbose)
-
-    #demand = generate_static_demand(matchings_by_slot[-1], max_demand = frac)
-    #run_demand = sum(sum(d) for d in demand)
-
 
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
     
