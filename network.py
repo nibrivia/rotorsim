@@ -43,6 +43,8 @@ class RotorNet:
         self.n_tor   = n_tor
         self.slot_time = -1
 
+        logger.add_timer(self)
+
         # Internal variables
         self.tors = [ToRSwitch(
                             name    = i,

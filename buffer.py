@@ -32,7 +32,7 @@ class Buffer():
         to.recv(moving_packets)
 
         self.size = len(self.packets)
-        self.logger.log(t = 0,
+        self.logger.log(
                 src = self.src, dst = to.src, flow = self.flow,
                 packets = moving_packets)
 
@@ -46,7 +46,7 @@ class Buffer():
         self.packets.extend(new_packets)
         self.size = len(self.packets)
 
-        self.logger.log(t = 0,
+        self.logger.log(
                 src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
                 packets = new_packets)
 

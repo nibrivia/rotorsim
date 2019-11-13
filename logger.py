@@ -10,10 +10,13 @@ class Log:
         print("time, src, dst, flow, packet",
                 file = self.file)
 
-    def log(self, t, src, dst, flow, packets):
+    def add_timer(self, timer):
+        self.timer = timer
+
+    def log(self, src, dst, flow, packets):
         for p in packets:
             msg = ("%.3f, %s, %s, %s, %d\n" %
-                    (t, src, dst, flow, p))
+                    (self.timer.time_in_slots, src, dst, flow, p))
             self.cache.append(msg)
         if len(self.cache) > 10:
             self._flush()
