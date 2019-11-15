@@ -7,16 +7,16 @@ class Log:
         self.cache = [] # Use array to avoid n^2 string append
 
         # Initialize the .csv
-        print("time, src, dst, flow, packet",
+        print("time, src, dst, flow, packet, rotor_id",
                 file = self.file)
 
     def add_timer(self, timer):
         self.timer = timer
 
-    def log(self, src, dst, flow, packets):
+    def log(self, src, dst, flow, packets, rotor_id):
         for p in packets:
-            msg = ("%.3f, %s, %s, %s, %d\n" %
-                    (self.timer.time_in_slots, src, dst, flow, p))
+            msg = ("%.3f, %s, %s, %s, %d, %d\n" %
+                    (self.timer.time, src, dst, flow, p, rotor_id))
             self.cache.append(msg)
         if len(self.cache) > 10:
             self._flush()

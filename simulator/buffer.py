@@ -21,10 +21,10 @@ class Buffer():
             print(s)
 
 
-    def send_to(self, to, num_packets):
+    def send_to(self, to, num_packets, rotor_id):
         if num_packets > 0:
-            self.vprint("        \033[01m%s to %s\033[00m, [%s]: %2d pkts\033[00m"
-                    % (self.src, to.src, self.flow, num_packets))
+            self.vprint("        \033[01m%s to %s\033[00m, [%s] via %s: %2d pkts\033[00m"
+                    % (self.src, to.src, self.flow, rotor_id, num_packets))
 
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
@@ -34,6 +34,7 @@ class Buffer():
         self.size = len(self.packets)
         self.logger.log(
                 src = self.src, dst = to.src, flow = self.flow,
+                rotor_id = rotor_id,
                 packets = moving_packets)
 
     def recv(self, packets):
@@ -48,6 +49,7 @@ class Buffer():
 
         self.logger.log(
                 src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
+                rotor_id = -1,
                 packets = new_packets)
 
 

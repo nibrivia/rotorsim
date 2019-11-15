@@ -16,12 +16,16 @@ class Registry:
         # Not threadsafe
         heapq.heappush(self.queue, (self.time+delay, fn, args, kwargs))
 
+    def stop(self):
+        self.running = False
+
     def run_next(self):
         """This function will only return when we're done with all events.
         This should probably never happen"""
 
         self.has_run = True
-        while True:
+        self.running = True
+        while self.running:
             # Could be moved in while statement, but this prints message...
             if len(self.queue) == 0:
                 print("@%.2f: no more events in registry" % self.time)
@@ -44,6 +48,9 @@ def delay(registry, delay_t):
         return called_fn
     return decorator_with_delay
 
+import sys
+def stop_simulation(r):
+    r.stop()
 
 
 if __name__ == "__main__":

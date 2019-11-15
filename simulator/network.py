@@ -1,12 +1,15 @@
 import random
+import sys
 from math import ceil
 from helpers import *
 from switches import ToRSwitch
-from event import Registry, delay
+from event import Registry, delay, stop_simulation
 
 def print_demand(tors, prefix = "", print_buffer = False):
     print()
     print("\033[0;32m      Demand")
+    all_tot = 0
+
 
     for ind_i, ind in enumerate(tors):
         line_str = "          ToR " + str(ind_i) + "\n"
@@ -26,6 +29,7 @@ def print_demand(tors, prefix = "", print_buffer = False):
 
                 qty = ind.buffers[(src_i, dst_i)].size
                 tot += qty
+                all_tot += qty
                 line_str += "%2d " % qty
 
                 if src_i == ind_i:
@@ -33,25 +37,29 @@ def print_demand(tors, prefix = "", print_buffer = False):
             line_str += "-> %d  =%2d" % (dst_i, tot)
             if dst_i == ind_i:
                 line_str += "\033[0;32m  rx'd"
+                all_tot -= tot
             line_str += "\n"
         print(line_str)
     print("\033[00m")
 
+    return all_tot
+
 R = Registry()
 
 class RotorNet:
-    def __init__(self, n_rotor, n_tor, logger, verbose = True):
+    def __init__(self, n_rotor, n_tor, packets_per_slot, logger, verbose = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
         self.slot_time = -1
 
-        logger.add_timer(self)
+        logger.add_timer(R)
 
         # Internal variables
         self.tors = [ToRSwitch(
                             name    = i,
                             n_tor   = n_tor,
                             n_rotor = n_rotor,
+                            packets_per_slot = packets_per_slot,
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
@@ -112,7 +120,10 @@ class RotorNet:
 
     def print_demand(self):
         if self.verbose and True:
-            print_demand(self.tors)
+            tot = print_demand(self.tors)
+            if tot == 0:
+                print("Stopping simulation. Slot #%d" % self.time_in_slots)
+                stop_simulation(R)
 
     def do_slot(self):
         self.slot_time += 1

@@ -3,14 +3,13 @@ from buffer import *
 from helpers import *
 
 
-PACKETS_PER_SLOT = 5
-
 class ToRSwitch:
-    def __init__(self, name, n_tor, n_rotor, logger, verbose):
+    def __init__(self, name, n_tor, n_rotor, packets_per_slot, logger, verbose):
         # Index by who to send to
         self.id = int(name)
         self.n_tor = n_tor
-
+        self.n_rotor = n_rotor
+        self.packets_per_slot = packets_per_slot
 
         self.buffers = { (src, dst) : Buffer(
             name = "%s.%s->%s" % (self.id, src, dst),
@@ -41,7 +40,7 @@ class ToRSwitch:
                 self, flow, rotor_id, amount, link_remaining)
 
         # Move the actual packets
-        self.buffers[flow].send_to(dst.buffers[flow], amount)
+        self.buffers[flow].send_to(dst.buffers[flow], amount, rotor_id)
 
         # Update link remaining
         link_remaining -= amount
@@ -60,7 +59,7 @@ class ToRSwitch:
             self.capacity[dst_id] -= amount
 
     def connect_to(self, rotor_id, tor):
-        self.connections[rotor_id] = (tor, PACKETS_PER_SLOT)
+        self.connections[rotor_id] = (tor, self.packets_per_slot)
 
         # TODO when this is more decentralized
         if False:
@@ -89,18 +88,29 @@ class ToRSwitch:
 
             # Verify link violations
             total_send = sum(b.size for b in buffers.values())
-            assert total_send <= PACKETS_PER_SLOT, \
+            assert total_send <= self.n_rotor*self.packets_per_slot, \
                     "%s->%s old indirect %d > capacity" % (self, dst, total_send)
 
             # Send the data
-            for flow, b in buffers.items():
-                self.send(rotor_id = rotor_id,
-                          flow     = flow,
-                          amount   = b.size)
+            sent = 1
+            while sent > 0:
+                sent = 0
+                for flow, b in buffers.items():
+                    if b.size == 0:
+                        continue
+                    if self.connections[rotor_id][1] == 0:
+                        break
+                    self.send(rotor_id = rotor_id,
+                              flow     = flow,
+                              amount   = 1)
+                    sent += 1
 
     def send_direct(self):
         # For each connection (some may be intentional duplicates)
+        #print()
         for rotor_id, (dst, remaining) in self.connections.items():
+            dst, remaining = self.connections[rotor_id]
+            #print("         %s to %s via %s remaining %s" % (self, dst, rotor_id, remaining))
             flow = (self.id, dst.id)
             n_sending = bound(0, self.buffers[flow].size, remaining)
             self.send(rotor_id = rotor_id,
@@ -118,6 +128,7 @@ class ToRSwitch:
 
             # This iterates to balance the remaining capacity equally across flows
             amounts = {flow:0 for flow in traffic}
+            #print(amounts)
             change = 1
             while change > 0:
                 change = 0
@@ -126,32 +137,37 @@ class ToRSwitch:
                 for flow, b in traffic.items():
                     flow_src, flow_dst = flow
                     current = amounts[flow]
-                    assert capacities[flow_dst] <= PACKETS_PER_SLOT
+                    #assert capacities[flow_dst] <= self.packets_per_slot
                     new = bound(0, current+1, min(b.size, remaining, capacities[flow_dst]))
-                    amounts[flow] = new
+                    amounts[flow] = max(new, current)
 
                     # Update tracking vars
-                    delta = new - current
-                    change    += delta
+                    delta = amounts[flow] - current
+                    change   += delta
                     remaining -= delta
 
+            #print(amounts)
 
             # Send the amounts we decided on
             for flow, amount in amounts.items():
-                remaining = self.send(
+                if amount == 0 and remaining > 0 and True:
+                    print("%s: flow %s not sending to %s via %s (remaining %s, %s.capacity[%s]= %s)" %
+                            (self, flow, dst.id, rotor_id, remaining, dst.id, flow_dst, capacities[flow_dst]))
+
+                self.send(
                         rotor_id = rotor_id,
                         flow     = flow,
                         amount   = amount)
 
     def compute_capacity(self):
         capacity = dict()
-        #capacity[self.id] = PACKETS_PER_SLOT
+        #capacity[self.id] = self.packets_per_slot
         for flow, b in self.buffers.items():
             src, dst = flow
             if dst == self.id:
                 continue
 
-            current = capacity.get(dst, PACKETS_PER_SLOT)
+            current = capacity.get(dst, self.packets_per_slot)
             current -= b.size
             capacity[dst] = current
 
