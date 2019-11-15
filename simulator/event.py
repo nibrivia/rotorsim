@@ -9,7 +9,7 @@ class Registry:
         self.limit = limit
         self.has_run = False
 
-    def call_in(self, delay, fn, args = [], kwargs = {}):
+    def call_in(self, delay, fn, *args, **kwargs):
         """This will register the call in `delay` time from now"""
         if self.has_run:
             assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
@@ -32,15 +32,15 @@ class Registry:
 
             # Also not threadsafe
             self.time, fn, args, kwargs = heapq.heappop(self.queue)
-            print("@%.2f: %s(*%s, **%s)" % (self.time, fn.__name__, args, kwargs))
+            #print(" %.2f> %s %s, %s" % (self.time, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
-def delay(registry, delay):
+def delay(registry, delay_t):
     """Decorator to force anyone calling this function to incure a delay of `delay`"""
     def decorator_with_delay(fn):
         @wraps(fn)
         def called_fn(*args, **kwargs):
-            registry.call_in(delay = delay, fn = fn, args = args, kwargs = kwargs)
+            registry.call_in(delay_t, fn, *args, **kwargs)
         return called_fn
     return decorator_with_delay
 
@@ -56,13 +56,13 @@ if __name__ == "__main__":
         """Says hello, a lot"""
         print("hello %s @%.2f" % (name, r.time))
         # (un)comment for a "recursive" call every .5
-        #hello(name = name)
+        hello(name = name)
 
     # Olivia will get called @.5: hello() incurs a .5 delay
     hello("Olivia")
 
     # Amir   will get called @.6: at .1 call hello(), which incurs a .5 delay
-    r.call_in(delay = .1, fn = hello, args = ["Amir  "])
+    r.call_in(delay = .1, fn = hello, name = "Amir  ")
 
     # Start the simulation
     r.run_next()

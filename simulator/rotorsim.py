@@ -60,7 +60,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
     print("Setting up demand...")
     # Registering demand before the simulator runs
     for cycle in range(n_cycles):
-        R.call_in(delay = cycle-.01, fn = net.add_demand, args = [ones])
+        R.call_in(cycle-.01, net.add_demand, ones)
 
     print("Starting simulator...")
     # Start the simulator
