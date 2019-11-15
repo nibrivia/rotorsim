@@ -3,13 +3,16 @@ from functools import wraps
 
 class Registry:
     def __init__(self, limit = 1000):
+        # Start allows to start doing some prep before time = 0
         self.time = 0
         self.queue = []
         self.limit = limit
+        self.has_run = False
 
     def call_in(self, delay, fn, args = [], kwargs = {}):
         """This will register the call in `delay` time from now"""
-        assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
+        if self.has_run:
+            assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
         heapq.heappush(self.queue, (self.time+delay, fn, args, kwargs))
 
@@ -17,6 +20,7 @@ class Registry:
         """This function will only return when we're done with all events.
         This should probably never happen"""
 
+        self.has_run = True
         while True:
             # Could be moved in while statement, but this prints message...
             if len(self.queue) == 0:
@@ -28,6 +32,7 @@ class Registry:
 
             # Also not threadsafe
             self.time, fn, args, kwargs = heapq.heappop(self.queue)
+            print("@%.2f: %s(*%s, **%s)" % (self.time, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
 def delay(registry, delay):
@@ -35,7 +40,7 @@ def delay(registry, delay):
     def decorator_with_delay(fn):
         @wraps(fn)
         def called_fn(*args, **kwargs):
-            r.call_in(delay = delay, fn = fn, args = args, kwargs = kwargs)
+            registry.call_in(delay = delay, fn = fn, args = args, kwargs = kwargs)
         return called_fn
     return decorator_with_delay
 

@@ -2,6 +2,7 @@ import random
 from math import ceil
 from helpers import *
 from switches import ToRSwitch
+from event import Registry, delay
 
 def print_demand(tors, prefix = "", print_buffer = False):
     print()
@@ -36,6 +37,7 @@ def print_demand(tors, prefix = "", print_buffer = False):
         print(line_str)
     print("\033[00m")
 
+R = Registry()
 
 class RotorNet:
     def __init__(self, n_rotor, n_tor, logger, verbose = True):
@@ -95,7 +97,8 @@ class RotorNet:
         """Run the simulation for n_cycles cycles"""
         for c in range(n_cycles):
             for s in range(self.n_slots):
-                self.do_slot(verbose = verbose)
+                R.call_in(delay = c+s/self.n_slots, fn = self.do_slot)
+        R.run_next()
 
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):

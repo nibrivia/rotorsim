@@ -1,4 +1,4 @@
-from network import RotorNet
+from network import RotorNet, R
 from logger import Log
 from helpers import *
 import click
@@ -47,22 +47,24 @@ def generate_static_demand(matching, max_demand = 1):
         is_flag=True
 )
 def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
-    print("%d ToRs, %d rotors, %d packets/slot" %
-            (n_tor, n_rotor, packets_per_slot))
+    print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
+            (n_tor, n_rotor, packets_per_slot, n_cycles))
 
-    print("Setup network...")
+    print("Setting up network...")
     logger = Log(fn = log)
     net = RotorNet(n_rotor = n_rotor, n_tor = n_tor, logger = logger, verbose = verbose)
 
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
     
-    print("Start simulator...")
-    for cycle in range(n_cycles):
-        net.add_demand(ones)
 
-        # Send data
-        for slot in range(net.n_slots):
-            net.do_slot()
+    print("Setting up demand...")
+    # Registering demand before the simulator runs
+    for cycle in range(n_cycles):
+        R.call_in(delay = cycle-.01, fn = net.add_demand, args = [ones])
+
+    print("Starting simulator...")
+    # Start the simulator
+    net.run(n_cycles)
 
     #close_log()
     logger.close()
