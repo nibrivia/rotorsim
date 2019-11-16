@@ -31,7 +31,7 @@ class Registry:
         while self.running:
             # Could be moved in while statement, but this prints message...
             if len(self.queue) == 0:
-                print("@%.2f: no more events in registry" % self.time)
+                print("@%.3f: no more events in registry" % self.time)
                 break
             if self.time > self.limit:
                 print("reached past simulation time limit")
@@ -39,15 +39,15 @@ class Registry:
 
             # Also not threadsafe
             self.time, count, fn, args, kwargs = heapq.heappop(self.queue)
-            print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
+            #print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
-def delay(registry, delay_t):
+def delay(delay_t):
     """Decorator to force anyone calling this function to incure a delay of `delay`"""
     def decorator_with_delay(fn):
         @wraps(fn)
         def called_fn(*args, **kwargs):
-            registry.call_in(delay_t, fn, *args, **kwargs)
+            R.call_in(delay_t, fn, *args, **kwargs)
         return called_fn
     return decorator_with_delay
 
@@ -55,6 +55,7 @@ import sys
 def stop_simulation(r):
     r.stop()
 
+R = Registry()
 
 if __name__ == "__main__":
 

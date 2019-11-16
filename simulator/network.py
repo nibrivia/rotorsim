@@ -3,48 +3,7 @@ import sys
 from math import ceil
 from helpers import *
 from switches import ToRSwitch
-from event import Registry, delay, stop_simulation
-
-def print_demand(tors, prefix = "", print_buffer = False):
-    print()
-    print("\033[0;32m      Demand")
-    all_tot = 0
-
-
-    for ind_i, ind in enumerate(tors):
-        line_str = "          ToR " + str(ind_i) + "\n"
-        for dst_i, dst in enumerate(tors):
-            tot = 0
-            if dst_i == ind_i:
-                line_str += "\033[1;32m"
-            line_str += "            " 
-            for src_i, src in enumerate(tors):
-
-                if src_i == dst_i:
-                    line_str += " - "
-                    continue
-
-                if src_i == ind_i:
-                    line_str += "\033[1;32m"
-
-                qty = ind.buffers[(src_i, dst_i)].size
-                tot += qty
-                all_tot += qty
-                line_str += "%2d " % qty
-
-                if src_i == ind_i:
-                    line_str += "\033[0;32m"
-            line_str += "-> %d  =%2d" % (dst_i, tot)
-            if dst_i == ind_i:
-                line_str += "\033[0;32m  rx'd"
-                all_tot -= tot
-            line_str += "\n"
-        print(line_str)
-    print("\033[00m")
-
-    return all_tot
-
-R = Registry()
+from event import Registry, delay, stop_simulation, R
 
 class RotorNet:
     def __init__(self, n_rotor, n_tor, packets_per_slot, logger, verbose = True):
@@ -63,10 +22,6 @@ class RotorNet:
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
-        #self.rotors = [RotorSwitch(
-        #                    self.tors,
-        #                    name = "%s/%s" % (i+1, n_rotor))
-        #        for i in range(n_rotor)]
 
         # Hack-y, generates matchings, and matches those to ToRs
         self.generate_matchings()
@@ -148,22 +103,23 @@ class RotorNet:
             for src, dst in rotor_matchings:
                 src.connect_to(rotor_id = rotor_id, tor = dst)
 
-        # Old indirect traffic
-        self.vprint("1. Old Indirect", 2)
-        for tor in shuffle(self.tors):
-            tor.send_old_indirect()
-        #self.print_demand()
+        if False:
+            # Old indirect traffic
+            self.vprint("1. Old Indirect", 2)
+            for tor in shuffle(self.tors):
+                tor.send_old_indirect()
+            #self.print_demand()
 
-        # Direct traffic
-        self.vprint("2. Direct", 2)
-        for tor in shuffle(self.tors):
-            tor.send_direct()
-        #self.print_demand()
+            # Direct traffic
+            self.vprint("2. Direct", 2)
+            for tor in shuffle(self.tors):
+                tor.send_direct()
+            #self.print_demand()
 
-        # New indirect traffic
-        self.vprint("3c. New Indirect", 2)
-        for tor in shuffle(self.tors):
-            tor.send_new_indirect()
-        #self.print_demand()
+            # New indirect traffic
+            self.vprint("3c. New Indirect", 2)
+            for tor in shuffle(self.tors):
+                tor.send_new_indirect()
+            #self.print_demand()
 
 
