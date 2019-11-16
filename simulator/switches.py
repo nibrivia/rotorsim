@@ -150,7 +150,7 @@ class ToRSwitch:
 
             # Send the amounts we decided on
             for flow, amount in amounts.items():
-                if amount == 0 and remaining > 0 and True:
+                if amount == 0 and remaining > 0 and False:
                     print("%s: flow %s not sending to %s via %s (remaining %s, %s.capacity[%s]= %s)" %
                             (self, flow, dst.id, rotor_id, remaining, dst.id, flow_dst, capacities[flow_dst]))
 
