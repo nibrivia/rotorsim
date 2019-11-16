@@ -1,0 +1,130 @@
+---
+title: "Chen"
+author: "Olivia Brode-Roger"
+date: "11/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(hrbrthemes)
+```
+
+```{r data, }
+chen <- read_csv("bad-chen.csv")
+
+```
+
+```{r plots, }
+chen_nodes <- chen %>% 
+    filter(src != "demand") %>% 
+    mutate(src = as.numeric(src)) %>% 
+    separate(flow, into = c("flow_src", "flow_dst"), sep = "->") %>% 
+    mutate(src = src+1,
+           dst = dst+1,
+           flow_src = as.numeric(flow_src)+1,
+           flow_dst = as.numeric(flow_dst)+1,
+           flow     = paste(flow_src, flow_dst, sep = "->"),
+           last_hop = dst == flow_dst) 
+
+chen_packets <-chen_nodes %>% 
+    group_by(flow_src, flow_dst, flow, packet) %>% 
+        summarize(entry = min(time),
+                  exit  = max(time)) %>% 
+        ungroup()
+
+
+
+chen_flows %>% 
+    filter(entry < 10) %>% 
+    ggplot(aes(x = exit,
+               xend = entry,
+               y    = packet,
+               yend = packet,
+               color = flow)) +
+    geom_point() +
+    geom_segment() +
+    theme_ipsum_rc() +
+    scale_x_continuous(minor_breaks = 0:100) +
+    labs(title = "Packet arrival time at final destination",
+         caption = "github.com/nibrivia/rotorsim",
+         y = "packet #",
+         x = "time")
+```
+
+```{r waterfall, }
+waterfall <- chen_nodes %>% 
+    filter(time < 5) %>% 
+    mutate(src_x = ifelse(src == flow_src, 0, src),
+           dst_x = ifelse(dst == flow_dst, max(dst) + 1, dst))
+
+buffers <- waterfall %>% 
+    filter(dst != flow_dst | src != flow_src) %>% 
+    group_by(flow, flow_src, flow_dst, packet) %>% 
+        summarize(count = n(),
+                  node = dst_x[1],
+                  start = min(time+1/3),
+                  end   = ifelse(count == 2, max(time), +Inf)) %>% 
+        ungroup() 
+
+arrivals <- waterfall %>% 
+    filter(dst == flow_dst) %>%
+    mutate(time = time + 1/3) %>% 
+    group_by(flow, time) %>% 
+        summarize(text = paste(packet, collapse = " "))
+    
+
+waterfall %>% 
+    ggplot(aes(yend = time,
+           y = time+1/3,
+           xend = src_x,
+           x = dst_x,
+           color = as_factor(rotor_id))) +
+    geom_vline(aes(xintercept = 0), alpha = .5) +
+    geom_vline(aes(xintercept = 9), alpha = .5) +
+    geom_segment() +
+    geom_segment(data = buffers,
+                 aes(x = node, xend = node,
+                     y = start, yend = end),
+                 color = "black",
+                 linetype = "dashed") +
+    geom_point(size = 2) +
+    geom_text(data = arrivals,
+              aes(x = 9,
+                  y = time,
+                  xend = NULL, yend= NULL, color = NULL,
+                  label = text),
+              vjust = 1,
+              hjust = 1) +
+    theme_ipsum_rc() +
+    facet_grid(~flow) +
+    scale_x_continuous(breaks = 0:9, minor_breaks = NULL,
+                       labels = c("src", 1:8, "dst")) +
+    scale_y_reverse(minor_breaks = 0:100/3, breaks = 0:100) +
+    labs(x = "node",
+         y = "time",
+         subtitle = "",
+         color = "Rotor",
+         caption = "github.com/nibrivia/rotorsim") 
+```
+
+```{r rotorview, }
+waterfall %>% 
+        ggplot(aes(yend = time,
+           y = time+1/3,
+           xend = src,
+           x = dst,
+           color = as_factor(flow))) +
+    geom_segment() +
+    geom_point(size = 2) +
+    theme_ipsum_rc() +
+    facet_wrap(~rotor_id) +
+    scale_x_continuous(breaks = 0:9, minor_breaks = NULL,
+                       labels = c("src", 1:8, "dst")) +
+    scale_y_reverse(minor_breaks = 0:100/3, breaks = 1:100) +
+    labs(x = "node",
+         y = "time",
+         subtitle = "",
+         color = "Rotor",
+         caption = "github.com/nibrivia/rotorsim") 
+```
