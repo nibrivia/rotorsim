@@ -1,5 +1,6 @@
 import heapq
 from functools import wraps
+from itertools import count
 
 class Registry:
     def __init__(self, limit = 1000):
@@ -8,13 +9,15 @@ class Registry:
         self.queue = []
         self.limit = limit
         self.has_run = False
+        self.counts  = count()
 
     def call_in(self, delay, fn, *args, **kwargs):
         """This will register the call in `delay` time from now"""
         if self.has_run:
             assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
-        heapq.heappush(self.queue, (self.time+delay, fn, args, kwargs))
+        count = next(self.counts)
+        heapq.heappush(self.queue, (self.time+delay, count, fn, args, kwargs))
 
     def stop(self):
         self.running = False
@@ -35,8 +38,8 @@ class Registry:
                 break
 
             # Also not threadsafe
-            self.time, fn, args, kwargs = heapq.heappop(self.queue)
-            #print(" %.2f> %s %s, %s" % (self.time, fn.__name__, args, kwargs))
+            self.time, count, fn, args, kwargs = heapq.heappop(self.queue)
+            print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
 def delay(registry, delay_t):
@@ -69,7 +72,7 @@ if __name__ == "__main__":
     hello("Olivia")
 
     # Amir   will get called @.6: at .1 call hello(), which incurs a .5 delay
-    r.call_in(delay = .1, fn = hello, name = "Amir  ")
+    r.call_in(delay = 0, fn = hello, name = "Amir  ")
 
     # Start the simulation
     r.run_next()
