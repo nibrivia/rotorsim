@@ -94,7 +94,7 @@ waterfall %>%
                   y = time,
                   xend = NULL, yend= NULL, color = NULL,
                   label = text),
-              vjust = 1,
+              vjust = 1.4,
               hjust = 1) +
     theme_ipsum_rc() +
     facet_grid(~flow) +
@@ -102,8 +102,9 @@ waterfall %>%
                        labels = c("src", 1:8, "dst")) +
     scale_y_reverse(minor_breaks = 0:100/3, breaks = 0:100) +
     labs(x = "node",
-         y = "time",
-         subtitle = "",
+         y = "cycle",
+         title = "Waterfall diagram by flow",
+         subtitle = "Flow source and destination moved to the ends for readability",
          color = "Rotor",
          caption = "github.com/nibrivia/rotorsim") 
 ```
