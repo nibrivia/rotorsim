@@ -5,10 +5,8 @@ from logger import Log
 class Buffer():
     def __init__(self, name, logger, verbose):
         self.packets = collections.deque()
-        self.name = str(name)
         self.src, self.flow = str(name).split(".")
         self.count = 0
-        self.packet_num = 0
 
         self.logger = logger
         self.verbose = verbose
@@ -31,7 +29,7 @@ class Buffer():
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         to.recv(moving_packets)
 
-        self.size = len(self.packets)
+        self.size -= num_packets
         self.logger.log(
                 src = self.src, dst = to.src, flow = self.flow,
                 rotor_id = rotor_id,
@@ -45,15 +43,11 @@ class Buffer():
         new_packets = [self.count+i for i in range(val)]
         self.count += val
         self.packets.extend(new_packets)
-        self.size = len(self.packets)
+        self.size += val
 
         self.logger.log(
                 src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
                 rotor_id = -1,
                 packets = new_packets)
-
-
-    def __str__(self):
-        return "%s" % self.name
 
 DEMAND_NODE = Buffer("demand.0", None, verbose = False)
