@@ -1,5 +1,6 @@
 import random
 import click
+import sys
 
 def vprint(s = "", verbose = True):
     if verbose:
@@ -14,11 +15,9 @@ def shuffle(generator):
 def print_demand(tors, prefix = "", print_buffer = False):
     print()
     print("\033[0;32m      Demand")
-    all_tot = 0
-
 
     for ind_i, ind in enumerate(tors):
-        line_str = "          ToR " + str(ind_i) + "\n"
+        line_str = "          ToR " + str(ind_i) + " d" +str(ind.tot_demand) + "\n"
         for dst_i, dst in enumerate(tors):
             tot = 0
             if dst_i == ind_i:
@@ -35,7 +34,6 @@ def print_demand(tors, prefix = "", print_buffer = False):
 
                 qty = ind.buffers[(src_i, dst_i)].size
                 tot += qty
-                all_tot += qty
                 line_str += "%2d " % qty
 
                 if src_i == ind_i:
@@ -43,10 +41,17 @@ def print_demand(tors, prefix = "", print_buffer = False):
             line_str += "-> %d  =%2d" % (dst_i, tot)
             if dst_i == ind_i:
                 line_str += "\033[0;32m  rx'd"
-                all_tot -= tot
             line_str += "\n"
         print(line_str)
     print("\033[00m")
 
-    return all_tot
 
+_pause_enabled = True
+def pause():
+    global _pause_enabled
+    if _pause_enabled:
+        user_str = input("Press Enter to continue, (c) to continue, (x) to exit...")
+        if user_str == "c":
+            _pause_enabled = False
+        if user_str == "x":
+            sys.exit()

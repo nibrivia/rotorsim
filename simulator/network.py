@@ -20,7 +20,8 @@ class RotorNet:
                             n_rotor = n_rotor,
                             packets_per_slot = packets_per_slot,
                             logger  = logger,
-                            verbose = verbose)
+                            verbose = verbose,
+                            timer   = self)
                 for i in range(n_tor)]
 
         # Hack-y, generates matchings, and matches those to ToRs
@@ -75,12 +76,17 @@ class RotorNet:
 
     def print_demand(self):
         if self.verbose and True:
-            tot = print_demand(self.tors)
-            if tot == 0:
-                print("Stopping simulation. Slot #%d" % self.time_in_slots)
-                stop_simulation(R)
+            print_demand(self.tors)
 
     def do_slot(self):
+        # There's nothing to do, stop
+        total_demand = sum(tor.tot_demand for tor in self.tors)
+        if total_demand == 0:
+            print("Stopping simulation. Slot #%d (Cycle #%d)" % (
+                self.time_in_slots, self.time_in_cycles))
+            stop_simulation(R)
+            return
+
         self.slot_time += 1
         current_slot = self.slot_time % self.n_slots
 
@@ -103,23 +109,8 @@ class RotorNet:
             for src, dst in rotor_matchings:
                 src.connect_to(rotor_id = rotor_id, tor = dst)
 
-        if False:
-            # Old indirect traffic
-            self.vprint("1. Old Indirect", 2)
-            for tor in shuffle(self.tors):
-                tor.send_old_indirect()
-            #self.print_demand()
 
-            # Direct traffic
-            self.vprint("2. Direct", 2)
-            for tor in shuffle(self.tors):
-                tor.send_direct()
-            #self.print_demand()
-
-            # New indirect traffic
-            self.vprint("3c. New Indirect", 2)
-            for tor in shuffle(self.tors):
-                tor.send_new_indirect()
-            #self.print_demand()
+        if self.verbose:
+            pause()
 
 

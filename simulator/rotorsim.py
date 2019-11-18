@@ -17,15 +17,6 @@ def generate_static_demand(matching, max_demand = 1):
     return [[1 if matching[src] == dst else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
 
-_pause_enabled = True
-def pause():
-    global _pause_enabled
-    if _pause_enabled:
-        user_str = input("Press Enter to continue, (c) to continue, (x) to exit...")
-        if user_str == "c":
-            _pause_enabled = False
-        if user_str == "x":
-            sys.exit()
 
 @click.command()
 @click.option(
@@ -69,6 +60,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
                    logger  = logger,
                    verbose = verbose)
 
+    print("Setting up demand...")
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
     if n_tor == 4:
         demand = [
@@ -78,7 +70,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
                 [0, 1, 0, 1], # ->2
                 [1, 0, 0, 0], # ->3
                 ]
-    if n_tor == 8:
+    elif n_tor == 8:
         demand = [
                 #1  2  3  4  5  6  7  8   # ->to
                 [0, 0, 0, 0, 0, 1, 0, 0], # ->1
@@ -90,20 +82,15 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
                 [0, 0, 0, 1, 0, 0, 0, 0], # ->7
                 [0, 0, 1, 0, 0, 0, 0, 0]  # ->8
                 ]
+    else:
+        demand = [[random.uniform(0, 1) for r in range(n_tor)] for c in range(n_tor)]
 
     demand = [[demand[j][i] for j in range(n_tor)] for i in range(n_tor)]
 
-    demand = [[v*packets_per_slot*99 for v in row] for row in demand]
+    demand = [[int(v*packets_per_slot*1000) for v in row] for row in demand]
     R.call_in(-.01, net.add_demand, demand)
     
 
-    print("Setting up demand...")
-    # Registering demand before the simulator runs
-    for cycle in range(n_cycles):
-        #R.call_in(cycle-.01, net.add_demand, demand)
-        for slot in range(net.n_slots):
-            R.call_in(cycle+slot/net.n_slots+.01, pause)
-            pass
 
 
     print("Starting simulator...")
