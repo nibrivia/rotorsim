@@ -89,9 +89,6 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
 
     demand = [[int(v*packets_per_slot*1000) for v in row] for row in demand]
     R.call_in(-.01, net.add_demand, demand)
-    
-
-
 
     print("Starting simulator...")
     # Start the simulator

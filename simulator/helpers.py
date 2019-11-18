@@ -1,4 +1,5 @@
 import random
+from functools import lru_cache
 import click
 import sys
 
@@ -6,6 +7,7 @@ def vprint(s = "", verbose = True):
     if verbose:
         print(s)
 
+@lru_cache()
 def bound(lo, val, hi):
     return max(lo, min(val, hi))
 

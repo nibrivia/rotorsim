@@ -29,6 +29,10 @@ class ToRSwitch:
         self.offers = dict()
         self.capacity = self.compute_capacity()
 
+        # Compute useful buffer sets now
+        self.indirect_for = [self.indirect_traffic_for(n) for n in range(n_tor)]
+        self.indirect_at  = [self.indirect_traffic_at( n) for n in range(n_tor)]
+
     def vprint(self, msg="", level = 0):
         if self.verbose:
             pad = "  " * level
@@ -87,17 +91,15 @@ class ToRSwitch:
         self.send_direct(rotor_id)
         self.send_new_indirect(rotor_id) 
 
-    def indirect_traffic_to(self, dst):
+    def indirect_traffic_for(self, dst_id):
         # Returns indirect traffic to dst
-        flows = [(s, dst.id) for s in range(self.n_tor) if s != self.id]
-        return [(f, self.buffers[f]) for f in flows
-                    if self.buffers[f].size > 0]
+        flows = [(src_id, dst_id) for src_id in range(self.n_tor) if src_id != self.id]
+        return [(f, self.buffers[f]) for f in flows]
 
-    def direct_traffic(self, dst):
+    def indirect_traffic_at(self, dst_id):
         # Returns direct traffic except to dst
-        flows = [(self.id, d) for d in range(self.n_tor) if d != dst.id]
-        return [(f, self.buffers[f]) for f in flows
-                    if self.buffers[f].size > 0]
+        flows = [(self.id, d_id) for d_id in range(self.n_tor) if d_id != dst_id]
+        return [(f, self.buffers[f]) for f in flows]
 
     @delay(.001)
     def send_old_indirect(self, rotor_id):
@@ -107,7 +109,7 @@ class ToRSwitch:
         dst, remaining = self.connections[rotor_id]
 
         # All indirect traffic to dst
-        buffers = self.indirect_traffic_to(dst)
+        buffers = self.indirect_for[dst.id]
 
         # Verify link violations
         if False:
@@ -117,17 +119,19 @@ class ToRSwitch:
 
         # Send the data
         sent = 1
-        while sent > 0:
+        while sent > 0 and remaining > 0:
             sent = 0
             for flow, b in buffers:
                 if b.size == 0:
                     continue
-                if self.connections[rotor_id][1] == 0:
-                    break
                 self.send(rotor_id = rotor_id,
                           flow     = flow,
                           amount   = 1)
                 sent += 1
+                remaining -= 1
+
+                if remaining == 0:
+                    break
 
     @delay(.002)
     def send_direct(self, rotor_id):
@@ -136,7 +140,7 @@ class ToRSwitch:
         # Get connection data
         dst, remaining = self.connections[rotor_id]
         flow = (self.id, dst.id)
-        amount = bound(0, self.buffers[flow].size, remaining)
+        amount = min(self.buffers[flow].size, remaining)
 
         self.send(rotor_id = rotor_id,
                   flow = flow,
@@ -149,39 +153,43 @@ class ToRSwitch:
         dst, remaining = self.connections[rotor_id]
 
         # Get indirect-able traffic
-        traffic = self.direct_traffic(dst)
+        traffic = self.indirect_at[dst.id]
         capacities = dst.capacity
 
         # Send what we can along the remaining capacity
         # TODO offer/accept protocol
 
         # This iterates to balance the remaining capacity equally across flows
-        amounts = {flow:0 for flow, _ in traffic}
+        amounts = [0 for f, _ in traffic]
         #print(amounts)
         change = 1
-        while change > 0:
+        while change > 0 and remaining > 0:
             change = 0
 
             # TODO, not just +1, do it the (faster) divide way
-            for flow, b in traffic:
+            for i, (flow, b) in enumerate(traffic):
                 flow_src, flow_dst = flow
-                current = amounts[flow]
+                current = amounts[i]
                 #assert capacities[flow_dst] <= self.packets_per_slot
-                new = bound(0, current+1, min(b.size, remaining, capacities[flow_dst]))
-                amounts[flow] = max(new, current)
+                new = min(current+1, b.size, remaining, capacities[flow_dst])
+                amounts[i] = max(new, current)
 
                 # Update tracking vars
-                delta = amounts[flow] - current
-                change   += delta
+                delta = amounts[i] - current
+                change    += delta
                 remaining -= delta
+
+                if remaining == 0:
+                    break
 
         #print(amounts)
 
         # Send the amounts we decided on
-        for flow, amount in amounts.items():
+        for i, amount in enumerate(amounts):
+            flow = traffic[i][0]
             if amount == 0 and remaining > 0 and False:
                 print("%s: flow %s not sending to %s via %s (remaining %s, %s.capacity[%s]= %s)" %
-                        (self, flow, dst.id, rotor_id, remaining, dst.id, flow_dst, capacities[flow_dst]))
+                        (self, flow, dst.id, rotor_id, remaining, dst.id, flow[1], capacities[flow_dst]))
 
             self.send(
                     rotor_id = rotor_id,
