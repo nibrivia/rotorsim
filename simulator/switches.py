@@ -18,10 +18,18 @@ class ToRSwitch:
         # Demand
         self.tot_demand = 0
 
-        self.buffers = { (src, dst) : Buffer(
-            name = "%s.%s->%s" % (self.id, src, dst),
-            logger = logger,
-            verbose = verbose) for src in range(n_tor) for dst in range(n_tor) }
+        self.buffers = { (src, dst) : Buffer(name = "%s.%s->%s" % (self.id, src, dst),
+                                             logger = logger,
+                                             verbose = verbose)
+                                 for src in range(n_tor) for dst in range(n_tor) if src != self.id and dst != self.id}
+
+        for tor in range(n_tor):
+            self.buffers[(self.id, tor)] = SourceBuffer(name = "%s.%s->%s" % (self.id, self.id, tor),
+                                                       logger = logger,
+                                                       verbose = verbose)
+            self.buffers[(tor, self.id)] = DestBuffer(name = "%s.%s->%s" % (self.id, tor, self.id),
+                                                       logger = logger,
+                                                       verbose = verbose)
 
         # Watch out, some might be (intentional) duplicates
         # each item has the form (tor, link_remaining)

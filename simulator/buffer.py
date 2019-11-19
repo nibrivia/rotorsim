@@ -30,10 +30,12 @@ class Buffer():
         to.recv(moving_packets)
 
         self.size -= num_packets
-        self.logger.log(
-                src = self.src, dst = to.src, flow = self.flow,
-                rotor_id = rotor_id,
-                packets = moving_packets)
+
+        if not self.logger is None:
+            self.logger.log(
+                    src = self.src, dst = to.src, flow = self.flow,
+                    rotor_id = rotor_id,
+                    packets = moving_packets)
 
     def recv(self, packets):
         self.packets.extend(packets)
@@ -45,9 +47,77 @@ class Buffer():
         self.packets.extend(new_packets)
         self.size += val
 
-        self.logger.log(
-                src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
-                rotor_id = -1,
-                packets = new_packets)
+        if not self.logger is None:
+            self.logger.log(
+                    src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
+                    rotor_id = -1,
+                    packets = new_packets)
+
+class SourceBuffer(Buffer):
+    def __init__(self, *args, **kwargs):
+        super(SourceBuffer, self).__init__(*args, **kwargs)
+
+    def recv(self, packets):
+        raise Error
+
+    def add_n(self, amount):
+        new_packets = [self.count+i for i in range(amount)]
+
+        self.count += amount
+        self.size  += amount
+
+        if not self.logger is None:
+            self.logger.log(
+                    src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
+                    rotor_id = -1,
+                    packets = new_packets)
+
+    def send_to(self, to, amount, rotor_id):
+        assert amount <= self.size
+        self.packets.extend([self.count-self.size+i for i in range(amount)])
+        super(SourceBuffer, self).send_to(to, amount, rotor_id)
+
+
+class DestBuffer(Buffer):
+    def __init__(self, *args, **kwargs):
+        super(DestBuffer, self).__init__(*args, **kwargs)
+
+    def recv(self, packets):
+        self.size += len(packets)
+
+    def add_n(self, amount):
+        raise Error
+
+    def send_to(self, to, amount, rotor_id):
+        raise Error
+
+
 
 DEMAND_NODE = Buffer("demand.0", None, verbose = False)
+
+if __name__ == "__main__":
+    l = Log()
+    sn = SourceBuffer("1.1->2", None, True)
+    hn = Buffer("3.1->2", None, True)
+    rn = DestBuffer("2.1->2", None, True)
+
+    sn.add_n(3)
+    print((sn.packets, hn.packets, rn.packets))
+
+    sn.send_to(hn, 2, 1)
+    print((sn.packets, hn.packets, rn.packets))
+    hn.send_to(rn, 1, 1)
+    print((sn.packets, hn.packets, rn.packets))
+
+    sn.send_to(hn, 1, 1)
+    print((sn.packets, hn.packets, rn.packets))
+    hn.send_to(rn, 1, 1)
+    print((sn.packets, hn.packets, rn.packets))
+
+    sn.add_n(3)
+    print((sn.packets, hn.packets, rn.packets))
+    sn.send_to(hn, 3, 1)
+    print((sn.packets, hn.packets, rn.packets))
+    hn.send_to(rn, 3, 1)
+    print((sn.packets, hn.packets, rn.packets))
+
