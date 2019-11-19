@@ -53,9 +53,15 @@ class Buffer():
                     rotor_id = -1,
                     packets = new_packets)
 
-class SourceBuffer(Buffer):
-    def __init__(self, *args, **kwargs):
-        super(SourceBuffer, self).__init__(*args, **kwargs)
+class SourceBuffer:
+    def __init__(self, name, logger, verbose):
+        self.src, self.flow = str(name).split(".")
+        self.count = 0
+        self.sent  = 0
+        self.size  = 0
+
+        self.logger = logger
+        self.verbose = verbose
 
     def recv(self, packets):
         raise Error
@@ -74,13 +80,26 @@ class SourceBuffer(Buffer):
 
     def send_to(self, to, amount, rotor_id):
         assert amount <= self.size
-        self.packets.extend([self.count-self.size+i for i in range(amount)])
-        super(SourceBuffer, self).send_to(to, amount, rotor_id)
+        packets = [self.count-self.size+i for i in range(amount)]
+
+        if amount > 0 and self.verbose:
+            print("        \033[01m%s to %s\033[00m, [%s] via %s: %2d pkts\033[00m"
+                    % (self.src, to.src, self.flow, rotor_id, amount))
+
+        to.recv(packets)
+        self.size -= amount
+
+        if not self.logger is None:
+            self.logger.log(
+                    src = self.src, dst = to.src, flow = self.flow,
+                    rotor_id = rotor_id,
+                    packets = packets)
 
 
-class DestBuffer(Buffer):
-    def __init__(self, *args, **kwargs):
-        super(DestBuffer, self).__init__(*args, **kwargs)
+class DestBuffer:
+    def __init__(self, name, logger, verbose):
+        self.src, self.flow = str(name).split(".")
+        self.size = 0
 
     def recv(self, packets):
         self.size += len(packets)

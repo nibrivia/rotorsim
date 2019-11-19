@@ -6,13 +6,12 @@ from functools import lru_cache
 
 
 class ToRSwitch:
-    def __init__(self, name, n_tor, n_rotor, packets_per_slot, logger, verbose, timer):
+    def __init__(self, name, n_tor, n_rotor, packets_per_slot, logger, verbose):
         # Index by who to send to
         self.id      = int(name)
         self.n_tor   = n_tor
         self.n_rotor = n_rotor
         self.verbose = verbose
-        self.timer   = timer
         self.packets_per_slot = packets_per_slot
 
         # Demand
@@ -34,7 +33,6 @@ class ToRSwitch:
         # Watch out, some might be (intentional) duplicates
         # each item has the form (tor, link_remaining)
         self.connections = dict()
-        self.offers = dict()
         self.capacity = self.compute_capacity()
 
         # Compute useful buffer sets now
