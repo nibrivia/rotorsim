@@ -6,27 +6,33 @@ from functools import lru_cache
 
 
 class ToRSwitch:
-    def __init__(self, name, n_tor, n_rotor, packets_per_slot, logger, verbose, timer):
+    def __init__(self, name, n_tor, n_rotor, packets_per_slot, logger, verbose):
         # Index by who to send to
         self.id      = int(name)
         self.n_tor   = n_tor
         self.n_rotor = n_rotor
         self.verbose = verbose
-        self.timer   = timer
         self.packets_per_slot = packets_per_slot
 
         # Demand
         self.tot_demand = 0
 
-        self.buffers = { (src, dst) : Buffer(
-            name = "%s.%s->%s" % (self.id, src, dst),
-            logger = logger,
-            verbose = verbose) for src in range(n_tor) for dst in range(n_tor) }
+        self.buffers = { (src, dst) : Buffer(name = "%s.%s->%s" % (self.id, src, dst),
+                                             logger = logger,
+                                             verbose = verbose)
+                                 for src in range(n_tor) for dst in range(n_tor) if src != self.id and dst != self.id}
+
+        for tor in range(n_tor):
+            self.buffers[(self.id, tor)] = SourceBuffer(name = "%s.%s->%s" % (self.id, self.id, tor),
+                                                       logger = logger,
+                                                       verbose = verbose)
+            self.buffers[(tor, self.id)] = DestBuffer(name = "%s.%s->%s" % (self.id, tor, self.id),
+                                                       logger = logger,
+                                                       verbose = verbose)
 
         # Watch out, some might be (intentional) duplicates
         # each item has the form (tor, link_remaining)
         self.connections = dict()
-        self.offers = dict()
         self.capacity = self.compute_capacity()
 
         # Compute useful buffer sets now

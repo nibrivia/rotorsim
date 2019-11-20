@@ -20,8 +20,7 @@ class RotorNet:
                             n_rotor = n_rotor,
                             packets_per_slot = packets_per_slot,
                             logger  = logger,
-                            verbose = verbose,
-                            timer   = self)
+                            verbose = verbose)
                 for i in range(n_tor)]
 
         # Hack-y, generates matchings, and matches those to ToRs
@@ -33,7 +32,6 @@ class RotorNet:
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
         # I/O stuff
-        self.logger  = logger
         self.verbose = verbose
 
     def generate_matchings(self):
