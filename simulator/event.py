@@ -49,34 +49,34 @@ class Delay:
     Optionally adds a random uniform delay of +/- `jitter`"""
     #delay_t: float
     #max_jitter: float = 0
-    def __init__(self, delay, callback = None, max_jitter=0, priority=0):
+    def __init__(self, delay, callback = None, jitter=0, priority=0):
         assert delay >= 0, "Delay must be non-negative"
-        assert max_jitter >= 0, "Jitter must be non-negative"
-        assert max_jitter <= delay, "Jitter must be smaller than delay"
+        assert jitter >= 0, "Jitter must be non-negative"
+        assert jitter <= delay, "Jitter must be smaller than delay"
 
-        self.delay      = delay
-        self.max_jitter = max_jitter
-        self.priority   = priority
-        self.callback   = callback
+        self.delay    = delay
+        self.jitter   = jitter
+        self.priority = priority
+        self.callback = callback
 
     def __call__(self, fn):
         @wraps(fn)
         def called_fn(*args, **kwargs):
             jitter = 0
-            if self.max_jitter != 0:
+            if self.jitter != 0:
                 # avoid a critical-path call to random
-                jitter = random.uniform(-self.max_jitter, self.max_jitter)
+                jitter = random.uniform(-self.jitter, self.jitter)
             R.call_in(self.delay+jitter, fn, *args, priority = self.priority, **kwargs)
             if self.callback is not None:
                 self.callback()
 
         return called_fn
 
-import sys
 def stop_simulation(r):
     r.stop()
 
-R = Registry()
+
+R = Registry(limit = 6)
 
 if __name__ == "__main__":
 

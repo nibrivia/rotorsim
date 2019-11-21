@@ -35,6 +35,21 @@ class RotorNet:
         # Number of slots depends on number of matchings
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
+        self.matchings_by_slot_rotor = []
+        for slot in range(self.n_slots):
+            slot_matchings = []
+            for rotor in self.rotors:
+                matching_i = (slot + rotor.id*self.n_slots) % \
+                        len(self.matchings)
+                rotor_matchings = self.matchings[matching_i]
+                slot_matchings.append(rotor_matchings)
+            self.matchings_by_slot_rotor.append(slot_matchings)
+
+        for tor in self.tors:
+            tor.add_matchings(self.matchings_by_slot_rotor)
+
+
+
         # I/O stuff
         self.verbose  = verbose
         self.do_pause = do_pause
@@ -62,10 +77,14 @@ class RotorNet:
 
     def run(self, n_cycles = 1):
         """Run the simulation for n_cycles cycles"""
-        for c in range(n_cycles):
-            for s in range(self.n_slots):
-                R.call_in(delay = c+s/self.n_slots, fn = self.do_slot)
+        for t in self.tors:
+            t.new_slot()
         R.run_next()
+
+        #for c in range(n_cycles):
+        #    for s in range(self.n_slots):
+        #        R.call_in(delay = c+s/self.n_slots, fn = self.do_slot)
+        #R.run_next()
 
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):

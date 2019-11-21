@@ -8,24 +8,24 @@ class RotorSwitch:
     def __init__(self, id, n_ports):
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
-        # Tor id #1 is at port #1 for simplicity, wlog on a rotornet
-        self.disable()
+        # Tor id i is at port i for simplicity, wlog on a rotornet
+        self._disable()
 
-    def disable(self):
+    def _disable(self):
         self.enabled = False
-    def enable(self):
+    def _enable(self):
         self.enabled = True
 
     def install_matchings(self, matchings):
-        self.disable()
+        self._disable()
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time
         #Delay(delay_t = .001)(self.enable)()
-        self.enable()
+        self._enable()
 
     def connect_tors(self, tors):
-        self.disable()
+        self._disable()
         self.tors = tors
         for t_id, tor in enumerate(tors):
             handle = Empty()

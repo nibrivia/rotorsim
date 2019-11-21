@@ -13,6 +13,7 @@ class ToRSwitch:
         self.rotors  = [None for i in range(n_rotor)]
         self.verbose = verbose
         self.packets_per_slot = packets_per_slot
+        self.slot_t  = -1
 
         # Demand
         self.tot_demand = 0
@@ -68,6 +69,10 @@ class ToRSwitch:
         self.rotors[rotor.id] = handle
         print("%s: connected to %s" % (self, rotor))
 
+
+    def add_matchings(self, matchings_by_slot_rotor):
+        self.matchings_by_slot_rotor = matchings_by_slot_rotor
+
     def send(self, rotor_id, flow, amount):
         if amount == 0:
             return
@@ -110,8 +115,21 @@ class ToRSwitch:
         self.buffers[flow].recv(packets, flow)
 
 
+    @Delay(1/3, jitter = 0.0)
+    def new_slot(self):
+        print("%.2f" % R.time)
+        self.slot_t += 1
+        matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % 3]
+        for rotor_id, matchings in enumerate(matchings_in_effect):
+            for src, dst in matchings:
+                if src.id == self.id:
+                    self.connect_to(rotor_id, dst)
+        self.new_slot()
+
+
     def connect_to(self, rotor_id, tor):
         self.connections[rotor_id] = (tor, self.packets_per_slot)
+        print("%s: Connected to %s via %s" % (self, tor, rotor_id))
 
         # TODO when this is more decentralized
             #self.offer()
