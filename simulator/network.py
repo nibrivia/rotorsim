@@ -6,7 +6,7 @@ from switches import ToRSwitch
 from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
-    def __init__(self, n_rotor, n_tor, packets_per_slot, logger, verbose = True):
+    def __init__(self, n_rotor, n_tor, packets_per_slot, logger, verbose = True, do_pause = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
         self.slot_time = -1
@@ -30,7 +30,8 @@ class RotorNet:
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
         # I/O stuff
-        self.verbose = verbose
+        self.verbose  = verbose
+        self.do_pause = do_pause
 
     def generate_matchings(self):
         self.matchings = []
@@ -106,7 +107,7 @@ class RotorNet:
                 src.connect_to(rotor_id = rotor_id, tor = dst)
 
 
-        if self.verbose:
+        if self.verbose and self.do_pause:
             pause()
 
 

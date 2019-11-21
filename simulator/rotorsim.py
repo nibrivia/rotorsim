@@ -53,7 +53,11 @@ def generate_static_demand(matching, max_demand = 1):
         "--no-log",
         is_flag=True
 )
-def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
+@click.option(
+        "--no-pause",
+        is_flag=True
+)
+def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pause):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
 
@@ -67,7 +71,8 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
                    n_tor   = n_tor,
                    packets_per_slot = packets_per_slot,
                    logger  = logger,
-                   verbose = verbose)
+                   verbose = verbose, 
+                   do_pause = not no_pause)
 
     print("Setting up demand...")
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
