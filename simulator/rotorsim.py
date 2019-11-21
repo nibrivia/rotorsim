@@ -1,4 +1,5 @@
-from network import RotorNet, R
+from network import RotorNet
+from event import R
 from logger import Log
 from helpers import *
 import sys
@@ -48,12 +49,20 @@ def generate_static_demand(matching, max_demand = 1):
         "--verbose",
         is_flag=True
 )
-def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
+@click.option(
+        "--no-log",
+        is_flag=True
+)
+def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
 
     print("Setting up network...")
-    logger = Log(fn = log)
+    if no_log:
+        logger = None
+    else:
+        logger = Log(fn = log)
+        logger.add_timer(R)
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
                    packets_per_slot = packets_per_slot,
@@ -94,8 +103,8 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose):
     # Start the simulator
     net.run(n_cycles)
 
-    #close_log()
-    logger.close()
+    if not no_log:
+        logger.close()
 
     print("done")
 

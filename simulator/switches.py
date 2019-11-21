@@ -1,7 +1,7 @@
 import sys
 from buffer import *
 from helpers import *
-from event import delay, R
+from event import Delay, R
 from functools import lru_cache
 
 
@@ -107,7 +107,7 @@ class ToRSwitch:
         flows = [(self.id, d_id) for d_id in range(self.n_tor) if d_id != dst_id]
         return [(f, self.buffers[f]) for f in flows]
 
-    @delay(.001)
+    @Delay(.001)
     def send_old_indirect(self, rotor_id):
         self.vprint("Old Indirect: %s:%d" % (self, rotor_id), 2)
 
@@ -139,7 +139,7 @@ class ToRSwitch:
                 if remaining == 0:
                     break
 
-    @delay(.002)
+    @Delay(.002)
     def send_direct(self, rotor_id):
         self.vprint("Direct: %s:%d" % (self, rotor_id), 2)
 
@@ -152,7 +152,7 @@ class ToRSwitch:
                   flow = flow,
                   amount = amount)
 
-    @delay(delay_t = .003)
+    @Delay(.003)
     def send_new_indirect(self, rotor_id):
         self.vprint("New Indirect: %s:%d" % (self, rotor_id), 2)
         # Get connection data

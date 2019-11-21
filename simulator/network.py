@@ -3,15 +3,13 @@ import sys
 from math import ceil
 from helpers import *
 from switches import ToRSwitch
-from event import Registry, delay, stop_simulation, R
+from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
     def __init__(self, n_rotor, n_tor, packets_per_slot, logger, verbose = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
         self.slot_time = -1
-
-        logger.add_timer(R)
 
         # Internal variables
         self.tors = [ToRSwitch(

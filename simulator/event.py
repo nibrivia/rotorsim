@@ -43,22 +43,30 @@ class Registry:
             #print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
-def delay(delay_t, max_jitter=0):
-    """Decorator to force anyone calling this function to incure a delay of `delay`"""
-    assert max_jitter >= 0, "Jitter has to be non-negative"
+#@dataclass if python3 > 3.7
+class Delay:
+    """Decorator to force anyone calling this function to incure a delay of `delay`
+    Optionally adds a random uniform delay of +/- `jitter`"""
+    #delay_t: float
+    #max_jitter: float = 0
+    def __init__(self, delay, max_jitter=0):
+        assert delay >= 0, "Delay must be non-negative"
+        assert max_jitter >= 0, "Jitter must be non-negative"
+        assert max_jitter <= delay, "Jitter must be smaller than delay"
 
-    def decorator_with_delay(fn):
+        self.delay = delay
+        self.max_jitter = max_jitter
 
+    def __call__(self, fn):
         @wraps(fn)
         def called_fn(*args, **kwargs):
             jitter = 0
-            if max_jitter != 0:
+            if self.max_jitter != 0:
                 # avoid a critical-path call to random
-                jitter = random.uniform(-max_jitter, max_jitter)
-            R.call_in(delay_t+jitter, fn, *args, **kwargs)
+                jitter = random.uniform(-self.max_jitter, self.max_jitter)
+            R.call_in(self.delay+jitter, fn, *args, **kwargs)
 
         return called_fn
-    return decorator_with_delay
 
 import sys
 def stop_simulation(r):
