@@ -12,13 +12,13 @@ class Registry:
         self.has_run = False
         self.counts  = count()
 
-    def call_in(self, delay, fn, *args, **kwargs):
-        """This will register the call in `delay` time from now"""
+    def call_in(self, delay, fn, *args, priority = 0, **kwargs):
+        """This will register the call in `delay` time from now, ties broken by priority, then first to register"""
         if self.has_run:
             assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
         count = next(self.counts)
-        heapq.heappush(self.queue, (self.time+delay, count, fn, args, kwargs))
+        heapq.heappush(self.queue, (self.time+delay, priority, count, fn, args, kwargs))
 
     def stop(self):
         self.running = False
@@ -39,7 +39,7 @@ class Registry:
                 break
 
             # Also not threadsafe
-            self.time, count, fn, args, kwargs = heapq.heappop(self.queue)
+            self.time, _, _, fn, args, kwargs = heapq.heappop(self.queue)
             #print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
