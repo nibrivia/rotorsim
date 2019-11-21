@@ -230,3 +230,36 @@ class ToRSwitch:
     def __str__(self):
         return "ToR %s" % self.id
 
+class RotorSwitch:
+    def __init__(self, id, tors):
+        self.tors = tors
+        self.id   = id
+        self.dests = [None for _ in self.tors]
+
+        self.disable()
+
+    def disable(self):
+        self.enabled = False
+
+    def enable(self):
+        self.enabled = True
+
+    def install_matchings(self, matchings):
+        self.disable()
+        for src, dst in matchings:
+            self.dests[src] = self.tors[dst]
+        # Wait for reconfiguration time
+        #Delay(delay_t = .001)(self.enable)()
+        self.enable()
+
+
+    def recv(self, port, packets):
+        if self.enabled:
+            self.dests[port].recv(packets)
+        else:
+            # Could assert false, but just drop
+            print("%s: Dropping packets on port %s" % (self, port))
+
+    def __str__(self):
+        return "Rotor %s" % self.id
+
