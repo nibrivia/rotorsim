@@ -1,6 +1,7 @@
 import heapq
 from functools import wraps
 from itertools import count
+import random
 
 class Registry:
     def __init__(self, limit = 1000):
@@ -42,12 +43,20 @@ class Registry:
             #print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
-def delay(delay_t):
+def delay(delay_t, max_jitter=0):
     """Decorator to force anyone calling this function to incure a delay of `delay`"""
+    assert max_jitter >= 0, "Jitter has to be non-negative"
+
     def decorator_with_delay(fn):
+
         @wraps(fn)
         def called_fn(*args, **kwargs):
-            R.call_in(delay_t, fn, *args, **kwargs)
+            jitter = 0
+            if max_jitter != 0:
+                # avoid a critical-path call to random
+                jitter = random.uniform(-max_jitter, max_jitter)
+            R.call_in(delay_t+jitter, fn, *args, **kwargs)
+
         return called_fn
     return decorator_with_delay
 
