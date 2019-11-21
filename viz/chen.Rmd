@@ -106,7 +106,7 @@ waterfall %>%
          title = "Waterfall diagram by flow",
          subtitle = "Flow source and destination moved to the ends for readability",
          color = "Rotor",
-         caption = "github.com/nibrivia/rotorsim") 
+         caption = "github.com/nibrivia/rotorsim")
 ```
 
 ```{r rotorview, }
