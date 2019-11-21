@@ -80,8 +80,8 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
         demand = [
                 #0  1  2  3   # ->to
                 [0, 0, 0, 1], # ->0
-                [1, 0, 1, 0], # ->1
-                [0, 1, 0, 1], # ->2
+                [0, 0, 1, 0], # ->1
+                [0, 1, 0, 0], # ->2
                 [1, 0, 0, 0], # ->3
                 ]
     elif n_tor == 8:
@@ -101,7 +101,7 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
 
     demand = [[demand[j][i] for j in range(n_tor)] for i in range(n_tor)]
 
-    demand = [[int(v*packets_per_slot*1000) for v in row] for row in demand]
+    demand = [[int(v*packets_per_slot*99) for v in row] for row in demand]
     R.call_in(-.01, net.add_demand, demand)
 
     print("Starting simulator...")

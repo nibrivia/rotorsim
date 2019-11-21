@@ -2,7 +2,8 @@ import random
 import sys
 from math import ceil
 from helpers import *
-from switches import ToRSwitch
+from tor_switch import ToRSwitch
+from rotor_switch import RotorSwitch
 from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
@@ -12,6 +13,8 @@ class RotorNet:
         self.slot_time = -1
 
         # Internal variables
+        self.rotors = [RotorSwitch(id = i, n_ports = n_tor) for i in range(n_rotor)]
+
         self.tors = [ToRSwitch(
                             name    = i,
                             n_tor   = n_tor,
@@ -20,6 +23,9 @@ class RotorNet:
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
+
+        for rotor in self.rotors:
+            rotor.connect_tors(self.tors)
 
         # Hack-y, generates matchings, and matches those to ToRs
         self.generate_matchings()
@@ -103,6 +109,8 @@ class RotorNet:
             matching_i = (current_slot + rotor_id*self.n_slots) % \
                     len(self.matchings)
             rotor_matchings = self.matchings[matching_i]
+
+            self.rotors[rotor_id].install_matchings(rotor_matchings)
             for src, dst in rotor_matchings:
                 src.connect_to(rotor_id = rotor_id, tor = dst)
 

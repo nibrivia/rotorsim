@@ -15,7 +15,7 @@ class Registry:
     def call_in(self, delay, fn, *args, priority = 0, **kwargs):
         """This will register the call in `delay` time from now, ties broken by priority, then first to register"""
         if self.has_run:
-            assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
+            assert delay >= 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
         count = next(self.counts)
         heapq.heappush(self.queue, (self.time+delay, priority, count, fn, args, kwargs))
@@ -49,13 +49,15 @@ class Delay:
     Optionally adds a random uniform delay of +/- `jitter`"""
     #delay_t: float
     #max_jitter: float = 0
-    def __init__(self, delay, max_jitter=0):
+    def __init__(self, delay, callback = None, max_jitter=0, priority=0):
         assert delay >= 0, "Delay must be non-negative"
         assert max_jitter >= 0, "Jitter must be non-negative"
         assert max_jitter <= delay, "Jitter must be smaller than delay"
 
-        self.delay = delay
+        self.delay      = delay
         self.max_jitter = max_jitter
+        self.priority   = priority
+        self.callback   = callback
 
     def __call__(self, fn):
         @wraps(fn)
@@ -64,7 +66,9 @@ class Delay:
             if self.max_jitter != 0:
                 # avoid a critical-path call to random
                 jitter = random.uniform(-self.max_jitter, self.max_jitter)
-            R.call_in(self.delay+jitter, fn, *args, **kwargs)
+            R.call_in(self.delay+jitter, fn, *args, priority = self.priority, **kwargs)
+            if self.callback is not None:
+                self.callback()
 
         return called_fn
 

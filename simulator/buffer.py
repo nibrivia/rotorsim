@@ -6,6 +6,8 @@ class Buffer():
     def __init__(self, name, logger, verbose):
         self.packets = collections.deque()
         self.src, self.flow = str(name).split(".")
+        fs, fd = self.flow.split("->")
+        self.flow = (int(fs), int(fd))
         self.count = 0
 
         self.logger = logger
@@ -27,7 +29,7 @@ class Buffer():
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
-        to.recv(moving_packets)
+        to.recv(moving_packets, flow = self.flow)
 
         self.size -= num_packets
 
@@ -37,7 +39,7 @@ class Buffer():
                     rotor_id = rotor_id,
                     packets = moving_packets)
 
-    def recv(self, packets):
+    def recv(self, packets, flow):
         self.packets.extend(packets)
         self.size = len(self.packets)
 
@@ -56,6 +58,8 @@ class Buffer():
 class SourceBuffer:
     def __init__(self, name, logger, verbose):
         self.src, self.flow = str(name).split(".")
+        fs, fd = self.flow.split("->")
+        self.flow = (int(fs), int(fd))
         self.count = 0
         self.sent  = 0
         self.size  = 0
@@ -63,7 +67,7 @@ class SourceBuffer:
         self.logger = logger
         self.verbose = verbose
 
-    def recv(self, packets):
+    def recv(self, packets, flow):
         raise Error
 
     def add_n(self, amount):
@@ -82,11 +86,8 @@ class SourceBuffer:
         assert amount <= self.size
         packets = [self.count-self.size+i for i in range(amount)]
 
-        if amount > 0 and self.verbose:
-            print("        \033[01m%s to %s\033[00m, [%s] via %s: %2d pkts\033[00m"
-                    % (self.src, to.src, self.flow, rotor_id, amount))
 
-        to.recv(packets)
+        to.recv(packets, self.flow)
         self.size -= amount
 
         if not self.logger is None:
@@ -101,7 +102,7 @@ class DestBuffer:
         self.src, self.flow = str(name).split(".")
         self.size = 0
 
-    def recv(self, packets):
+    def recv(self, packets, flow):
         self.size += len(packets)
 
     def add_n(self, amount):
@@ -112,7 +113,7 @@ class DestBuffer:
 
 
 
-DEMAND_NODE = Buffer("demand.0", None, verbose = False)
+DEMAND_NODE = Buffer("demand.0->0", None, verbose = False)
 
 if __name__ == "__main__":
     l = Log()
