@@ -10,7 +10,7 @@ class RotorSwitch:
     def __init__(self,
             id, n_ports,
             slot_duration, reconfiguration_time, clock_jitter,
-            verbose):
+            verbose, logger = None):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
@@ -23,6 +23,7 @@ class RotorSwitch:
 
         # About IO
         self.verbose = verbose
+        self.logger  = logger
 
         self._disable()
 
@@ -68,6 +69,9 @@ class RotorSwitch:
             if self.verbose:
                 print("@%.2f                 %s to \033[01m%s\033[00m: %2d pkts\033[00m"
                         % (R.time, self, dst, len(packets)))
+            if self.logger is not None:
+                self.logger.log(src = self, dst = dst, packets = packets)
+
             self.dests[tor.id].recv(self.id, packets)
 
         else:

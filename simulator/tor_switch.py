@@ -84,7 +84,7 @@ class ToRSwitch:
 
 
         # Move the actual packets
-        self.buffers[flow].send_to(self.rotors[rotor_id], amount, rotor_id)
+        self.buffers[flow].send_to(self.rotors[rotor_id], amount)
 
         # Update link remaining
         link_remaining -= amount

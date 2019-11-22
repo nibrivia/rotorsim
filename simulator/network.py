@@ -26,10 +26,11 @@ class RotorNet:
         self.rotors = [RotorSwitch(
                             id = i,
                             n_ports = n_tor,
-                            slot_duration = slot_duration,
+                            slot_duration        = slot_duration,
                             reconfiguration_time = reconfiguration_time,
-                            clock_jitter = jitter,
-                            verbose = verbose)
+                            clock_jitter         = jitter,
+                            verbose = verbose,
+                            logger  = logger)
                 for i in range(n_rotor)]
 
         self.tors = [ToRSwitch(
@@ -38,7 +39,7 @@ class RotorNet:
                             n_rotor = n_rotor,
                             packets_per_slot = packets_per_slot,
                             slot_duration = slot_duration,
-                            clock_jitter = jitter,
+                            clock_jitter  = jitter,
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
