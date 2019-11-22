@@ -94,7 +94,8 @@ class RotorNet:
         for r in self.rotors:
             r.new_slot()
 
-        # Start event simulator
+        # Start events
+        R.limit = n_cycles
         R.run_next()
 
     def add_demand(self, new_demand):

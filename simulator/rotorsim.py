@@ -74,8 +74,6 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
                    verbose = verbose, 
                    do_pause = not no_pause)
 
-    R.limit = n_cycles
-
     print("Setting up demand...")
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
     if n_tor == 4:
