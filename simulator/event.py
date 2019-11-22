@@ -19,6 +19,7 @@ class Registry:
         # Not threadsafe
         count = next(self.counts)
         heapq.heappush(self.queue, (self.time+delay, priority, count, fn, args, kwargs))
+        return count
 
     def stop(self):
         self.running = False
@@ -49,7 +50,7 @@ class Delay:
     Optionally adds a random uniform delay of +/- `jitter`"""
     #delay_t: float
     #max_jitter: float = 0
-    def __init__(self, delay, callback = None, jitter=0, priority=0):
+    def __init__(self, delay, jitter=0, priority=0):
         assert delay >= 0, "Delay must be non-negative"
         assert jitter >= 0, "Jitter must be non-negative"
         assert jitter <= delay, "Jitter must be smaller than delay"
@@ -57,7 +58,6 @@ class Delay:
         self.delay    = delay
         self.jitter   = jitter
         self.priority = priority
-        self.callback = callback
 
     def __call__(self, fn):
         @wraps(fn)
@@ -67,35 +67,30 @@ class Delay:
                 # avoid a critical-path call to random
                 jitter = random.uniform(-self.jitter, self.jitter)
             R.call_in(self.delay+jitter, fn, *args, priority = self.priority, **kwargs)
-            if self.callback is not None:
-                self.callback()
-
         return called_fn
 
 def stop_simulation(r):
     r.stop()
 
 
-R = Registry(limit = 6)
+R = Registry(limit = 60)
 
 if __name__ == "__main__":
 
-    r = Registry(limit = 10)
-
     # Toy function to play with
-    @delay(r, .5)
+    @Delay(5)
     def hello(name = ""):
         """Says hello, a lot"""
-        print("hello %s @%.2f" % (name, r.time))
+        print("hello 1 %s @%.2f" % (name, R.time))
         # (un)comment for a "recursive" call every .5
-        hello(name = name)
+        #hello(name = name)
 
     # Olivia will get called @.5: hello() incurs a .5 delay
     hello("Olivia")
 
     # Amir   will get called @.6: at .1 call hello(), which incurs a .5 delay
-    r.call_in(delay = 0, fn = hello, name = "Amir  ")
+    R.call_in(delay = 0.5, fn = hello, name = "Amir  ")
 
     # Start the simulation
-    r.run_next()
+    R.run_next()
 
