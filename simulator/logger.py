@@ -22,7 +22,6 @@ class Log:
             self._flush()
 
     def _flush(self):
-        #print("FLUSH")
         self.file.writelines(self.cache)
         self.cache = []
 
