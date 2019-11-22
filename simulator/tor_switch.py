@@ -78,7 +78,6 @@ class ToRSwitch:
 
     def connect_rotor(self, rotor, handle):
         self.rotors[rotor.id] = handle
-        print("%s: connected to %s" % (self, rotor))
 
 
     def add_matchings(self, matchings_by_slot_rotor):

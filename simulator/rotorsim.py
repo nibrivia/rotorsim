@@ -106,12 +106,17 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
     demand = [[int(v*packets_per_slot*99) for v in row] for row in demand]
     R.call_in(-.01, net.add_demand, demand)
 
-    print("Starting simulator...")
-    # Start the simulator
     for raw_slot in range(n_cycles*net.n_slots+1):
         cycle = raw_slot // net.n_slots
         slot  = raw_slot %  net.n_slots
-        R.call_in(raw_slot/net.n_slots - .00001, print, "Cycle %s, Slot %s/%s" % (cycle, slot, net.n_slots), priority = -100)
+        if slot != 0 and not verbose:
+            continue
+        R.call_in(raw_slot/net.n_slots - .00001,
+                print, "\nCycle %s, Slot %s/%s" % (cycle, slot, net.n_slots),
+                priority = -100)
+
+    print("Starting simulator...")
+    # Start the simulator
     net.run(n_cycles)
 
     if not no_log:

@@ -54,7 +54,7 @@ class SourceBuffer:
         self.logger = logger
         self.verbose = verbose
 
-    def recv(self, packets, flow):
+    def recv(self, packets):
         raise Error
 
     def add_n(self, amount):

@@ -12,6 +12,8 @@ class RotorNet:
         self.n_tor   = n_tor
         self.slot_time = -1
 
+        self.jitter = 0.0
+
         # Matchings need to be done early to get constants
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
@@ -21,7 +23,8 @@ class RotorNet:
                             id = i,
                             n_ports = n_tor,
                             slot_duration = 1/self.n_slots,
-                            clock_jitter = 0)
+                            clock_jitter = self.jitter,
+                            verbose = verbose)
                 for i in range(n_rotor)]
 
         self.tors = [ToRSwitch(
@@ -30,7 +33,7 @@ class RotorNet:
                             n_rotor = n_rotor,
                             packets_per_slot = packets_per_slot,
                             slot_duration = 1/self.n_slots,
-                            clock_jitter = 0,
+                            clock_jitter = self.jitter,
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]

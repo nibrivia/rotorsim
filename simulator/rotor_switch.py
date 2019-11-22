@@ -9,7 +9,8 @@ class Empty:
 class RotorSwitch:
     def __init__(self,
             id, n_ports,
-            slot_duration, clock_jitter):
+            slot_duration, clock_jitter,
+            verbose):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
@@ -19,6 +20,8 @@ class RotorSwitch:
         self.clock_jitter  = clock_jitter
         self.slot_t        = -1
 
+        # About IO
+        self.verbose = verbose
 
         self._disable()
 
@@ -31,7 +34,8 @@ class RotorSwitch:
 
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
-        pass
+        Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
+
 
 
     def _disable(self):
@@ -44,7 +48,7 @@ class RotorSwitch:
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time
-        Delay(delay = 0, jitter = self.clock_jitter, priority = 0)(self._enable)()
+        Delay(delay = 0, jitter = 0, priority = 0)(self._enable)()
         #self._enable()
 
     def connect_tors(self, tors):
@@ -56,12 +60,13 @@ class RotorSwitch:
             handle.name = str(self)
             tor.connect_rotor(self, handle)
 
-    @Delay(0.0001)
+    #@Delay(0)
     def recv(self, tor, packets):
         if self.enabled:
             dst = self.dests[tor.id]
-            print("@%.2f               %s to \033[01m%s\033[00m: %2d pkts\033[00m"
-                    % (R.time, self, dst, len(packets)))
+            if self.verbose:
+                print("@%.2f                 %s to \033[01m%s\033[00m: %2d pkts\033[00m"
+                        % (R.time, self, dst, len(packets)))
             self.dests[tor.id].recv(self.id, packets)
 
         else:
