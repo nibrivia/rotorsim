@@ -108,6 +108,10 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
 
     print("Starting simulator...")
     # Start the simulator
+    for raw_slot in range(n_cycles*net.n_slots+1):
+        cycle = raw_slot // net.n_slots
+        slot  = raw_slot %  net.n_slots
+        R.call_in(raw_slot/net.n_slots - .00001, print, "Cycle %s, Slot %s/%s" % (cycle, slot, net.n_slots), priority = -100)
     net.run(n_cycles)
 
     if not no_log:

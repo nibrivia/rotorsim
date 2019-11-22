@@ -103,15 +103,10 @@ class ToRSwitch:
         link_remaining -= amount
         self.connections[rotor_id] = (dst, link_remaining)
 
-        # Update our + destination capacity
-        flow_src, flow_dst = flow
-        #dst.recv(flow_dst, amount)
+        # Update our capacity
+        _, flow_dst = flow
         self.capacity[flow_dst] += amount
-
         self.tot_demand -= amount
-
-        # Return remaining link capacity
-        return link_remaining
 
 
     def recv(self, rotor_id, packets):
@@ -125,7 +120,6 @@ class ToRSwitch:
 
 
     def new_slot(self):
-        print("%.2f" % R.time)
         self.slot_t += 1
         matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % 3]
         for rotor_id, matchings in enumerate(matchings_in_effect):
@@ -137,7 +131,7 @@ class ToRSwitch:
 
     def connect_to(self, rotor_id, tor):
         self.connections[rotor_id] = (tor, self.packets_per_slot)
-        print("%s: Connected to %s via %s" % (self, tor, rotor_id))
+        #self.vprint("%s: Connected to %s via %s" % (self, tor, rotor_id))
 
         # TODO when this is more decentralized
             #self.offer()
@@ -148,8 +142,6 @@ class ToRSwitch:
 
     @Delay(0, priority = 1)
     def send_old_indirect(self, rotor_id):
-        self.vprint("Old Indirect: %s:%d" % (self, rotor_id), 2)
-
         # Get connection data
         dst, remaining = self.connections[rotor_id]
 
@@ -157,10 +149,16 @@ class ToRSwitch:
         buffers = self.indirect_for[dst.id]
 
         # Verify link violations
+        total_send = sum(b.size for _, b in buffers)
         if False:
-            total_send = sum(b.size for _, b in buffers)
-            assert total_send <= self.n_rotor*self.packets_per_slot, \
+            assert total_send <= self.packets_per_slot, \
                     "%s->%s old indirect %d > capacity" % (self, dst, total_send)
+
+        # Stop here if there's nothing to do
+        if total_send == 0:
+            return
+
+        #self.vprint("Old Indirect: %s:%d" % (self, rotor_id), 2)
 
         # Send the data
         sent = 1
@@ -180,12 +178,16 @@ class ToRSwitch:
 
     @Delay(0, priority = 2)
     def send_direct(self, rotor_id):
-        self.vprint("Direct: %s:%d" % (self, rotor_id), 2)
-
         # Get connection data
         dst, remaining = self.connections[rotor_id]
         flow = (self.id, dst.id)
         amount = min(self.buffers[flow].size, remaining)
+
+        # Stop if nothing to do
+        if amount == 0:
+            return
+
+        #self.vprint("Direct: %s:%d" % (self, rotor_id), 2)
 
         self.send(rotor_id = rotor_id,
                   flow = flow,
@@ -193,7 +195,6 @@ class ToRSwitch:
 
     @Delay(0, priority = 3)
     def send_new_indirect(self, rotor_id):
-        self.vprint("New Indirect: %s:%d" % (self, rotor_id), 2)
         # Get connection data
         dst, remaining = self.connections[rotor_id]
 
@@ -228,6 +229,11 @@ class ToRSwitch:
                     break
 
         #print(amounts)
+        # Stop if nothing to do
+        if sum(amounts) == 0:
+            return
+
+        #self.vprint("New Indirect: %s:%d" % (self, rotor_id), 2)
 
         # Send the amounts we decided on
         for i, amount in enumerate(amounts):

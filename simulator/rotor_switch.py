@@ -44,7 +44,7 @@ class RotorSwitch:
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time
-        Delay(delay = .001, jitter = self.clock_jitter)(self._enable)()
+        Delay(delay = 0, jitter = self.clock_jitter, priority = 0)(self._enable)()
         #self._enable()
 
     def connect_tors(self, tors):
@@ -56,14 +56,18 @@ class RotorSwitch:
             handle.name = str(self)
             tor.connect_rotor(self, handle)
 
-    @Delay(0)
+    @Delay(0.0001)
     def recv(self, tor, packets):
         if self.enabled:
+            dst = self.dests[tor.id]
+            print("@%.2f               %s to \033[01m%s\033[00m: %2d pkts\033[00m"
+                    % (R.time, self, dst, len(packets)))
             self.dests[tor.id].recv(self.id, packets)
+
         else:
             # Could assert false, but just drop
             print("%s: Dropping packets from tor %s" % (self, tor))
 
     def __str__(self):
-        return "Rotor %s" % self.id
+        return "Rot %s" % self.id
 

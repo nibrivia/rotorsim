@@ -1,5 +1,6 @@
 import collections 
 from logger import Log
+from event import R
 
 Packet = collections.namedtuple('Packet', 'src dst seq_num')
 p = Packet(0, 0, 0)
@@ -20,8 +21,8 @@ class Buffer():
 
     def send_to(self, to, num_packets, rotor_id):
         if num_packets > 0 and self.verbose:
-            print("        \033[01m%s to %s\033[00m, [%s->%s] via %s: %2d pkts\033[00m"
-                    % (self.parent, to, self.src, self.dst, rotor_id, num_packets))
+            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts\033[00m"
+                    % (R.time, self.parent, to, self.src, self.dst, num_packets))
 
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
@@ -73,8 +74,8 @@ class SourceBuffer:
         packets = [Packet(self.src, self.dst, self.count-self.size+i) for i in range(amount)]
 
         if amount > 0 and self.verbose:
-            print("        \033[01m%s to %s\033[00m, [%s->%s] via %s: %2d pkts\033[00m"
-                    % (self.parent, to, self.src, self.dst, rotor_id, amount))
+            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts\033[00m"
+                    % (R.time, self.parent, to, self.src, self.dst, amount))
 
         to.recv(packets)
         self.size -= amount
