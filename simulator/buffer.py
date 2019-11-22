@@ -43,6 +43,19 @@ class Buffer():
         self.packets.extend(packets)
         self.size = len(self.packets)
 
+    def add_n(self, amount):
+        new_packets = [Packet(self.src, self.dst, self.count+i) for i in range(amount)]
+        self.packets.extend(new_packets)
+
+        self.count += amount
+        self.size  += amount
+
+        if not self.logger is None:
+            self.logger.log(
+                    src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
+                    rotor_id = -1,
+                    packets = new_packets)
+
 class SourceBuffer:
     def __init__(self, parent, src, dst, logger, verbose):
         self.parent = parent
@@ -57,17 +70,6 @@ class SourceBuffer:
     def recv(self, packets):
         raise Error
 
-    def add_n(self, amount):
-        new_packets = [Packet(self.src, self.dst, self.count+i) for i in range(amount)]
-
-        self.count += amount
-        self.size  += amount
-
-        if not self.logger is None:
-            self.logger.log(
-                    src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
-                    rotor_id = -1,
-                    packets = new_packets)
 
     def send_to(self, to, amount, rotor_id):
         assert amount <= self.size

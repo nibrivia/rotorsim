@@ -32,19 +32,7 @@ class ToRSwitch:
                                              src = src, dst = dst,
                                              logger = logger,
                                              verbose = verbose)
-                                 for src in range(n_tor) for dst in range(n_tor)
-                                 if src != self.id and dst != self.id}
-
-        for tor in range(n_tor):
-            self.buffers[(self.id, tor)] = SourceBuffer(
-                    parent = self,
-                    src = self.id, dst = tor,
-                    logger = logger,
-                    verbose = verbose)
-            self.buffers[(tor, self.id)] = DestBuffer(
-                    src = tor, dst = self.id,
-                    logger = logger,
-                    verbose = verbose)
+                                 for src in range(n_tor) for dst in range(n_tor)}
 
         # Watch out, some might be (intentional) duplicates
         # each item has the form (tor, link_remaining)

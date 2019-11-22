@@ -9,16 +9,17 @@ class Empty:
 class RotorSwitch:
     def __init__(self,
             id, n_ports,
-            slot_duration, clock_jitter,
+            slot_duration, reconfiguration_time, clock_jitter,
             verbose):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
 
         # About time
-        self.slot_duration = slot_duration
-        self.clock_jitter  = clock_jitter
-        self.slot_t        = -1
+        self.slot_duration        = slot_duration
+        self.reconfiguration_time = reconfiguration_time
+        self.clock_jitter         = clock_jitter
+        self.slot_t               = -1
 
         # About IO
         self.verbose = verbose
@@ -48,7 +49,7 @@ class RotorSwitch:
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time
-        Delay(delay = 0, jitter = 0, priority = 0)(self._enable)()
+        Delay(delay = self.reconfiguration_time, jitter = 0, priority = 0)(self._enable)()
         #self._enable()
 
     def connect_tors(self, tors):

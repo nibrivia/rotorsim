@@ -4,6 +4,7 @@ from logger import Log
 from helpers import *
 import sys
 import click
+import math
 
 
 def generate_demand(min_demand = 0, max_demand = 1):
@@ -29,6 +30,21 @@ def generate_static_demand(matching, max_demand = 1):
         "--n_rotor",
         type=int,
         default=2
+)
+@click.option(
+        "--slot_duration",
+        type=float,
+        default=-1
+)
+@click.option(
+        "--reconfiguration_time",
+        type=float,
+        default=0
+)
+@click.option(
+        "--jitter",
+        type=float,
+        default=0
 )
 @click.option(
         "--packets_per_slot",
@@ -57,7 +73,11 @@ def generate_static_demand(matching, max_demand = 1):
         "--no-pause",
         is_flag=True
 )
-def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pause):
+def main(n_tor, n_rotor,
+        packets_per_slot, n_cycles,
+        slot_duration, reconfiguration_time, jitter,
+        log,
+        verbose, no_log, no_pause):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
 
@@ -67,9 +87,16 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
     else:
         logger = Log(fn = log)
         logger.add_timer(R)
+
+    if slot_duration == -1:
+        slot_duration = 1/math.ceil((n_tor-1)/n_rotor)
+
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
-                   packets_per_slot = packets_per_slot,
+                   packets_per_slot     = packets_per_slot,
+                   reconfiguration_time = reconfiguration_time,
+                   slot_duration        = slot_duration,
+                   jitter               = jitter,
                    logger  = logger,
                    verbose = verbose, 
                    do_pause = not no_pause)
@@ -109,8 +136,9 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log, no_pa
         slot  = raw_slot %  net.n_slots
         if slot != 0 and not verbose:
             continue
-        R.call_in(raw_slot/net.n_slots - .00001,
-                print, "\nCycle %s, Slot %s/%s" % (cycle, slot, net.n_slots),
+        time = raw_slot*slot_duration -.00001
+        R.call_in(time,
+                print, "\n@%.2f Cycle %s, Slot %s/%s" % (time, cycle, slot, net.n_slots),
                 priority = -100)
 
     print("Starting simulator...")

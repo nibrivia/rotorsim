@@ -7,12 +7,16 @@ from rotor_switch import RotorSwitch
 from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
-    def __init__(self, n_rotor, n_tor, packets_per_slot, logger, verbose = True, do_pause = True):
+    def __init__(self,
+            n_rotor, n_tor,
+            packets_per_slot,
+            slot_duration = 1, reconfiguration_time = 0, jitter = 0,
+            logger = None,
+            verbose = True, do_pause = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
         self.slot_time = -1
 
-        self.jitter = 0.0
 
         # Matchings need to be done early to get constants
         self.generate_matchings()
@@ -22,8 +26,9 @@ class RotorNet:
         self.rotors = [RotorSwitch(
                             id = i,
                             n_ports = n_tor,
-                            slot_duration = 1/self.n_slots,
-                            clock_jitter = self.jitter,
+                            slot_duration = slot_duration,
+                            reconfiguration_time = reconfiguration_time,
+                            clock_jitter = jitter,
                             verbose = verbose)
                 for i in range(n_rotor)]
 
@@ -32,8 +37,8 @@ class RotorNet:
                             n_tor   = n_tor,
                             n_rotor = n_rotor,
                             packets_per_slot = packets_per_slot,
-                            slot_duration = 1/self.n_slots,
-                            clock_jitter = self.jitter,
+                            slot_duration = slot_duration,
+                            clock_jitter = jitter,
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
