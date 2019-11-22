@@ -73,7 +73,7 @@ def stop_simulation(r):
     r.stop()
 
 
-R = Registry(limit = 60)
+R = Registry()
 
 if __name__ == "__main__":
 

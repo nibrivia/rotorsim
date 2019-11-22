@@ -12,29 +12,39 @@ class RotorNet:
         self.n_tor   = n_tor
         self.slot_time = -1
 
+        # Matchings need to be done early to get constants
+        self.generate_matchings()
+        self.n_slots = ceil(len(self.matchings) / self.n_rotor)
+
         # Internal variables
-        self.rotors = [RotorSwitch(id = i, n_ports = n_tor) for i in range(n_rotor)]
+        self.rotors = [RotorSwitch(
+                            id = i,
+                            n_ports = n_tor,
+                            slot_duration = 1/self.n_slots,
+                            clock_jitter = 0)
+                for i in range(n_rotor)]
 
         self.tors = [ToRSwitch(
                             name    = i,
                             n_tor   = n_tor,
                             n_rotor = n_rotor,
                             packets_per_slot = packets_per_slot,
+                            slot_duration = 1/self.n_slots,
+                            clock_jitter = 0,
                             logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
 
+        # Physically connect them up
         for rotor in self.rotors:
             rotor.connect_tors(self.tors)
 
-        # Hack-y, generates matchings, and matches those to ToRs
-        self.generate_matchings()
+        # We can now associate the matchings with objects
         self.matchings = [[(self.tors[src], self.tors[dst]) for src, dst in m]
                 for m in self.matchings]
 
-        # Number of slots depends on number of matchings
-        self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
+        # This is what we'll distribute
         self.matchings_by_slot_rotor = []
         for slot in range(self.n_slots):
             slot_matchings = []
@@ -45,10 +55,16 @@ class RotorNet:
                 slot_matchings.append(rotor_matchings)
             self.matchings_by_slot_rotor.append(slot_matchings)
 
+        # Distribute to ToRs
         for tor in self.tors:
             tor.add_matchings(self.matchings_by_slot_rotor)
 
-
+        # Distribute to rotors
+        for rotor in self.rotors:
+            rotor_matchings_by_slot = [
+                    self.matchings_by_slot_rotor[slot][rotor.id]
+                            for slot in range(self.n_slots)]
+            rotor.add_matchings(rotor_matchings_by_slot)
 
         # I/O stuff
         self.verbose  = verbose
@@ -56,7 +72,7 @@ class RotorNet:
 
     def generate_matchings(self):
         self.matchings = []
-        n_tors = len(self.tors)
+        n_tors = self.n_tor
 
         for offset in range(1, n_tors):
             # Compute the indices
@@ -79,12 +95,9 @@ class RotorNet:
         """Run the simulation for n_cycles cycles"""
         for t in self.tors:
             t.new_slot()
+        for r in self.rotors:
+            r.new_slot()
         R.run_next()
-
-        #for c in range(n_cycles):
-        #    for s in range(self.n_slots):
-        #        R.call_in(delay = c+s/self.n_slots, fn = self.do_slot)
-        #R.run_next()
 
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):
@@ -136,5 +149,4 @@ class RotorNet:
 
         if self.verbose and self.do_pause:
             pause()
-
 

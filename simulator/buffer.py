@@ -1,13 +1,15 @@
 import collections 
 from logger import Log
 
+Packet = collections.namedtuple('Packet', 'src dst seq_num')
+p = Packet(0, 0, 0)
+print(p)
 
 class Buffer():
-    def __init__(self, name, logger, verbose):
+    def __init__(self, parent, src, dst, logger, verbose):
         self.packets = collections.deque()
-        self.src, self.flow = str(name).split(".")
-        fs, fd = self.flow.split("->")
-        self.flow = (int(fs), int(fd))
+        self.parent  = parent
+        self.src, self.dst = (src, dst)
         self.count = 0
 
         self.logger = logger
@@ -16,20 +18,15 @@ class Buffer():
         # Cached, this is used a lot
         self.size = 0
 
-    def vprint(self, s = ""):
-        if self.verbose:
-            print(s)
-
-
     def send_to(self, to, num_packets, rotor_id):
-        if num_packets > 0:
-            self.vprint("        \033[01m%s to %s\033[00m, [%s] via %s: %2d pkts\033[00m"
-                    % (self.src, to.src, self.flow, rotor_id, num_packets))
+        if num_packets > 0 and self.verbose:
+            print("        \033[01m%s to %s\033[00m, [%s->%s] via %s: %2d pkts\033[00m"
+                    % (self.parent, to, self.src, self.dst, rotor_id, num_packets))
 
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
-        to.recv(moving_packets, flow = self.flow)
+        to.recv(moving_packets)
 
         self.size -= num_packets
 
@@ -39,27 +36,16 @@ class Buffer():
                     rotor_id = rotor_id,
                     packets = moving_packets)
 
-    def recv(self, packets, flow):
+    def recv(self, packets):
+        for p in packets:
+            assert p.dst == self.dst
         self.packets.extend(packets)
         self.size = len(self.packets)
 
-    def add_n(self, val):
-        new_packets = [self.count+i for i in range(val)]
-        self.count += val
-        self.packets.extend(new_packets)
-        self.size += val
-
-        if not self.logger is None:
-            self.logger.log(
-                    src = DEMAND_NODE.src, dst = self.src, flow = self.flow,
-                    rotor_id = -1,
-                    packets = new_packets)
-
 class SourceBuffer:
-    def __init__(self, name, logger, verbose):
-        self.src, self.flow = str(name).split(".")
-        fs, fd = self.flow.split("->")
-        self.flow = (int(fs), int(fd))
+    def __init__(self, parent, src, dst, logger, verbose):
+        self.parent = parent
+        self.src, self.dst = (src, dst)
         self.count = 0
         self.sent  = 0
         self.size  = 0
@@ -71,7 +57,7 @@ class SourceBuffer:
         raise Error
 
     def add_n(self, amount):
-        new_packets = [self.count+i for i in range(amount)]
+        new_packets = [Packet(self.src, self.dst, self.count+i) for i in range(amount)]
 
         self.count += amount
         self.size  += amount
@@ -84,10 +70,13 @@ class SourceBuffer:
 
     def send_to(self, to, amount, rotor_id):
         assert amount <= self.size
-        packets = [self.count-self.size+i for i in range(amount)]
+        packets = [Packet(self.src, self.dst, self.count-self.size+i) for i in range(amount)]
 
+        if amount > 0 and self.verbose:
+            print("        \033[01m%s to %s\033[00m, [%s->%s] via %s: %2d pkts\033[00m"
+                    % (self.parent, to, self.src, self.dst, rotor_id, amount))
 
-        to.recv(packets, self.flow)
+        to.recv(packets)
         self.size -= amount
 
         if not self.logger is None:
@@ -98,11 +87,11 @@ class SourceBuffer:
 
 
 class DestBuffer:
-    def __init__(self, name, logger, verbose):
-        self.src, self.flow = str(name).split(".")
+    def __init__(self, src, dst, logger, verbose):
+        self.src, self.dst = (src, dst)
         self.size = 0
 
-    def recv(self, packets, flow):
+    def recv(self, packets):
         self.size += len(packets)
 
     def add_n(self, amount):
@@ -113,7 +102,7 @@ class DestBuffer:
 
 
 
-DEMAND_NODE = Buffer("demand.0->0", None, verbose = False)
+DEMAND_NODE = Buffer(None, None, None, None, verbose = False)
 
 if __name__ == "__main__":
     l = Log()

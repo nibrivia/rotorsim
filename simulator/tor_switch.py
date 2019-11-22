@@ -4,21 +4,32 @@ from helpers import *
 from event import Delay, R
 from functools import lru_cache
 
-
 class ToRSwitch:
-    def __init__(self, name, n_tor, n_rotor, packets_per_slot, logger, verbose):
-        # Index by who to send to
+    def __init__(self, name,
+            n_tor, n_rotor,
+            slot_duration, packets_per_slot, clock_jitter,
+            logger, verbose):
+        # Stuff about me
         self.id      = int(name)
+
+        # ... about others
         self.n_tor   = n_tor
         self.rotors  = [None for i in range(n_rotor)]
-        self.verbose = verbose
+
+        # ... about time
         self.packets_per_slot = packets_per_slot
-        self.slot_t  = -1
+        self.slot_t        = -1
+        self.slot_duration = slot_duration
+        self.clock_jitter  = clock_jitter
+
+        # ... about IO
+        self.verbose = verbose
 
         # Demand
         self.tot_demand = 0
 
-        self.buffers = { (src, dst) : Buffer(name = "%s.%s->%s" % (self.id, src, dst),
+        self.buffers = { (src, dst) : Buffer(parent = self,
+                                             src = src, dst = dst,
                                              logger = logger,
                                              verbose = verbose)
                                  for src in range(n_tor) for dst in range(n_tor)
@@ -26,12 +37,12 @@ class ToRSwitch:
 
         for tor in range(n_tor):
             self.buffers[(self.id, tor)] = SourceBuffer(
-                    name = "%s.%s->%s" % (
-                self.id, self.id, tor),
+                    parent = self,
+                    src = self.id, dst = tor,
                     logger = logger,
                     verbose = verbose)
             self.buffers[(tor, self.id)] = DestBuffer(
-                    name = "%s.%s->%s" % (self.id, tor, self.id),
+                    src = tor, dst = self.id,
                     logger = logger,
                     verbose = verbose)
 
@@ -84,9 +95,6 @@ class ToRSwitch:
             "%s, flow%s, rotor%s attempting to send %d, but capacity %s" % (
                 self, flow, rotor_id, amount, link_remaining)
 
-        if amount > 0 and self.verbose:
-            print("        \033[01m%s to %s\033[00m, [%s] via %s: %2d pkts\033[00m"
-                    % (self.id, dst, flow, rotor_id, amount))
 
         # Move the actual packets
         self.buffers[flow].send_to(self.rotors[rotor_id], amount, rotor_id)
@@ -106,16 +114,16 @@ class ToRSwitch:
         return link_remaining
 
 
-    def recv(self, flow, packets):
-        flow_src, flow_dst = flow
-        if flow_dst != self.id:
-            amount = len(packets)
-            self.tot_demand += amount
-            self.capacity[flow_dst] -= amount
-        self.buffers[flow].recv(packets, flow)
+    def recv(self, rotor_id, packets):
+        for flow_src, flow_dst, seq_num in packets:
+            flow = (flow_src, flow_dst)
+            if flow_dst != self.id:
+                amount = len(packets)
+                self.tot_demand += amount
+                self.capacity[flow_dst] -= amount
+            self.buffers[flow].recv(packets)
 
 
-    @Delay(1/3, jitter = 0.0)
     def new_slot(self):
         print("%.2f" % R.time)
         self.slot_t += 1
@@ -124,7 +132,7 @@ class ToRSwitch:
             for src, dst in matchings:
                 if src.id == self.id:
                     self.connect_to(rotor_id, dst)
-        self.new_slot()
+        Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
 
 
     def connect_to(self, rotor_id, tor):
