@@ -64,8 +64,9 @@ class ToRSwitch:
             self.capacity[dst.id] -= amount
             self.tot_demand += amount
 
-    def connect_rotor(self, rotor, handle):
-        self.rotors[rotor.id] = handle
+    def connect_rotor(self, rotor, queue):
+        # queue is an object with a .recv that can be called with (packets)
+        self.rotors[rotor.id] = queue
 
 
     def add_matchings(self, matchings_by_slot_rotor):
@@ -84,6 +85,7 @@ class ToRSwitch:
 
 
         # Move the actual packets
+        # TODO notion of bandwidth
         self.buffers[flow].send_to(self.rotors[rotor_id], amount)
 
         # Update link remaining
@@ -98,31 +100,40 @@ class ToRSwitch:
 
     def recv(self, rotor_id, packets):
         for flow_src, flow_dst, seq_num in packets:
+            # Receive the packets
             flow = (flow_src, flow_dst)
+            self.buffers[flow].recv(packets)
+
+            # Update book-keeping
             if flow_dst != self.id:
                 amount = len(packets)
                 self.tot_demand += amount
                 self.capacity[flow_dst] -= amount
-            self.buffers[flow].recv(packets)
 
 
     def new_slot(self):
         self.slot_t += 1
         matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % 3]
+
+        # For all active matchings, connect them up!
         for rotor_id, matchings in enumerate(matchings_in_effect):
             for src, dst in matchings:
                 if src.id == self.id:
                     self.connect_to(rotor_id, dst)
+
+        # Set a countdown for the next slot
         Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
 
 
     def connect_to(self, rotor_id, tor):
+        # Set the connection
         self.connections[rotor_id] = (tor, self.packets_per_slot)
-        #self.vprint("%s: Connected to %s via %s" % (self, tor, rotor_id))
 
         # TODO when this is more decentralized
             #self.offer()
             #self.accept()
+
+        # Do the stuffs!!
         self.send_old_indirect(rotor_id)
         self.send_direct(rotor_id)
         self.send_new_indirect(rotor_id) 
@@ -234,9 +245,10 @@ class ToRSwitch:
                     flow     = flow,
                     amount   = amount)
 
+    # May no longer be useful?
     def compute_capacity(self):
         capacity = dict()
-        #capacity[self.id] = self.packets_per_slot
+
         for flow, b in self.buffers.items():
             src, dst = flow
             if dst == self.id:

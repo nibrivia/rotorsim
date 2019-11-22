@@ -109,11 +109,6 @@ class RotorNet:
             for dst_i, dst in enumerate(self.tors):
                 src.add_demand_to(dst, new_demand[src_i][dst_i])
 
-    def vprint(self, s = "", indent = 0):
-        indent_str = "  " * indent
-        if self.verbose:
-            print(indent_str + str(s))
-
     def print_demand(self):
-        if self.verbose and True:
+        if self.verbose:
             print_demand(self.tors)

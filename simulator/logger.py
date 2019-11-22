@@ -1,6 +1,4 @@
 class Log:
-    # TODO, use an actual logger class, this is just to avoid
-    # many open/closes that can significantly degrade performance
     def __init__(self, fn = "out.csv"):
         self.fn = fn
         self.file = open(fn, "w")
