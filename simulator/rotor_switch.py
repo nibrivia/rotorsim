@@ -57,6 +57,9 @@ class RotorSwitch:
         self._disable()
         self.tors = tors
         for t_id, tor in enumerate(tors):
+            # This handle thing is essentially giving the illusion that
+            # each port has its own .recv function. That's annoying to
+            # do in practice, so we just give out an object with a partial
             handle = Empty()
             handle.recv = partial(self.recv, tor)
             handle.name = str(self)
