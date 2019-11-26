@@ -13,7 +13,7 @@ demand is exhausted or the specified number of cycles, whichever is earliest.
 
 
 ```
-python3 rotorsim.py --n_tor 20 --n_rotor 3 --n_cycles 10 --packets_per_slot 1
+python3 simulator.py --n_tor 20 --n_rotor 3 --n_cycles 10 --packets_per_slot 1
 ```
 
 The `--verbose` flag will print our (colorful) descriptions of what's going on.
