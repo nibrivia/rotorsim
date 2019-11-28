@@ -3,8 +3,6 @@ from logger import Log
 from event import R
 
 Packet = collections.namedtuple('Packet', 'src dst seq_num')
-p = Packet(0, 0, 0)
-print(p)
 
 class Buffer():
     def __init__(self, parent, src, dst, logger, verbose):
