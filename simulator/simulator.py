@@ -111,6 +111,15 @@ def main(n_tor, n_rotor,
                 [0, 1, 0, 0], # ->2
                 [1, 0, 0, 0], # ->3
                 ]
+    elif n_tor == 5:
+        demand = [
+                #0  1  2  3  4   # ->to
+                [0, 0, 0, 1, 1], # ->0
+                [0, 0, 1, 0, 0], # ->1
+                [0, 1, 0, 0, 0], # ->2
+                [1, 0, 0, 0, 0], # ->3
+                [1, 0, 0, 0, 0], # ->4
+                ]
     elif n_tor == 8:
         demand = [
                 #1  2  3  4  5  6  7  8   # ->to
@@ -128,7 +137,7 @@ def main(n_tor, n_rotor,
 
     demand = [[demand[j][i] for j in range(n_tor)] for i in range(n_tor)]
 
-    demand = [[int(v*packets_per_slot*99) for v in row] for row in demand]
+    demand = [[int(v*packets_per_slot*9) for v in row] for row in demand]
     R.call_in(-.01, net.add_demand, demand)
 
     for raw_slot in range(n_cycles*net.n_slots+1):
@@ -136,12 +145,13 @@ def main(n_tor, n_rotor,
         slot  = raw_slot %  net.n_slots
         if slot != 0 and not verbose:
             continue
-        time = raw_slot*slot_duration -.00001
+        time = raw_slot*slot_duration
         R.call_in(time,
                 print, "\n@%.2f Cycle %s, Slot %s/%s" % (time, cycle, slot, net.n_slots),
                 priority = -100)
-        #R.call_in(time+.001, print_demand, net.tors, priority=100)
-        #R.call_in(time+.001, pause, priority=100)
+        if not no_pause:
+            R.call_in(time, print_demand, net.tors, priority=100)
+            R.call_in(time, pause, priority=100)
 
     print("Starting simulator...")
     # Start the simulator

@@ -28,12 +28,20 @@ class ToRSwitch:
         # Demand
         self.tot_demand = 0
 
-        self.buffers_dir = [Buffer(parent = self, src = self.id, dst = dst, logger = logger, verbose = verbose) for dst in range(n_tor)]
-        self.buffers_dst = [Buffer(parent = self, src = self.id, dst = dst, logger = logger, verbose = verbose) for dst in range(n_tor)]
-        self.buffers_rcv = [Buffer(parent = self, src = src, dst = self.id, logger = logger, verbose = verbose) for src in range(n_tor)]
+        self.buffers_dir = [Buffer(parent = self,
+                                   src = self.id, dst = dst,
+                                   logger = logger, verbose = verbose)
+                                for dst in range(n_tor)]
+        self.buffers_dst = [Buffer(parent = self,
+                                   src = self.id, dst = dst,
+                                   logger = logger, verbose = verbose)
+                                for dst in range(n_tor)]
+        self.buffers_rcv = [Buffer(parent = self,
+                                   src = src, dst = self.id,
+                                   logger = logger, verbose = verbose)
+                                for src in range(n_tor)]
 
-        # Watch out, some might be (intentional) duplicates
-        # each item has the form (tor, link_remaining)
+        # Each item has the form (tor, link_remaining)
         self.connections = dict()
         self.capacity = self.compute_capacity()
 
@@ -75,7 +83,6 @@ class ToRSwitch:
         # Update our capacity
         for i in range(amount):
             _, flow_dst, _ = queue.packets[i]
-            #print("incrementing %s.capacity[%d]=%d" % (self, flow_dst.id, self.capacity[flow_dst.id]))
             self.capacity[flow_dst.id] += 1
             self.tot_demand -= 1
 
@@ -99,7 +106,6 @@ class ToRSwitch:
 
                 # Update book-keeping
                 self.tot_demand += 1
-                #print("Decrementing %s.capacity[%d]=%d" % (self, flow_dst.id, self.capacity[flow_dst.id]))
                 self.capacity[flow_dst.id] -= 1
 
 
@@ -141,7 +147,6 @@ class ToRSwitch:
         queue = self.buffers_dst[dst.id]
 
         # Verify link violations
-        #total_send = sum(b.size for _, b in buffers)
         assert queue.size <= self.packets_per_slot, \
                 "%s->%s old indirect %d > capacity" % (self, dst, queue.size)
 
@@ -149,7 +154,7 @@ class ToRSwitch:
         if queue.size == 0:
             return
 
-        #self.vprint("Old Indirect: %s:%d" % (self, rotor_id), 2)
+        self.vprint("Old Indirect: %s:%d" % (self, rotor_id), 2)
 
         # Send the data
         self.send(rotor_id, queue, queue.size)
@@ -166,7 +171,7 @@ class ToRSwitch:
         if amount == 0:
             return
 
-        #self.vprint("Direct: %s:%d" % (self, rotor_id), 2)
+        self.vprint("Direct: %s:%d" % (self, rotor_id), 2)
 
         self.send(rotor_id = rotor_id,
                   queue  = queue,
@@ -179,16 +184,12 @@ class ToRSwitch:
 
         # Get indirect-able traffic
         capacities = dst.capacity
-        #print()
-        #print(dst)
-        #print(capacities)
 
         # Send what we can along the remaining capacity
         # TODO offer/accept protocol
 
         # This iterates to balance the remaining capacity equally across flows
         amounts = [0 for _ in self.buffers_dir]
-        #print(amounts)
         change = 1
         while change > 0 and remaining > 0:
             change = 0
@@ -196,7 +197,6 @@ class ToRSwitch:
             # TODO, not just +1, do it the (faster) divide way
             for flow_dst_id, b in enumerate(self.buffers_dir):
                 current = amounts[flow_dst_id]
-                #assert capacities[flow_dst] <= self.packets_per_slot
                 new = min(current+1, b.size, remaining, capacities[flow_dst_id])
                 amounts[flow_dst_id] = max(new, current)
 
@@ -208,7 +208,6 @@ class ToRSwitch:
                 if remaining == 0:
                     break
 
-        #print(amounts)
         # Stop if nothing to do
         if sum(amounts) == 0:
             return
@@ -217,7 +216,6 @@ class ToRSwitch:
 
         # Send the amounts we decided on
         for flow_dst_id, amount in enumerate(amounts):
-            #flow = traffic[i][0]
             if amount == 0 and remaining > 0 and False:
                 print("%s: flow %s not sending to %s via %s (remaining %s, %s.capacity[%s]= %s)" %
                         (self, flow, dst.id, rotor_id, remaining, dst.id, flow[1], capacities[flow_dst]))
