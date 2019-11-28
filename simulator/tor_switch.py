@@ -82,7 +82,7 @@ class ToRSwitch:
 
         # Update our capacity
         for i in range(amount):
-            _, flow_dst, _ = queue.packets[i]
+            flow_dst = queue.packets[i].dst
             self.capacity[flow_dst.id] += 1
             self.tot_demand -= 1
 
@@ -94,10 +94,18 @@ class ToRSwitch:
     def recv(self, rotor_id, packets):
         for p in packets:
             # Receive the packets
-            flow_src, flow_dst, seq_num = p
+            flow_src = p.src
+            flow_dst = p.dst
+            seq_num = p.seq_num
 
+            # case: packet was destined for this tor
             if flow_dst.id == self.id:
+                # accept packet into the receive buffer
                 self.buffers_rcv[flow_src.id].recv([p])
+                
+                # send an ack to the flow that sent this packet
+                p.flow.recv([p])
+            
             else:
                 queue = self.buffers_dst[flow_dst.id]
                 assert queue.size < self.packets_per_slot, \

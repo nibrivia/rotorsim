@@ -1,8 +1,8 @@
 import collections 
+
 from logger import Log
 from event import R
-
-Packet = collections.namedtuple('Packet', 'src dst seq_num')
+from packet import Packet
 
 class Buffer():
     def __init__(self, parent, src, dst, logger, verbose):
@@ -55,9 +55,9 @@ DEMAND_NODE = Buffer(None, None, None, None, verbose = False)
 
 if __name__ == "__main__":
     l = Log()
-    sn = SourceBuffer("1.1->2", None, True)
+    sn = Buffer("1.1->2", None, True)
     hn = Buffer("3.1->2", None, True)
-    rn = DestBuffer("2.1->2", None, True)
+    rn = Buffer("2.1->2", None, True)
 
     sn.add_n(3)
     print((sn.packets, hn.packets, rn.packets))

@@ -1,4 +1,5 @@
 
+from packet import Packet
 import csv
 
 BYTES_PER_PACKET = 1500
@@ -19,13 +20,15 @@ class TCPFlow:
 		self.dst     = dst
 
 		self.cwnd = 1 * BYTES_PER_PACKET # bytes
-		self.sent = 0
+		self.sent = []
+		self.acked = []
 
+		# out_buffer object to send packets through
+		self.out_buffer = None
 
 	@property
 	def traffic_left(self):
-		return self.size - self.sent
-
+		return self.size - len(self.sent)
 
 	@classmethod
 	def make_from_csv(cls, csv_file='simulator/flows.csv'):
@@ -43,20 +46,58 @@ class TCPFlow:
 					flows.append(flow)
 		return flows
 
+	def assign_buffer(self, out_buffer):
+		self.out_buffer = out_buffer
 
 	@property
 	def id(self):
 		return self.flow_id
 
+	def send(self):
+		# determine number of packets to send depending on cwnd
+		num_pkts_to_send = self.cwnd // BYTES_PER_PACKET
+		
+		# make packets to hand to the sending buffer
+		packets = []
+		for i in range(num_pkts_to_send):
+			packet = Packet(src = self.src,
+							dst = self.dst,
+							seq_num = len(self.sent) + i,
+							flow = self)
+			packets.append(packet)
 
-	def send_cwnd(self):
-		pkts_to_send = self.cwnd // BYTES_PER_PACKET
-		self.sent += pkts_to_send
-		print('Flow {} sent {} pkts. Have {} left'.format(self.flow_id, self.sent, self.traffic_left))
-		return pkts_to_send
+		# deliver the packets via the out buffer
+		print('Flow {} injected {} pkts. Have {} left'.format(self.flow_id, len(packets), self.traffic_left))
+		self.sent.extend(packets)
+		self.out_buffer.recv(packets)
+		return num_pkts_to_send
 
+	def recv(self, packets):
+		# record the acked packets
+		self.acked.extend(packets)
 
-	def receive_ack(self):
-		self.cwnd += (1 / self.cwnd)
+		# update cwnd based on packets acked now
+		acked_now = len(packets)
+		self.cwnd += (acked_now / self.cwnd)
+
+		print('Flow {} received {} acks'.format(self.flow_id, acked_now))
+
+	def dump_status(self):
+		out = []
+
+		# flow id
+		out.append('Flow {}'.format(self.id))
+
+		# flow src, dst
+		out.append('{}{} ~> {}'.format(' '*4, self.src, self.dst))
+
+		# flow sending statistics sending
+		out.append('{}Size      {}'.format(' '*4, self.size))
+		out.append('{}Received  {}'.format(' '*4, len(self.acked)))
+		out.append('{}Inflight  {}'.format(' '*4, len(self.sent) - len(self.acked)))
+		out.append('{}Unsent    {}'.format(' '*4, self.traffic_left))
+
+		# output is newline-separated
+		print('\n'.join(out))
 
 	

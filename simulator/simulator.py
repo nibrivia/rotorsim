@@ -133,6 +133,10 @@ def main(n_tor, n_rotor,
     if not no_log:
         logger.close()
 
+    # dump status for all flows
+    for f in flows:
+        f.dump_status()
+    
     print("done")
 
 if __name__ == "__main__":

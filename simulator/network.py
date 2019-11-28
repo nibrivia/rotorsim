@@ -21,9 +21,6 @@ class RotorNet:
         self.n_tor   = n_tor
         self.slot_time = -1
 
-        self.tcp_flows = []
-
-
         # Matchings need to be done early to get constants
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
@@ -111,14 +108,16 @@ class RotorNet:
         R.run_next()
 
     def open_connection(self, tcpflow):
-        print('Starting TCP flow {} with arrival {}'.format(tcpflow.id, tcpflow.arrival))
-        self.tcp_flows.append(tcpflow)
+        # get buffer on tor which this flow will send packets through
+        out_buffer = self.tors[tcpflow.src].buffers_dir[tcpflow.dst]
+        tcpflow.assign_buffer(out_buffer)
 
+        # override src and dst to tor objects
+        tcpflow.src = self.tors[tcpflow.src]
+        tcpflow.dst = self.tors[tcpflow.dst]
 
-    def add_demand(self, new_demand):
-        for src_i, src in enumerate(self.tors):
-            for dst_i, dst in enumerate(self.tors):
-                src.add_demand_to(dst, new_demand[src_i][dst_i])
+        # begin sending
+        tcpflow.send()
 
     def print_demand(self):
         if self.verbose:
