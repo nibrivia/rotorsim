@@ -140,6 +140,8 @@ def main(n_tor, n_rotor,
         R.call_in(time,
                 print, "\n@%.2f Cycle %s, Slot %s/%s" % (time, cycle, slot, net.n_slots),
                 priority = -100)
+        #R.call_in(time+.001, print_demand, net.tors, priority=100)
+        #R.call_in(time+.001, pause, priority=100)
 
     print("Starting simulator...")
     # Start the simulator

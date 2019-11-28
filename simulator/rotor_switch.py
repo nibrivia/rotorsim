@@ -65,7 +65,7 @@ class RotorSwitch:
             handle.name = str(self)
             tor.connect_rotor(self, handle)
 
-    #@Delay(0)
+    @Delay(0)
     def recv(self, tor, packets):
         if self.enabled:
             dst = self.dests[tor.id]

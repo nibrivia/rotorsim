@@ -37,13 +37,18 @@ class Buffer():
                     packets = moving_packets)
 
     def recv(self, packets):
-        for p in packets:
-            assert p.dst == self.dst
+        #for p in packets:
+        #    assert p.dst == self.dst
         self.packets.extend(packets)
         self.size = len(self.packets)
 
-    def add_n(self, amount):
-        new_packets = [Packet(self.src, self.dst, self.count+i) for i in range(amount)]
+    def add_n(self, amount, src = None, dst = None):
+        if src is None:
+            src = self.src
+        if dst is None:
+            dst = self.dst
+
+        new_packets = [Packet(src, dst, self.count+i) for i in range(amount)]
         self.count += amount
         self.recv(new_packets)
 
