@@ -113,7 +113,8 @@ class ToRSwitch:
 
     def new_slot(self):
         self.slot_t += 1
-        matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % 3]
+        n_slots = len(self.matchings_by_slot_rotor)
+        matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % n_slots]
 
         # For all active matchings, connect them up!
         for rotor_id, matchings in enumerate(matchings_in_effect):
