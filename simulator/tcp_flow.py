@@ -28,7 +28,7 @@ class TCPFlow:
 
 
 	@classmethod
-	def from_csv(cls, csv_file='simulator/flows.csv'):
+	def make_from_csv(cls, csv_file='simulator/flows.csv'):
 		flows = []
 		with open(csv_file, 'r') as flows_csv:
 			reader = csv.reader(flows_csv)

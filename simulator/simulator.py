@@ -2,6 +2,7 @@ from network import RotorNet
 from event import R
 from logger import Log
 from helpers import *
+from tcp_flow import TCPFlow
 import sys
 import click
 import math
@@ -18,6 +19,10 @@ def generate_demand(min_demand = 0, max_demand = 1):
 def generate_static_demand(matching, max_demand = 1):
     return [[1 if matching[src] == dst else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
+
+def load_flows():
+    flows = TCPFlow.make_from_csv()
+    return flows
 
 
 @click.command()
@@ -101,44 +106,12 @@ def main(n_tor, n_rotor,
                    verbose = verbose, 
                    do_pause = not no_pause)
 
-    print("Setting up demand...")
-    ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
-    if n_tor == 4:
-        demand = [
-                #0  1  2  3   # ->to
-                [0, 0, 0, 1], # ->0
-                [0, 0, 1, 0], # ->1
-                [0, 1, 0, 0], # ->2
-                [1, 0, 0, 0], # ->3
-                ]
-    elif n_tor == 5:
-        demand = [
-                #0  1  2  3  4   # ->to
-                [0, 0, 0, 1, 1], # ->0
-                [0, 0, 1, 0, 0], # ->1
-                [0, 1, 0, 0, 0], # ->2
-                [1, 0, 0, 0, 0], # ->3
-                [1, 0, 0, 0, 0], # ->4
-                ]
-    elif n_tor == 8:
-        demand = [
-                #1  2  3  4  5  6  7  8   # ->to
-                [0, 0, 0, 0, 0, 1, 0, 0], # ->1
-                [0, 0, 0, 0, 1, 0, 0, 0], # ->2
-                [0, 0, 0, 0, 0, 0, 1, 0], # ->3
-                [0, 0, 0, 0, 0, 0, 0, 1], # ->4
-                [1, 0, 0, 0, 0, 0, 0, 0], # ->5
-                [0, 1, 0, 0, 0, 0, 0, 0], # ->6
-                [0, 0, 0, 1, 0, 0, 0, 0], # ->7
-                [0, 0, 1, 0, 0, 0, 0, 0]  # ->8
-                ]
-    else:
-        demand = [[random.uniform(0, 1) for r in range(n_tor)] for c in range(n_tor)]
-
-    demand = [[demand[j][i] for j in range(n_tor)] for i in range(n_tor)]
-
-    demand = [[int(v*packets_per_slot*9) for v in row] for row in demand]
-    R.call_in(-.01, net.add_demand, demand)
+    print("Setting up flows...")
+    # open connection for each flow at the time it should arrive
+    flows = load_flows()
+    for f in flows:
+        time_for_arrival = f.arrival * slot_duration
+        R.call_in(time_for_arrival, net.open_connection, f)
 
     for raw_slot in range(n_cycles*net.n_slots+1):
         cycle = raw_slot // net.n_slots

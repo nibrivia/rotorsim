@@ -8,14 +8,20 @@ from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
     def __init__(self,
-            n_rotor, n_tor,
-            packets_per_slot,
-            slot_duration = 1, reconfiguration_time = 0, jitter = 0,
-            logger = None,
-            verbose = True, do_pause = True):
+                 n_rotor, 
+                 n_tor,
+                 packets_per_slot,
+                 slot_duration = 1, 
+                 reconfiguration_time = 0, 
+                 jitter = 0,
+                 logger = None,
+                 verbose = True, 
+                 do_pause = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
         self.slot_time = -1
+
+        self.tcp_flows = []
 
 
         # Matchings need to be done early to get constants
@@ -103,6 +109,11 @@ class RotorNet:
         # Start events
         R.limit = n_cycles
         R.run_next()
+
+    def open_connection(self, tcpflow):
+        print('Starting TCP flow {} with arrival {}'.format(tcpflow.id, tcpflow.arrival))
+        self.tcp_flows.append(tcpflow)
+
 
     def add_demand(self, new_demand):
         for src_i, src in enumerate(self.tors):
