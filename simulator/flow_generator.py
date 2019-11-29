@@ -1,5 +1,4 @@
 
-import click
 import random
 import csv
 from itertools import product
@@ -25,45 +24,13 @@ def print_generated_flow(arrival, flow_id, size, src, dst):
 
 # MAIN ===========================================================
 
-
-@click.command()
-@click.option(
-	'--max_slots',
-	type=int,
-	default=100
-)
-@click.option(
-	'--num_flows',
-	type=int,
-	default=10
-)
-@click.option(
-	'--num_tors',
-	type=int,
-	default=7
-)
-@click.option(
-	'--scale',
-	type=int,
-	default='1000'
-)
-@click.option(
-	'--workload',
-	type=str,
-	default='websearch'
-)
-@click.option(
-	'--results_file',
-	type=str,
-	default='flows.csv',
-)
-def main(
+def generate_flows(
 	max_slots,
 	num_flows,
 	num_tors,
-	scale,
-	workload,
-	results_file,
+	scale=1000,
+	workload='websearch',
+	results_file='flows.csv',
 ):
 	# csv header
 	fields = [
@@ -84,6 +51,8 @@ def main(
 	# model num_flows flow arrivals with a poisson process
 	flow_arrivals_per_slot = num_flows / max_slots
 	arrivals = list(np.random.poisson(flow_arrivals_per_slot, max_slots))
+	while sum(arrivals) != num_flows:
+		arrivals = list(np.random.poisson(flow_arrivals_per_slot, max_slots))
 
 	# create flows 
 	flows = []
@@ -109,7 +78,3 @@ def main(
 		csv_writer.writerow(fields)
 		# write flows 
 		csv_writer.writerows(flows)
-
-
-if __name__ == '__main__':
-	main()

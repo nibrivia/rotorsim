@@ -3,6 +3,7 @@ from event import R
 from logger import Log
 from helpers import *
 from tcp_flow import TCPFlow
+from flow_generator import generate_flows
 import sys
 import click
 import math
@@ -28,6 +29,11 @@ def load_flows(slot_duration):
 
 
 @click.command()
+@click.option(
+        "--num_flows",
+        type=int,
+        default=1
+)
 @click.option(
         "--n_tor",
         type=int,
@@ -85,11 +91,21 @@ def load_flows(slot_duration):
         "--no-pause",
         is_flag=True
 )
-def main(n_tor, n_rotor,
-        packets_per_slot, n_cycles,
-        slot_duration, reconfiguration_time, jitter,
-        log, pkts_file,
-        verbose, no_log, no_pause):
+def main(
+        num_flows,
+        n_tor, 
+        n_rotor,
+        packets_per_slot,
+        n_cycles,
+        slot_duration, 
+        reconfiguration_time, 
+        jitter,
+        log, 
+        pkts_file,
+        verbose, 
+        no_log, 
+        no_pause
+    ):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
 
@@ -114,21 +130,26 @@ def main(n_tor, n_rotor,
                    do_pause = not no_pause)
 
     print("Setting up flows...")
-    # open connection for each flow at the time it should arrive
     open(pkts_file, 'w').close()
+    # generate flows
+    max_slots = n_cycles*net.n_slots+1
+    generate_flows(max_slots, num_flows, n_tor)
+
+    # open connection for each flow at the time it should arrive
     flows = load_flows(slot_duration)
     for f in flows:
         time_for_arrival = f.arrival * slot_duration
         R.call_in(time_for_arrival, net.open_connection, f)
 
-    for raw_slot in range(n_cycles*net.n_slots+1):
+    # set up printing
+    for raw_slot in range(max_slots):
         cycle = raw_slot // net.n_slots
         slot  = raw_slot %  net.n_slots
         if slot != 0 and not verbose:
             continue
         time = raw_slot*slot_duration
         R.call_in(time,
-                print, "\n@%.2f Cycle %s, Slot %s/%s" % (time, cycle, slot, net.n_slots),
+                print, "\n@%.2f Cycle %s, Slot %s/%s, Total Slot %s/%s" % (time, cycle, slot, net.n_slots, raw_slot, max_slots),
                 priority = -100)
         if not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)

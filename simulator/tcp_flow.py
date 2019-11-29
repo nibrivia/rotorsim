@@ -1,5 +1,4 @@
 
-from helpers import print_packet
 from event import R
 
 from packet import Packet
@@ -37,7 +36,7 @@ class TCPFlow:
 		return self.size - len(self.sent)
 
 	@classmethod
-	def make_from_csv(cls, csv_file='simulator/flows.csv'):
+	def make_from_csv(cls, csv_file='flows.csv'):
 		flows = []
 		with open(csv_file, 'r') as flows_csv:
 			reader = csv.reader(flows_csv)
@@ -60,8 +59,7 @@ class TCPFlow:
 		return self.flow_id
 
 	def send(self):
-		if len(self.sent) >= self.size:
-			self.completed = min(self.completed, int(R.time // self.slot_duration))
+		if self.completed != float('inf'):
 			return
 
 		# determine number of packets to send depending on cwnd
@@ -70,12 +68,18 @@ class TCPFlow:
 		# make packets to hand to the sending buffer
 		while self.outstanding < num_pkts_to_send:
 			for i in range(num_pkts_to_send):
+
+				# check can send 
+				if len(self.sent) >= self.size:
+					if len(self.sent) - len(self.acked) == 0:
+						self.completed = min(self.completed, int(R.time // self.slot_duration))
+					return
+
 				packet = Packet(src = self.src,
 								dst = self.dst,
 								seq_num = len(self.sent) + i,
 								flow = self)
 				# deliver the packets via the out buffer
-				# print_packet(packet, ack=False)
 				self.out_buffer.recv([packet])
 				self.sent.append(packet)
 				self.outstanding += 1
@@ -86,11 +90,11 @@ class TCPFlow:
 		# record the acked packets
 		for acked_packet in packets:			
 			self.acked.append(acked_packet)
-			# print_packet(acked_packet, ack=True)
 
 		# update cwnd and outstanding based on packets acked now
 		acked_now = len(packets)
 		self.cwnd += (acked_now * BYTES_PER_PACKET / self.cwnd)
+		# self.cwnd += (acked_now * BYTES_PER_PACKET / 1)
 		self.outstanding -= acked_now
 
 		# now do send again
@@ -106,13 +110,13 @@ class TCPFlow:
 		out.append('{}{} ~> {}'.format(' '*4, self.src, self.dst))
 
 		# flow sending statistics sending
-		out.append('{}Size       {}'.format(' '*4, self.size))
-		out.append('{}Sent       {}'.format(' '*4, len(self.acked)))
-		out.append('{}Inflight   {}'.format(' '*4, len(self.sent) - len(self.acked)))
-		out.append('{}Unsent     {}'.format(' '*4, self.traffic_left))
-		out.append('{}Arrive     {}'.format(' '*4, self.arrival))
-		out.append('{}Complete   {}'.format(' '*4, self.completed))
-		out.append('{}FCT (slot) {}'.format(' '*4, self.completed - self.arrival))
+		out.append('{}Size            {} packets'.format(' '*4, self.size))
+		out.append('{}Sent            {} packets'.format(' '*4, len(self.acked)))
+		out.append('{}Inflight        {} packets'.format(' '*4, len(self.sent) - len(self.acked)))
+		out.append('{}Unsent          {} packets'.format(' '*4, self.traffic_left))
+		out.append('{}Arrive          {} slots'.format(' '*4, self.arrival))
+		out.append('{}Complete        {} slots'.format(' '*4, self.completed))
+		out.append('{}Completion Time {} slots'.format(' '*4, self.completed - self.arrival))
 
 		# output is newline-separated
 		print('\n'.join(out))
