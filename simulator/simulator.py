@@ -20,8 +20,10 @@ def generate_static_demand(matching, max_demand = 1):
     return [[1 if matching[src] == dst else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
 
-def load_flows():
+def load_flows(slot_duration):
     flows = TCPFlow.make_from_csv()
+    for f in flows:
+        f.slot_duration = slot_duration
     return flows
 
 
@@ -62,6 +64,11 @@ def load_flows():
         default="out.csv"
 )
 @click.option(
+        "--pkts-file",
+        type=str,
+        default="pkts.txt"
+)
+@click.option(
         "--n_cycles",
         type=int,
         default=5
@@ -81,7 +88,7 @@ def load_flows():
 def main(n_tor, n_rotor,
         packets_per_slot, n_cycles,
         slot_duration, reconfiguration_time, jitter,
-        log,
+        log, pkts_file,
         verbose, no_log, no_pause):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
@@ -108,7 +115,8 @@ def main(n_tor, n_rotor,
 
     print("Setting up flows...")
     # open connection for each flow at the time it should arrive
-    flows = load_flows()
+    open(pkts_file, 'w').close()
+    flows = load_flows(slot_duration)
     for f in flows:
         time_for_arrival = f.arrival * slot_duration
         R.call_in(time_for_arrival, net.open_connection, f)

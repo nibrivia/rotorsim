@@ -1,4 +1,7 @@
 
+from helpers import print_packet
+from event import R
+
 from packet import Packet
 import csv
 
@@ -11,7 +14,7 @@ class TCPFlow:
 		flow_id,
 		size,
 		src,
-		dst
+		dst,
 	):
 		self.arrival = arrival
 		self.flow_id = flow_id
@@ -22,6 +25,9 @@ class TCPFlow:
 		self.cwnd = 1 * BYTES_PER_PACKET # bytes
 		self.sent = []
 		self.acked = []
+		self.outstanding = 0
+
+		self.completed = float('inf')
 
 		# out_buffer object to send packets through
 		self.out_buffer = None
@@ -54,33 +60,41 @@ class TCPFlow:
 		return self.flow_id
 
 	def send(self):
+		if len(self.sent) >= self.size:
+			self.completed = min(self.completed, int(R.time // self.slot_duration))
+			return
+
 		# determine number of packets to send depending on cwnd
-		num_pkts_to_send = self.cwnd // BYTES_PER_PACKET
+		num_pkts_to_send = int(self.cwnd // BYTES_PER_PACKET)
 		
 		# make packets to hand to the sending buffer
-		packets = []
-		for i in range(num_pkts_to_send):
-			packet = Packet(src = self.src,
-							dst = self.dst,
-							seq_num = len(self.sent) + i,
-							flow = self)
-			packets.append(packet)
+		while self.outstanding < num_pkts_to_send:
+			for i in range(num_pkts_to_send):
+				packet = Packet(src = self.src,
+								dst = self.dst,
+								seq_num = len(self.sent) + i,
+								flow = self)
+				# deliver the packets via the out buffer
+				# print_packet(packet, ack=False)
+				self.out_buffer.recv([packet])
+				self.sent.append(packet)
+				self.outstanding += 1
 
-		# deliver the packets via the out buffer
-		print('Flow {} injected {} pkts. Have {} left'.format(self.flow_id, len(packets), self.traffic_left))
-		self.sent.extend(packets)
-		self.out_buffer.recv(packets)
 		return num_pkts_to_send
 
 	def recv(self, packets):
 		# record the acked packets
-		self.acked.extend(packets)
+		for acked_packet in packets:			
+			self.acked.append(acked_packet)
+			# print_packet(acked_packet, ack=True)
 
-		# update cwnd based on packets acked now
+		# update cwnd and outstanding based on packets acked now
 		acked_now = len(packets)
-		self.cwnd += (acked_now / self.cwnd)
+		self.cwnd += (acked_now * BYTES_PER_PACKET / self.cwnd)
+		self.outstanding -= acked_now
 
-		print('Flow {} received {} acks'.format(self.flow_id, acked_now))
+		# now do send again
+		self.send()
 
 	def dump_status(self):
 		out = []
@@ -92,10 +106,13 @@ class TCPFlow:
 		out.append('{}{} ~> {}'.format(' '*4, self.src, self.dst))
 
 		# flow sending statistics sending
-		out.append('{}Size      {}'.format(' '*4, self.size))
-		out.append('{}Received  {}'.format(' '*4, len(self.acked)))
-		out.append('{}Inflight  {}'.format(' '*4, len(self.sent) - len(self.acked)))
-		out.append('{}Unsent    {}'.format(' '*4, self.traffic_left))
+		out.append('{}Size       {}'.format(' '*4, self.size))
+		out.append('{}Sent       {}'.format(' '*4, len(self.acked)))
+		out.append('{}Inflight   {}'.format(' '*4, len(self.sent) - len(self.acked)))
+		out.append('{}Unsent     {}'.format(' '*4, self.traffic_left))
+		out.append('{}Arrive     {}'.format(' '*4, self.arrival))
+		out.append('{}Complete   {}'.format(' '*4, self.completed))
+		out.append('{}FCT (slot) {}'.format(' '*4, self.completed - self.arrival))
 
 		# output is newline-separated
 		print('\n'.join(out))
