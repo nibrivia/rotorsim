@@ -4,6 +4,7 @@ from logger import Log
 from helpers import *
 import sys
 import click
+import math
 
 
 def generate_demand(min_demand = 0, max_demand = 1):
@@ -31,6 +32,21 @@ def generate_static_demand(matching, max_demand = 1):
         default=2
 )
 @click.option(
+        "--slot_duration",
+        type=float,
+        default=-1
+)
+@click.option(
+        "--reconfiguration_time",
+        type=float,
+        default=0
+)
+@click.option(
+        "--jitter",
+        type=float,
+        default=0
+)
+@click.option(
         "--packets_per_slot",
         type=int,
         default=10
@@ -53,7 +69,15 @@ def generate_static_demand(matching, max_demand = 1):
         "--no-log",
         is_flag=True
 )
-def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
+@click.option(
+        "--no-pause",
+        is_flag=True
+)
+def main(n_tor, n_rotor,
+        packets_per_slot, n_cycles,
+        slot_duration, reconfiguration_time, jitter,
+        log,
+        verbose, no_log, no_pause):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
 
@@ -63,11 +87,19 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
     else:
         logger = Log(fn = log)
         logger.add_timer(R)
+
+    if slot_duration == -1:
+        slot_duration = 1/math.ceil((n_tor-1)/n_rotor)
+
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
-                   packets_per_slot = packets_per_slot,
+                   packets_per_slot     = packets_per_slot,
+                   reconfiguration_time = reconfiguration_time,
+                   slot_duration        = slot_duration,
+                   jitter               = jitter,
                    logger  = logger,
-                   verbose = verbose)
+                   verbose = verbose, 
+                   do_pause = not no_pause)
 
     print("Setting up demand...")
     ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
@@ -75,9 +107,18 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
         demand = [
                 #0  1  2  3   # ->to
                 [0, 0, 0, 1], # ->0
-                [1, 0, 1, 0], # ->1
-                [0, 1, 0, 1], # ->2
+                [0, 0, 1, 0], # ->1
+                [0, 1, 0, 0], # ->2
                 [1, 0, 0, 0], # ->3
+                ]
+    elif n_tor == 5:
+        demand = [
+                #0  1  2  3  4   # ->to
+                [0, 0, 0, 1, 1], # ->0
+                [0, 0, 1, 0, 0], # ->1
+                [0, 1, 0, 0, 0], # ->2
+                [1, 0, 0, 0, 0], # ->3
+                [1, 0, 0, 0, 0], # ->4
                 ]
     elif n_tor == 8:
         demand = [
@@ -96,8 +137,21 @@ def main(n_tor, n_rotor, packets_per_slot, log, n_cycles, verbose, no_log):
 
     demand = [[demand[j][i] for j in range(n_tor)] for i in range(n_tor)]
 
-    demand = [[int(v*packets_per_slot*1000) for v in row] for row in demand]
+    demand = [[int(v*packets_per_slot*9) for v in row] for row in demand]
     R.call_in(-.01, net.add_demand, demand)
+
+    for raw_slot in range(n_cycles*net.n_slots+1):
+        cycle = raw_slot // net.n_slots
+        slot  = raw_slot %  net.n_slots
+        if slot != 0 and not verbose:
+            continue
+        time = raw_slot*slot_duration
+        R.call_in(time,
+                print, "\n@%.2f Cycle %s, Slot %s/%s" % (time, cycle, slot, net.n_slots),
+                priority = -100)
+        if not no_pause:
+            R.call_in(time, print_demand, net.tors, priority=100)
+            R.call_in(time, pause, priority=100)
 
     print("Starting simulator...")
     # Start the simulator

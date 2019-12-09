@@ -12,13 +12,14 @@ class Registry:
         self.has_run = False
         self.counts  = count()
 
-    def call_in(self, delay, fn, *args, **kwargs):
-        """This will register the call in `delay` time from now"""
+    def call_in(self, delay, fn, *args, priority = 0, **kwargs):
+        """This will register the call in `delay` time from now, ties broken by priority, then first to register"""
         if self.has_run:
-            assert delay > 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
+            assert delay >= 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
         count = next(self.counts)
-        heapq.heappush(self.queue, (self.time+delay, count, fn, args, kwargs))
+        heapq.heappush(self.queue, (self.time+delay, priority, count, fn, args, kwargs))
+        return count
 
     def stop(self):
         self.running = False
@@ -39,7 +40,7 @@ class Registry:
                 break
 
             # Also not threadsafe
-            self.time, count, fn, args, kwargs = heapq.heappop(self.queue)
+            self.time, _, _, fn, args, kwargs = heapq.heappop(self.queue)
             #print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
@@ -49,49 +50,47 @@ class Delay:
     Optionally adds a random uniform delay of +/- `jitter`"""
     #delay_t: float
     #max_jitter: float = 0
-    def __init__(self, delay, max_jitter=0):
+    def __init__(self, delay, jitter=0, priority=0):
         assert delay >= 0, "Delay must be non-negative"
-        assert max_jitter >= 0, "Jitter must be non-negative"
-        assert max_jitter <= delay, "Jitter must be smaller than delay"
+        assert jitter >= 0, "Jitter must be non-negative"
+        assert jitter <= delay, "Jitter must be smaller than delay"
 
-        self.delay = delay
-        self.max_jitter = max_jitter
+        self.delay    = delay
+        self.jitter   = jitter
+        self.priority = priority
 
     def __call__(self, fn):
         @wraps(fn)
         def called_fn(*args, **kwargs):
             jitter = 0
-            if self.max_jitter != 0:
+            if self.jitter != 0:
                 # avoid a critical-path call to random
-                jitter = random.uniform(-self.max_jitter, self.max_jitter)
-            R.call_in(self.delay+jitter, fn, *args, **kwargs)
-
+                jitter = random.uniform(-self.jitter, self.jitter)
+            R.call_in(self.delay+jitter, fn, *args, priority = self.priority, **kwargs)
         return called_fn
 
-import sys
 def stop_simulation(r):
     r.stop()
+
 
 R = Registry()
 
 if __name__ == "__main__":
 
-    r = Registry(limit = 10)
-
     # Toy function to play with
-    @delay(r, .5)
+    @Delay(5)
     def hello(name = ""):
         """Says hello, a lot"""
-        print("hello %s @%.2f" % (name, r.time))
+        print("hello 1 %s @%.2f" % (name, R.time))
         # (un)comment for a "recursive" call every .5
-        hello(name = name)
+        #hello(name = name)
 
     # Olivia will get called @.5: hello() incurs a .5 delay
     hello("Olivia")
 
     # Amir   will get called @.6: at .1 call hello(), which incurs a .5 delay
-    r.call_in(delay = 0, fn = hello, name = "Amir  ")
+    R.call_in(delay = 0.5, fn = hello, name = "Amir  ")
 
     # Start the simulation
-    r.run_next()
+    R.run_next()
 
