@@ -2,6 +2,8 @@ from network import RotorNet
 from event import R
 from logger import Log
 from helpers import *
+from tcp_flow import TCPFlow
+from flow_generator import generate_flows
 import sys
 import click
 import math
@@ -19,8 +21,19 @@ def generate_static_demand(matching, max_demand = 1):
     return [[1 if matching[src] == dst else 0
         for dst in range(N_TOR)] for src in range(N_TOR)]
 
+def load_flows(slot_duration):
+    flows = TCPFlow.make_from_csv()
+    for f in flows:
+        f.slot_duration = slot_duration
+    return flows
+
 
 @click.command()
+@click.option(
+        "--num_flows",
+        type=int,
+        default=1
+)
 @click.option(
         "--n_tor",
         type=int,
@@ -57,6 +70,11 @@ def generate_static_demand(matching, max_demand = 1):
         default="out.csv"
 )
 @click.option(
+        "--pkts-file",
+        type=str,
+        default="pkts.txt"
+)
+@click.option(
         "--n_cycles",
         type=int,
         default=5
@@ -73,11 +91,21 @@ def generate_static_demand(matching, max_demand = 1):
         "--no-pause",
         is_flag=True
 )
-def main(n_tor, n_rotor,
-        packets_per_slot, n_cycles,
-        slot_duration, reconfiguration_time, jitter,
-        log,
-        verbose, no_log, no_pause):
+def main(
+        num_flows,
+        n_tor, 
+        n_rotor,
+        packets_per_slot,
+        n_cycles,
+        slot_duration, 
+        reconfiguration_time, 
+        jitter,
+        log, 
+        pkts_file,
+        verbose, 
+        no_log, 
+        no_pause
+    ):
     print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             (n_tor, n_rotor, packets_per_slot, n_cycles))
 
@@ -101,53 +129,27 @@ def main(n_tor, n_rotor,
                    verbose = verbose, 
                    do_pause = not no_pause)
 
-    print("Setting up demand...")
-    ones = [[2 if i != j else 0 for i in range(n_tor)] for j in range(n_tor)]
-    if n_tor == 4:
-        demand = [
-                #0  1  2  3   # ->to
-                [0, 0, 0, 1], # ->0
-                [0, 0, 1, 0], # ->1
-                [0, 1, 0, 0], # ->2
-                [1, 0, 0, 0], # ->3
-                ]
-    elif n_tor == 5:
-        demand = [
-                #0  1  2  3  4   # ->to
-                [0, 0, 0, 1, 1], # ->0
-                [0, 0, 1, 0, 0], # ->1
-                [0, 1, 0, 0, 0], # ->2
-                [1, 0, 0, 0, 0], # ->3
-                [1, 0, 0, 0, 0], # ->4
-                ]
-    elif n_tor == 8:
-        demand = [
-                #1  2  3  4  5  6  7  8   # ->to
-                [0, 0, 0, 0, 0, 1, 0, 0], # ->1
-                [0, 0, 0, 0, 1, 0, 0, 0], # ->2
-                [0, 0, 0, 0, 0, 0, 1, 0], # ->3
-                [0, 0, 0, 0, 0, 0, 0, 1], # ->4
-                [1, 0, 0, 0, 0, 0, 0, 0], # ->5
-                [0, 1, 0, 0, 0, 0, 0, 0], # ->6
-                [0, 0, 0, 1, 0, 0, 0, 0], # ->7
-                [0, 0, 1, 0, 0, 0, 0, 0]  # ->8
-                ]
-    else:
-        demand = [[random.uniform(0, 1) for r in range(n_tor)] for c in range(n_tor)]
+    print("Setting up flows...")
+    open(pkts_file, 'w').close()
+    # generate flows
+    max_slots = n_cycles*net.n_slots+1
+    generate_flows(max_slots, num_flows, n_tor)
 
-    demand = [[demand[j][i] for j in range(n_tor)] for i in range(n_tor)]
+    # open connection for each flow at the time it should arrive
+    flows = load_flows(slot_duration)
+    for f in flows:
+        time_for_arrival = f.arrival * slot_duration
+        R.call_in(time_for_arrival, net.open_connection, f)
 
-    demand = [[int(v*packets_per_slot*9) for v in row] for row in demand]
-    R.call_in(-.01, net.add_demand, demand)
-
-    for raw_slot in range(n_cycles*net.n_slots+1):
+    # set up printing
+    for raw_slot in range(max_slots):
         cycle = raw_slot // net.n_slots
         slot  = raw_slot %  net.n_slots
         if slot != 0 and not verbose:
             continue
         time = raw_slot*slot_duration
         R.call_in(time,
-                print, "\n@%.2f Cycle %s, Slot %s/%s" % (time, cycle, slot, net.n_slots),
+                print, "\n@%.2f Cycle %s, Slot %s/%s, Total Slot %s/%s" % (time, cycle, slot, net.n_slots, raw_slot, max_slots),
                 priority = -100)
         if not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)
@@ -160,6 +162,10 @@ def main(n_tor, n_rotor,
     if not no_log:
         logger.close()
 
+    # dump status for all flows
+    for f in flows:
+        f.dump_status()
+    
     print("done")
 
 if __name__ == "__main__":

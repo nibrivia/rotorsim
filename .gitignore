@@ -6,3 +6,6 @@ __pycache__
 data
 .Rproj.user
 *.csv
+
+plot_flows.py
+pkts.txt

@@ -2,6 +2,7 @@ import random
 from functools import lru_cache
 import click
 import sys
+from event import R
 
 def vprint(s = "", verbose = True):
     if verbose:
@@ -17,7 +18,6 @@ def shuffle(generator):
 def print_demand(tors, prefix = "", print_buffer = False):
     for tor in tors:
         print("%s%s" % (prefix, tor.buffer_str()))
-
 
 _pause_enabled = True
 def pause():

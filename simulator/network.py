@@ -8,15 +8,18 @@ from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
     def __init__(self,
-            n_rotor, n_tor,
-            packets_per_slot,
-            slot_duration = 1, reconfiguration_time = 0, jitter = 0,
-            logger = None,
-            verbose = True, do_pause = True):
+                 n_rotor, 
+                 n_tor,
+                 packets_per_slot,
+                 slot_duration = 1, 
+                 reconfiguration_time = 0, 
+                 jitter = 0,
+                 logger = None,
+                 verbose = True, 
+                 do_pause = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
         self.slot_time = -1
-
 
         # Matchings need to be done early to get constants
         self.generate_matchings()
@@ -104,10 +107,17 @@ class RotorNet:
         R.limit = n_cycles
         R.run_next()
 
-    def add_demand(self, new_demand):
-        for src_i, src in enumerate(self.tors):
-            for dst_i, dst in enumerate(self.tors):
-                src.add_demand_to(dst, new_demand[src_i][dst_i])
+    def open_connection(self, tcpflow):
+        # get buffer on tor which this flow will send packets through
+        out_buffer = self.tors[tcpflow.src].buffers_dir[tcpflow.dst]
+        tcpflow.assign_buffer(out_buffer)
+
+        # override src and dst to tor objects
+        tcpflow.src = self.tors[tcpflow.src]
+        tcpflow.dst = self.tors[tcpflow.dst]
+
+        # begin sending
+        tcpflow.send()
 
     def print_demand(self):
         if self.verbose:
