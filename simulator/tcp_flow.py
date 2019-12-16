@@ -1,10 +1,12 @@
 
-from event import R
-
-from packet import Packet
 import csv
+import math
+
+from event import R
+from packet import Packet
 
 BYTES_PER_PACKET = 1500
+HIGH_THPUT_BOUNDARY = 1 # MB
 
 class TCPFlow:
 	def __init__(
@@ -17,7 +19,7 @@ class TCPFlow:
 	):
 		self.arrival = arrival
 		self.flow_id = flow_id
-		self.size    = size # packets
+		self.size    = size # bytes
 		self.src     = src
 		self.dst     = dst
 
@@ -32,8 +34,21 @@ class TCPFlow:
 		self.out_buffer = None
 
 	@property
+	def size_in_pkts(self):
+		# packet = byte * (packet / byte)
+		return math.ceil(self.size * (1 / BYTES_PER_PACKET))
+	
+	@property
 	def traffic_left(self):
-		return self.size - len(self.sent)
+		return self.size_in_pkts - len(self.sent)
+
+	@property
+	def high_thput(self):
+		"""
+		`self` is a high-throughput flow if its size exceeds
+		the high throughput boundary
+		"""
+		return self.size > HIGH_THPUT_BOUNDARY
 
 	@classmethod
 	def make_from_csv(cls, csv_file='flows.csv'):
@@ -70,7 +85,7 @@ class TCPFlow:
 			for i in range(num_pkts_to_send):
 
 				# check can send 
-				if len(self.sent) >= self.size:
+				if len(self.sent) >= self.size_in_pkts:
 					if len(self.sent) - len(self.acked) == 0:
 						self.completed = min(self.completed, int(R.time // self.slot_duration))
 					return
@@ -78,7 +93,8 @@ class TCPFlow:
 				packet = Packet(src = self.src,
 								dst = self.dst,
 								seq_num = len(self.sent) + i,
-								flow = self)
+								flow = self,
+								high_thput = self.high_thput)
 				# deliver the packets via the out buffer
 				self.out_buffer.recv([packet])
 				self.sent.append(packet)
@@ -94,7 +110,6 @@ class TCPFlow:
 		# update cwnd and outstanding based on packets acked now
 		acked_now = len(packets)
 		self.cwnd += (acked_now * BYTES_PER_PACKET / self.cwnd)
-		# self.cwnd += (acked_now * BYTES_PER_PACKET / 1)
 		self.outstanding -= acked_now
 
 		# now do send again
@@ -110,7 +125,7 @@ class TCPFlow:
 		out.append('{}{} ~> {}'.format(' '*4, self.src, self.dst))
 
 		# flow sending statistics sending
-		out.append('{}Size            {} packets'.format(' '*4, self.size))
+		out.append('{}Size            {} packets'.format(' '*4, self.size_in_pkts))
 		out.append('{}Sent            {} packets'.format(' '*4, len(self.acked)))
 		out.append('{}Inflight        {} packets'.format(' '*4, len(self.sent) - len(self.acked)))
 		out.append('{}Unsent          {} packets'.format(' '*4, self.traffic_left))

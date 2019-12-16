@@ -5,6 +5,7 @@ from itertools import product
 import numpy as np
 
 from workloads.websearch import websearch_workload_distribution as websearch
+# from workloads.chen import chen_distribution as chen
 
 
 # HELPERS ========================================================
@@ -17,18 +18,13 @@ def get_workload_size_func(workload):
 		raise Exception('Unrecognized workload {}'.format(workload))
 
 
-def print_generated_flow(arrival, flow_id, size, src, dst):
-	print('Flow {} arriving at slot {} with {} packets to send from ToR {} to ToR {}'.format(\
-				flow_id, arrival, size, src, dst))
-
-
 # MAIN ===========================================================
 
 def generate_flows(
 	max_slots,
 	num_flows,
 	num_tors,
-	scale=1000,
+	scale=1000 * 1000, #MB
 	workload='websearch',
 	results_file='flows.csv',
 ):
@@ -36,7 +32,7 @@ def generate_flows(
 	fields = [
 		'FLOW_ARRIVAL_IN_SLOTS',
 		'FLOW_ID',
-		'FLOW_SIZE_IN_PKTS',
+		'FLOW_SIZE_IN_BYTES',
 		'FLOW_SRC',
 		'FLOW_DST',
 	]
@@ -69,7 +65,6 @@ def generate_flows(
 			flow_id = len(flows)
 
 			flows.append((arrival, flow_id, size, src, dst))
-			# print_generated_flow(arrival, flow_id, size, src, dst)
 
 	# write flows out to csv in increasing arrival order
 	with open(results_file, 'w') as csv_file:
