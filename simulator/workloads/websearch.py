@@ -1,13 +1,13 @@
 import random
 
-def websearch_workload_distribution(scale, cdf=None):
+def websearch_workload_distribution(
+    cdf=None
+):
     """
     Reproduces the web search workload flow size
     (from the pFabric paper)
     
     Args:
-        scale: the upper bound of the range that the
-                workload will generate
         cdf (None, optional): cdf of flows between
                                 0 and 1, otherwise should
                                 be None to generate random cdf
@@ -64,5 +64,5 @@ def websearch_workload_distribution(scale, cdf=None):
     else:
         size = random.uniform(6667, 20000)
 
-    # float range [6, 20 * 1000] --> int range [1, scale]
-    return int((((size - 6) / 19994) * (scale - 1)) + 1)
+    # range [6MB, 20GB]
+    return int(size)

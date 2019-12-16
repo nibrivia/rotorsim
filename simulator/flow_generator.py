@@ -5,15 +5,20 @@ from itertools import product
 import numpy as np
 
 from workloads.websearch import websearch_workload_distribution as websearch
-# from workloads.chen import chen_distribution as chen
+from workloads.chen import chen_distribution as chen
 
 
 # HELPERS ========================================================
 
 def get_workload_size_func(workload):
 	lower = workload.lower()
+	
 	if lower == 'websearch':
 		return websearch
+
+	elif lower == 'chen':
+		return chen
+	
 	else:
 		raise Exception('Unrecognized workload {}'.format(workload))
 
@@ -24,8 +29,7 @@ def generate_flows(
 	max_slots,
 	num_flows,
 	num_tors,
-	scale=1000 * 1000, #MB
-	workload='websearch',
+	workload,
 	results_file='flows.csv',
 ):
 	# csv header
@@ -39,6 +43,7 @@ def generate_flows(
 
 	# get workload generator
 	generate_workload = get_workload_size_func(workload)
+	print(generate_workload)
 
 	# construct tor pairs
 	tors = set(range(num_tors))
@@ -56,7 +61,7 @@ def generate_flows(
 		# take note of flows arriving in this slot
 		for _ in range(flows_arriving):
 			# get flow size from specified workload
-			size = generate_workload(scale)
+			size = generate_workload()
 			# assign the current slot to this flow's arrival
 			arrival = arrival_slot
 			# src --> dst chosen randomly over tor pairs

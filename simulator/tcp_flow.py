@@ -19,7 +19,7 @@ class TCPFlow:
 	):
 		self.arrival = arrival
 		self.flow_id = flow_id
-		self.size    = size # bytes
+		self.size    = size # MB
 		self.src     = src
 		self.dst     = dst
 
@@ -35,8 +35,12 @@ class TCPFlow:
 
 	@property
 	def size_in_pkts(self):
+		# B = MB * 10^6
+		size_in_bytes = self.size * 10**6 
+		
 		# packet = byte * (packet / byte)
-		return math.ceil(self.size * (1 / BYTES_PER_PACKET))
+		size_in_packet = size_in_bytes * (1 / BYTES_PER_PACKET)
+		return math.ceil(size_in_packet)
 	
 	@property
 	def traffic_left(self):
@@ -125,6 +129,7 @@ class TCPFlow:
 		out.append('{}{} ~> {}'.format(' '*4, self.src, self.dst))
 
 		# flow sending statistics sending
+		out.append('{}Size            {} MB'.format(' '*4, self.size))
 		out.append('{}Size            {} packets'.format(' '*4, self.size_in_pkts))
 		out.append('{}Sent            {} packets'.format(' '*4, len(self.acked)))
 		out.append('{}Inflight        {} packets'.format(' '*4, len(self.sent) - len(self.acked)))

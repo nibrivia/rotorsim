@@ -80,6 +80,11 @@ def load_flows(slot_duration):
         default=5
 )
 @click.option(
+        "--workload",
+        type=str,
+        default='websearch'
+)
+@click.option(
         "--verbose",
         is_flag=True
 )
@@ -97,6 +102,7 @@ def main(
         n_rotor,
         packets_per_slot,
         n_cycles,
+        workload,
         slot_duration, 
         reconfiguration_time, 
         jitter,
@@ -133,7 +139,7 @@ def main(
     open(pkts_file, 'w').close()
     # generate flows
     max_slots = n_cycles*net.n_slots+1
-    generate_flows(max_slots, num_flows, n_tor)
+    generate_flows(max_slots, num_flows, n_tor, workload)
 
     # open connection for each flow at the time it should arrive
     flows = load_flows(slot_duration)
