@@ -19,13 +19,18 @@ class Buffer():
 
     def send_to(self, to, num_packets):
         if num_packets > 0 and self.verbose:
-            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts\033[00m"
-                    % (R.time, self.parent, to, self.src, self.dst, num_packets))
+            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts \033[00m"
+                    % (R.time, self.parent, to, self.src, self.dst, num_packets),
+                    end = "")
 
         assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         self.size -= num_packets
+
+        for p in moving_packets:
+            print(int(p.high_thput), end = "")
+        print()
 
         to.recv(moving_packets)
 

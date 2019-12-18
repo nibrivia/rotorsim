@@ -139,8 +139,9 @@ def main(
     open(pkts_file, 'w').close()
     # generate flows
     max_slots = n_cycles*net.n_slots+1
+    # TODO hacky
     if workload == "all":
-        num_flows = n_tor*100
+        num_flows = n_tor*10
         workload = "chen"
     generate_flows(max_slots, num_flows, n_tor, workload)
 
@@ -172,7 +173,7 @@ def main(
         logger.close()
 
     # dump status for all flows
-    if verbose:
+    if verbose and False:
         for f in flows:
             f.dump_status()
     
