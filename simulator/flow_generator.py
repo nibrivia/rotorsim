@@ -23,7 +23,7 @@ def generate_flows(
 	max_slots,
 	num_flows,
 	num_tors,
-	workload_name,
+	workload,
 	results_file='flows.csv',
 ):
 	# csv header
@@ -36,7 +36,7 @@ def generate_flows(
 	]
 
 	# get workload generator
-	generate_workload = WORKLOAD_FNS[workload_name]
+	generate_workload = WORKLOAD_FNS[workload]
 	print(generate_workload)
 
 	# construct tor pairs
