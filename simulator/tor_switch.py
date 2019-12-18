@@ -64,6 +64,22 @@ class ToRSwitch:
     def add_matchings(self, matchings_by_slot_rotor):
         self.matchings_by_slot_rotor = matchings_by_slot_rotor
 
+
+    def new_slot(self):
+        self.slot_t += 1
+        n_slots = len(self.matchings_by_slot_rotor)
+        matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % n_slots]
+
+        # For all active matchings, connect them up!
+        for rotor_id, matchings in enumerate(matchings_in_effect):
+            for src, dst in matchings:
+                if src.id == self.id:
+                    self.connect_to(rotor_id, dst)
+
+        # Set a countdown for the next slot
+        Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
+
+
     def send(self, rotor_id, queue, amount):
         if amount == 0:
             return
@@ -116,21 +132,6 @@ class ToRSwitch:
                 self.tot_demand += 1
                 self.capacity[flow_dst.id] -= 1
 
-
-
-    def new_slot(self):
-        self.slot_t += 1
-        n_slots = len(self.matchings_by_slot_rotor)
-        matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % n_slots]
-
-        # For all active matchings, connect them up!
-        for rotor_id, matchings in enumerate(matchings_in_effect):
-            for src, dst in matchings:
-                if src.id == self.id:
-                    self.connect_to(rotor_id, dst)
-
-        # Set a countdown for the next slot
-        Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
 
 
     def connect_to(self, rotor_id, tor):

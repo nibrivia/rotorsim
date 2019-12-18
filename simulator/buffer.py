@@ -28,8 +28,9 @@ class Buffer():
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         self.size -= num_packets
 
+        a = ["s", "B"]
         for p in moving_packets:
-            print(int(p.high_thput), end = "")
+            print(a[int(p.high_thput)], end = "")
         print()
 
         to.recv(moving_packets)

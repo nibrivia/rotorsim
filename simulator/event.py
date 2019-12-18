@@ -35,7 +35,7 @@ class Registry:
             if len(self.queue) == 0:
                 print("@%.3f: no more events in registry" % self.time)
                 break
-            if self.time > self.limit:
+            if self.time >= self.limit:
                 print("reached past simulation time limit")
                 break
 

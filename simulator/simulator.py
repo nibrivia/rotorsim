@@ -138,7 +138,7 @@ def main(
     print("Setting up flows...")
     open(pkts_file, 'w').close()
     # generate flows
-    max_slots = n_cycles*net.n_slots+1
+    max_slots = n_cycles*net.n_slots
     # TODO hacky
     if workload == "all":
         num_flows = n_tor*10
@@ -159,7 +159,7 @@ def main(
             continue
         time = raw_slot*slot_duration
         R.call_in(time,
-                print, "\n@%.2f Cycle %s, Slot %s/%s, Total Slot %s/%s" % (time, cycle, slot, net.n_slots, raw_slot, max_slots),
+                print, "\n\033[1;91m@%.2f Cycle %s/%s, Slot %s/%s, Total Slot %s/%s\033[00m" % (time, cycle+1, n_cycles, slot+1, net.n_slots, raw_slot+1, max_slots),
                 priority = -100)
         if not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)
