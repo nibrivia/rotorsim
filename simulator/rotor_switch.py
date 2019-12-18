@@ -34,6 +34,14 @@ class RotorSwitch:
         self.slot_t += 1
         n_slots = len(self.matchings_by_slot)
 
+        # Skip if it's not our turn
+        if self.slot_t % n_slots != self.id:
+            Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
+            return
+
+        print("%s switching! (%d)" % (self, self.slot_t))
+
+        # Compute our new matching
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
         Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
