@@ -124,6 +124,7 @@ class ToRSwitch:
                 self.buffers_rcv[flow_src.id].recv([p])
 
                 # send an ack to the flow that sent this packet
+                # TODO remove transport layer stuff from here
                 p.flow.recv([p])
 
             else:
@@ -145,6 +146,8 @@ class ToRSwitch:
         # TODO when this is more decentralized
             #self.offer()
             #self.accept()
+
+        # TODO figure out low-latency vs high-tput routing
 
         # Do the stuffs!!
         self.send_old_indirect(rotor_id)
