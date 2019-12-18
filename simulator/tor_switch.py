@@ -72,6 +72,10 @@ class ToRSwitch:
 
         # For all active matchings, connect them up!
         for rotor_id, matchings in enumerate(matchings_in_effect):
+            # Skip if it's not that rotor's turn
+            if self.slot_t % n_slots != rotor_id:
+                continue
+
             for src, dst in matchings:
                 if src.id == self.id:
                     self.connect_to(rotor_id, dst)
