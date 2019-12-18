@@ -163,7 +163,7 @@ class ToRSwitch:
         if queue.size == 0:
             return
 
-        self.vprint("Old Indirect: %s:%d" % (self, rotor_id), 2)
+        self.vprint("\033[0;33mOld Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
 
         # Send the data
         self.send(rotor_id, queue, queue.size)
@@ -180,7 +180,7 @@ class ToRSwitch:
         if amount == 0:
             return
 
-        self.vprint("Direct: %s:%d" % (self, rotor_id), 2)
+        self.vprint("\033[0;32mDirect: %s:%d\033[00m" % (self, rotor_id), 2)
 
         self.send(rotor_id = rotor_id,
                   queue  = queue,
@@ -221,7 +221,7 @@ class ToRSwitch:
         if sum(amounts) == 0:
             return
 
-        self.vprint("New Indirect: %s:%d" % (self, rotor_id), 2)
+        self.vprint("\033[1;33mNew\033[0;33m Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
 
         # Send the amounts we decided on
         for flow_dst_id, amount in enumerate(amounts):
