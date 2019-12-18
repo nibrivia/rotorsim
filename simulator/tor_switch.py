@@ -102,10 +102,10 @@ class ToRSwitch:
             if flow_dst.id == self.id:
                 # accept packet into the receive buffer
                 self.buffers_rcv[flow_src.id].recv([p])
-                
+
                 # send an ack to the flow that sent this packet
                 p.flow.recv([p])
-            
+
             else:
                 queue = self.buffers_dst[flow_dst.id]
                 assert queue.size < self.packets_per_slot, \
@@ -144,7 +144,7 @@ class ToRSwitch:
         # Do the stuffs!!
         self.send_old_indirect(rotor_id)
         self.send_direct(rotor_id)
-        self.send_new_indirect(rotor_id) 
+        self.send_new_indirect(rotor_id)
 
     @Delay(0, priority = 1)
     def send_old_indirect(self, rotor_id):
