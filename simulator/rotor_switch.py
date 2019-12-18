@@ -59,7 +59,6 @@ class RotorSwitch:
             self.dests[src.id] = dst
         # Wait for reconfiguration time
         Delay(delay = self.reconfiguration_time, jitter = 0, priority = 0)(self._enable)()
-        #self._enable()
 
     def connect_tors(self, tors):
         self._disable()
