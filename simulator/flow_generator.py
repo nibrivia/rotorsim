@@ -7,21 +7,15 @@ import numpy as np
 from workloads.websearch import websearch_workload_distribution as websearch
 from workloads.chen import chen_distribution as chen
 
+from collections import defaultdict
+
 
 # HELPERS ========================================================
 
-def get_workload_size_func(workload):
-	lower = workload.lower()
-	
-	if lower == 'websearch':
-		return websearch
-
-	elif lower == 'chen':
-		return chen
-	
-	else:
-		raise Exception('Unrecognized workload {}'.format(workload))
-
+WORKLOAD_FNS = defaultdict(
+        websearch = websearch,
+        chen      = chen,
+        default   = lambda _: Exception('Unrecognized workload {}'.format(workload)))
 
 # MAIN ===========================================================
 
@@ -29,7 +23,7 @@ def generate_flows(
 	max_slots,
 	num_flows,
 	num_tors,
-	workload,
+	workload_name,
 	results_file='flows.csv',
 ):
 	# csv header
@@ -42,7 +36,7 @@ def generate_flows(
 	]
 
 	# get workload generator
-	generate_workload = get_workload_size_func(workload)
+	generate_workload = WORKLOAD_FNS[workload_name]
 	print(generate_workload)
 
 	# construct tor pairs
