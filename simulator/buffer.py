@@ -22,11 +22,12 @@ class Buffer():
 
     def send_to(self, to, num_packets):
         if num_packets > 0 and self.verbose:
-            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts \033[00m"
-                    % (R.time, self.parent, to, self.src, self.dst, num_packets),
+            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts (%s) \033[00m"
+                    % (R.time, self.parent, to, self.src, self.dst, num_packets, self),
                     end = "")
 
-        assert len(self.packets) >= num_packets, "Sending more packets than inqueue %s" % self
+        assert len(self.packets) >= num_packets, \
+                "%s sending more packets (%d) than inqueue (%d)" % (self, num_packets, len(self.packets))
 
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         self.size -= num_packets
@@ -64,7 +65,7 @@ class Buffer():
         self.recv(new_packets)
 
     def __str__(self):
-        return "Buffer of %s: %s" % (str(self.parent), self.name)
+        return "%s.%s" % (str(self.parent), self.name)
 
 
 DEMAND_NODE = Buffer(None, None, None, None, verbose = False)

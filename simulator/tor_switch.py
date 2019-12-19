@@ -34,16 +34,20 @@ class ToRSwitch:
         # Demand
         self.tot_demand = 0
 
+        self.logger = logger
         self.buffers_dir = [Buffer(parent = self,
                                    src = self.id, dst = dst,
+                                   name = "dir[%s]" % dst,
                                    logger = logger, verbose = verbose)
                                 for dst in range(n_tor)]
         self.buffers_ind = [Buffer(parent = self,
                                    src = self.id, dst = dst,
+                                   name = "ind[%s]" % dst,
                                    logger = logger, verbose = verbose)
                                 for dst in range(n_tor)]
         self.buffers_rcv = [Buffer(parent = self,
                                    src = src, dst = self.id,
+                                   name = "rcv[%s]" % src,
                                    logger = logger, verbose = verbose)
                                 for src in range(n_tor)]
 
@@ -306,7 +310,9 @@ class ToRSwitch:
         link_dst, link_remaining = self.connections[rotor_id]
 
         # Check link capacity
-        amount = min(link_remaining, amount)
+        if not priority:
+            amount = min(link_remaining, amount)
+
         # Disable due to priority queues taking over
         if False:
             assert link_remaining >= amount, \
@@ -353,6 +359,11 @@ class ToRSwitch:
 
         # Actually move the packet
         queue, amount, callback = self.out_qs[rotor_id][0]
+        if False:
+            print()
+            print("%s sending from %s on port %s, amount %s" % (
+                self, queue, rotor_id, amount))
+            print([(str(q), qty) for q, qty, _ in self.out_qs[rotor_id]])
         queue.send_to(self.rotors[rotor_id], 1)
         if amount == 1:
             # TODO not pop(0), really inefficient
@@ -395,13 +406,11 @@ class ToRSwitch:
             else:
                 path, _ = self.route[flow_dst.id]
                 next_hop = path[0]
-                print("next hop: %s" % next_hop)
-                print(self.tor_to_rotor)
-                print(self.route)
                 rotor_id = self.tor_to_rotor[next_hop]
                 queue = Buffer(parent = self, 
                         src = flow_src.id, dst = flow_dst.id,
-                        verbose = True, name = "temp" + str(p))
+                        verbose = True, logger = self.logger,
+                        name = "{%s->%s %s}" % (flow_src.id, flow_dst.id, p.seq_num))
                 queue.recv([p])
                 self.schedule_send(rotor_id, queue, 1, priority = True)
 
