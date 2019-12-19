@@ -65,7 +65,7 @@ class Buffer():
         self.recv(new_packets)
 
     def __str__(self):
-        return "%s.%s" % (str(self.parent), self.name)
+        return "%s.%s;%d" % (str(self.parent), self.name, self.size)
 
 
 DEMAND_NODE = Buffer(None, None, None, None, verbose = False)
