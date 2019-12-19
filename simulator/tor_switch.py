@@ -26,6 +26,8 @@ class ToRSwitch:
         self.clock_jitter  = clock_jitter
         self.packet_ttime  = self.slice_duration / packets_per_slot
 
+        self.recv = Delay(self.packet_ttime)(self._recv)
+
         # ... about IO
         self.verbose = verbose
 
@@ -47,6 +49,7 @@ class ToRSwitch:
 
         # Each item has the form (tor, link_remaining)
         self.connections = [None for _ in range(n_rotor)]
+        self.tor_to_rotor = dict()
         self.capacity = self.compute_capacity()
 
     # One-time setup
@@ -83,6 +86,10 @@ class ToRSwitch:
         Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
         self.make_route()
 
+        self.tor_to_rotor = dict()
+        for rotor_id, (tor, _) in enumerate(self.connections):
+            self.tor_to_rotor[tor.id] = rotor_id
+
 
     # Every slice setup
     ###################
@@ -103,6 +110,8 @@ class ToRSwitch:
             if src.id == self.id:
                 self.connect_to(rotor_id, dst)
 
+
+
         # Set a countdown for the next slot
         Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
         self.make_route()
@@ -111,6 +120,7 @@ class ToRSwitch:
         """This gets called for every rotor and starts the process for that one"""
         # Set the connection
         self.connections[rotor_id] = (tor, self.packets_per_slot)
+
 
         # TODO when this is more decentralized
             #self.offer()
@@ -135,7 +145,7 @@ class ToRSwitch:
     def make_route(self):
         # Routing table
         self.route = [(None, self.n_tor*1000) for _ in range(self.n_tor)]
-        self.route[self.id] = ([self.id], 0)
+        self.route[self.id] = ([], 0)
         queue = [self]
 
         #This is a bastardized dijkstra - it assumes all cost are one
@@ -158,12 +168,17 @@ class ToRSwitch:
             for dest, (path, cost) in enumerate(self.route):
                 print("  %s : %s, %s" % (dest, path, cost))
 
+        self.tor_to_rotor = dict()
+        for rotor_id, (tor, _) in enumerate(self.connections):
+            self.tor_to_rotor[tor.id] = rotor_id
+
 
     # SENDING ALGORITHMS
     ####################
 
     @Delay(0)
     def send_old_indirect(self, rotor_id, slice_id):
+        # This checks we're on the right slice
         if slice_id != self.slice_t:
             return
 
@@ -190,6 +205,7 @@ class ToRSwitch:
                 callback = lambda: self.send_direct(rotor_id, slice_id))
 
     def send_direct(self, rotor_id, slice_id):
+        # This checks we're on the right slice
         if slice_id != self.slice_t:
             return
 
@@ -211,6 +227,7 @@ class ToRSwitch:
                            callback = lambda: self.send_new_indirect(rotor_id, slice_id))
 
     def send_new_indirect(self, rotor_id, slice_id):
+        # This checks we're on the right slice
         if slice_id != self.slice_t:
             return
 
@@ -279,7 +296,7 @@ class ToRSwitch:
     # Actual packets moving
     ########################
 
-    def schedule_send(self, rotor_id, queue, amount, callback = None):
+    def schedule_send(self, rotor_id, queue, amount, priority = False, callback = None):
         if amount == 0:
             # we're done, callback
             if callback is not None:
@@ -289,9 +306,12 @@ class ToRSwitch:
         link_dst, link_remaining = self.connections[rotor_id]
 
         # Check link capacity
-        assert link_remaining >= amount, \
-            "%s, flow%s, rotor%s attempting to send %d, but capacity %s" % (
-                self, queue, rotor_id, amount, link_remaining)
+        amount = min(link_remaining, amount)
+        # Disable due to priority queues taking over
+        if False:
+            assert link_remaining >= amount, \
+                "%s, flow%s, rotor%s attempting to send %d, but capacity %s" % (
+                    self, queue, rotor_id, amount, link_remaining)
 
 
         # Update link remaining
@@ -305,15 +325,19 @@ class ToRSwitch:
             self.tot_demand -= 1
 
         # Actually move the packets
-        self.out_qs[rotor_id].append((queue, amount, callback))
-        self._send(rotor_id)
+        if priority:
+            # TODO, really inefficient
+            self.out_qs[rotor_id].insert(0, (queue, amount, callback))
+            Delay(0, priority = -1)(self._send)(rotor_id)
+        else:
+            self.out_qs[rotor_id].append((queue, amount, callback))
+            Delay(0)(self._send)(rotor_id)
 
     def _enable_out(self, rotor_id):
         self.out_enable[rotor_id] = True
-        self._send(rotor_id)
+        Delay(0)(self._send)(rotor_id)
 
     # Useful only for pretty prints: what comes first, packets second
-    @Delay(0)
     def _send(self, rotor_id):
         # If we're still busy, stop
         if not self.out_enable[rotor_id]:
@@ -340,7 +364,7 @@ class ToRSwitch:
         else:
             self.out_qs[rotor_id][0] = (queue, amount-1, callback)
 
-    def recv(self, rotor_id, packets):
+    def _recv(self, rotor_id, packets):
         for p in packets:
             # Receive the packets
             flow_src = p.src
@@ -372,6 +396,18 @@ class ToRSwitch:
                 path, _ = self.route[flow_dst.id]
                 next_hop = path[0]
                 print("next hop: %s" % next_hop)
+                print(self.tor_to_rotor)
+                print(self.route)
+                rotor_id = self.tor_to_rotor[next_hop]
+                queue = Buffer(parent = self, 
+                        src = flow_src, dst = flow_dst,
+                        verbose = True, name = "temp" + str(p))
+                queue.recv([p])
+                self.schedule_send(rotor_id, queue, 1, priority = True)
+
+                # Bookkeeping
+                self.tot_demand += 1
+                self.capacity[flow_dst.id] -= 1
 
 
 

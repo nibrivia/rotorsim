@@ -5,9 +5,12 @@ from event import R
 from packet import Packet
 
 class Buffer():
-    def __init__(self, parent, src, dst, logger, verbose):
+    def __init__(self, parent = None, name = "",
+            src = None, dst = None,
+            logger = None, verbose = False):
         self.packets = collections.deque()
         self.parent  = parent
+        self.name    = name
         self.src, self.dst = (src, dst)
         self.count = 0
 
@@ -28,10 +31,11 @@ class Buffer():
         moving_packets = [self.packets.popleft() for _ in range(num_packets)]
         self.size -= num_packets
 
-        a = ["s", "B"]
-        for p in moving_packets:
-            print(a[int(p.high_thput)], end = "")
-        print()
+        if self.verbose:
+            a = ["s", "B"]
+            for p in moving_packets:
+                print(a[int(p.high_thput)], end = "")
+            print()
 
         if to is None:
             return moving_packets
@@ -58,6 +62,9 @@ class Buffer():
         new_packets = [Packet(src, dst, self.count+i) for i in range(amount)]
         self.count += amount
         self.recv(new_packets)
+
+    def __str__(self):
+        return "Buffer of %s: %s" % (str(self.parent), self.name)
 
 
 DEMAND_NODE = Buffer(None, None, None, None, verbose = False)
