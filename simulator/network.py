@@ -48,6 +48,9 @@ class RotorNet:
                             verbose = verbose)
                 for i in range(n_tor)]
 
+        for tor in self.tors:
+            tor.set_tor_refs(self.tors)
+
         # Physically connect them up
         for rotor in self.rotors:
             rotor.connect_tors(self.tors)

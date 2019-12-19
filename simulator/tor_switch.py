@@ -43,7 +43,7 @@ class ToRSwitch:
                                 for src in range(n_tor)]
 
         # Each item has the form (tor, link_remaining)
-        self.connections = dict()
+        self.connections = [None for _ in range(n_rotor)]
         self.capacity = self.compute_capacity()
 
     # One-time setup
@@ -56,8 +56,29 @@ class ToRSwitch:
     def add_matchings(self, matchings_by_slot_rotor):
         self.matchings_by_slot_rotor = matchings_by_slot_rotor
 
+    def set_tor_refs(self, tors):
+        self.tors = tors
+
     def start(self):
-        self.new_slice()
+        # This is the first time, we need to connect everyone
+        self.slice_t += 1
+        slot_t = self.slice_t // len(self.rotors)
+        n_slots = len(self.matchings_by_slot_rotor)
+        matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
+
+        # For all active matchings, connect them up!
+        for rotor_id in range(len(self.rotors)):
+            matchings = matchings_in_effect[rotor_id]
+            print("%s: slot %s/%s, slice %s/%s -> Rot %s" % (
+                self, slot_t+1,n_slots, self.slice_t+1, len(self.rotors), rotor_id))
+
+            for src, dst in matchings:
+                if src.id == self.id:
+                    self.connect_to(rotor_id, dst)
+
+        # Set a countdown for the next slot, just like normal
+        Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
+        self.make_route()
 
 
     # Every slice setup
@@ -69,8 +90,7 @@ class ToRSwitch:
         n_slots = len(self.matchings_by_slot_rotor)
         matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
 
-
-        # For all active matchings, connect them up!
+        # Switch up relevant matching
         rotor_id = self.slice_t % len(self.rotors)
         matchings = matchings_in_effect[rotor_id]
         print("%s: slot %s/%s, slice %s/%s -> Rot %s" % (
@@ -82,6 +102,7 @@ class ToRSwitch:
 
         # Set a countdown for the next slot
         Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
+        self.make_route()
 
     def connect_to(self, rotor_id, tor):
         """This gets called for every rotor and starts the process for that one"""
@@ -98,6 +119,40 @@ class ToRSwitch:
         self.send_old_indirect(rotor_id)
         self.send_direct(rotor_id)
         self.send_new_indirect(rotor_id)
+
+    @property
+    def link_state(self):
+        # TODO do this in connect_to, reduces complexity by at least O(n_tor)
+        links = dict()
+        for tor, _ in self.connections:
+            links[tor.id] = 1
+        return links
+
+    # By having a delay 0 here, this means that every ToR will have gone
+    # through its start, which will then mean that we can call link_state
+    @Delay(0)
+    def make_route(self):
+        # Routing table
+        self.route = [(None, self.n_tor*1000) for _ in range(self.n_tor)]
+        self.route[self.id] = ([self.id], 0)
+        queue = [self]
+
+        while len(queue) > 0:
+            tor    = queue.pop()
+            path, cost = self.route[tor.id]
+
+            for con_id in tor.link_state:
+                cur_path, cur_cost = self.route[con_id]
+                con_tor = self.tors[con_id]
+                if cost+1 < cur_cost:
+                    self.route[con_id] = (path + [con_id], cost+1)
+                    queue.append(con_tor)
+
+        print("%s routing table" % self)
+        for dest, (path, cost) in enumerate(self.route):
+            print("  %s : %s, %s" % (dest, path, cost))
+
+
 
 
     # SENDING ALGORITHMS
