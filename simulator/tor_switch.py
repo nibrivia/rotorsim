@@ -274,8 +274,9 @@ class ToRSwitch:
             self.capacity[dst.id] -= len(packets)
             self.tot_demand += len(packets)
 
-    ################
     # Printing stuffs
+    ################
+
     def __str__(self):
         return "ToR %s" % self.id
 

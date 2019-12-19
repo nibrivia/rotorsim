@@ -22,6 +22,8 @@ class RotorSwitch:
         self.slice_t              = -1
         self.n_rotor              = n_rotor
 
+        self.new_slice = Delay(slice_duration, jitter = clock_jitter)(self._new_slice)
+
         # About IO
         self.verbose = verbose
         self.logger  = logger
@@ -31,13 +33,16 @@ class RotorSwitch:
     def add_matchings(self, matchings_by_slot):
         self.matchings_by_slot = matchings_by_slot
 
-    def new_slice(self):
+    def start(self):
+        self._new_slice()
+
+    def _new_slice(self):
         self.slice_t += 1
         n_slots = len(self.matchings_by_slot)
 
         # Skip if it's not our turn
         if self.slice_t % self.n_rotor != self.id:
-            Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
+            self.new_slice() # This passes through, it has a delay on it
             return
 
         print("%s switching! (%d)" % (self, self.slice_t))
@@ -46,7 +51,7 @@ class RotorSwitch:
         slot_t = self.slice_t // self.n_rotor
         current_matchings = self.matchings_by_slot[slot_t % n_slots]
         self.install_matchings(current_matchings)
-        Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
+        self.new_slice()
 
 
 

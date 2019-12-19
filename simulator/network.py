@@ -102,7 +102,7 @@ class RotorNet:
         for t in self.tors:
             t.start()
         for r in self.rotors:
-            r.new_slice()
+            r.start()
 
         # Start events
         R.limit = n_cycles
