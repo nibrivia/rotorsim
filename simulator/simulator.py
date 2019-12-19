@@ -45,7 +45,7 @@ def load_flows(slot_duration):
         default=2
 )
 @click.option(
-        "--slot_duration",
+        "--slice_duration",
         type=float,
         default=-1
 )
@@ -103,7 +103,7 @@ def main(
         packets_per_slot,
         n_cycles,
         workload,
-        slot_duration, 
+        slice_duration, 
         reconfiguration_time, 
         jitter,
         log, 
@@ -122,14 +122,14 @@ def main(
         logger = Log(fn = log)
         logger.add_timer(R)
 
-    if slot_duration == -1:
-        slot_duration = 1/math.ceil((n_tor-1)/n_rotor)
+    if slice_duration == -1:
+        slice_duration = 1
 
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
                    packets_per_slot     = packets_per_slot,
                    reconfiguration_time = reconfiguration_time,
-                   slot_duration        = slot_duration,
+                   slice_duration       = slice_duration,
                    jitter               = jitter,
                    logger  = logger,
                    verbose = verbose, 
@@ -146,13 +146,13 @@ def main(
     generate_flows(max_slots, num_flows, n_tor, workload)
 
     # open connection for each flow at the time it should arrive
+    slot_duration = slice_duration*n_rotor
     flows = load_flows(slot_duration)
     for f in flows:
         time_for_arrival = f.arrival * slot_duration
         R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing
-    slice_duration = slot_duration / n_rotor
     for raw_slice in range(max_slots*n_rotor):
         cycle =  raw_slice // (n_rotor*net.n_slots)
         slot  = (raw_slice // n_rotor) % net.n_slots

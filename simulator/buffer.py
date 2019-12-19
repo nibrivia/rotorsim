@@ -33,6 +33,9 @@ class Buffer():
             print(a[int(p.high_thput)], end = "")
         print()
 
+        if to is None:
+            return moving_packets
+
         to.recv(moving_packets)
 
         if not self.logger is None:
