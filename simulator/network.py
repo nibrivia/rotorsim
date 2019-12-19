@@ -19,11 +19,14 @@ class RotorNet:
                  do_pause = True):
         self.n_rotor = n_rotor
         self.n_tor   = n_tor
-        self.slot_time = -1
 
         # Matchings need to be done early to get constants
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
+
+        self.slice_duration = slice_duration
+        self.slot_duration  = slice_duration*n_rotor
+        self.cycle_duration = self.slot_duration * self.n_slots
 
         # Internal variables
         self.rotors = [RotorSwitch(
@@ -108,7 +111,7 @@ class RotorNet:
             r.start()
 
         # Start events
-        R.limit = n_cycles
+        R.limit = n_cycles*self.cycle_duration
         R.run_next()
 
     def open_connection(self, tcpflow):

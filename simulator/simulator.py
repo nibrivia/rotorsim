@@ -161,7 +161,7 @@ def main(
             continue
         time = raw_slice*slice_duration
         R.call_in(time,
-                print, "\n\033[1;91m@%.2f Cyle %s/%s, Slot %s/%s, Slice %s/%s\033[00m" % (
+                print, "\n\033[1;91m@%.2f Cycle %s/%s, Slot %s/%s, Slice %s/%s\033[00m" % (
                     time,
                     cycle+1, n_cycles,
                     slot+1, net.n_slots,
