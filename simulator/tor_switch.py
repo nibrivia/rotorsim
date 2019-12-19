@@ -55,6 +55,8 @@ class ToRSwitch:
 
         # Each item has the form (tor, link_remaining)
         self.connections = [None for _ in range(n_rotor)]
+        self.capacities  = [None for _ in range(n_rotor)]
+        self.capacity    = [self.packets_per_slot for _ in range(n_tor)]
         self.tor_to_rotor = dict()
 
     # One-time setup
@@ -125,6 +127,9 @@ class ToRSwitch:
         # Set the connection
         self.connections[rotor_id] = (tor, self.packets_per_slot)
 
+        # Get capacities for indirection
+        self.capacities[rotor_id] = tor.capacity
+
         # Start sending
         self._send(rotor_id)
 
@@ -161,11 +166,6 @@ class ToRSwitch:
                     self.route[con_id] = (path + [con_id], cost+1)
                     queue.append(con_tor)
 
-        if False:
-            print("%s routing table" % self)
-            for dest, (path, cost) in enumerate(self.route):
-                print("  %s : %s, %s" % (dest, path, cost))
-
         self.tor_to_rotor = dict()
         for rotor_id, (tor, _) in enumerate(self.connections):
             self.tor_to_rotor[tor.id] = rotor_id
@@ -179,6 +179,7 @@ class ToRSwitch:
 
         # Priority queue
         if self.buffers_fst[rotor_id].size > 0:
+            self.vprint("\033[0;31mLow latency: %s:%d\033[00m" % (self, rotor_id), 2)
             return self.buffers_fst[rotor_id]
 
         # Old indirect traffic
@@ -194,7 +195,7 @@ class ToRSwitch:
         # New indirect traffic
         for buf in shuffle(self.buffers_dir):
             # TODO figure out how RotorLB works here...
-            if buf.size > 0:
+            if buf.size > 0 and self.capacities[rotor_id][buf.dst] > 0:
                 self.vprint("\033[1;33mNew\033[0;33m Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
                 return buf
 
@@ -221,6 +222,11 @@ class ToRSwitch:
         if queue is None:
             return
 
+        # Send the packet
+        p = queue.packets[0]
+        self.capacity[p.dst.id] += 1
+        queue.send_to(self.rotors[rotor_id], 1)
+
         # We're back to being busy, and come back when we're done
         self.out_enable[rotor_id] = False
         Delay(delay = self.packet_ttime)(self._enable_out)(rotor_id)
@@ -230,16 +236,15 @@ class ToRSwitch:
             print()
             print("%s sending from %s on port %s, amount %s" % (
                 self, queue, rotor_id, 1))
-        queue.send_to(self.rotors[rotor_id], 1)
 
-    def _recv(self, rotor_id, packets):
+    def _recv(self, port_id, packets):
         for p in packets:
             # Receive the packets
             flow_src = p.src
             flow_dst = p.dst
             seq_num = p.seq_num
 
-            # case: packet was destined for this tor
+            # You have arrived :)
             if flow_dst.id == self.id:
                 # accept packet into the receive buffer
                 self.buffers_rcv[flow_src.id].recv([p])
@@ -247,31 +252,37 @@ class ToRSwitch:
                 # send an ack to the flow that sent this packet
                 # TODO remove transport layer stuff from here
                 p.flow.recv([p])
+                continue
 
-            elif p.high_thput: # business as usual
-                queue = self.buffers_ind[flow_dst.id]
-                queue.recv([p])
-            else:
+            # Time-sensitive stuff
+            if not p.high_thput:
+                # Get next hop
                 path, _ = self.route[flow_dst.id]
                 next_hop = path[0]
                 rotor_id = self.tor_to_rotor[next_hop]
-                queue = Buffer(parent = self, 
-                        src = flow_src.id, dst = flow_dst.id,
-                        verbose = True, logger = self.logger,
-                        name = "{%s->%s %s}" % (flow_src.id, flow_dst.id, p.seq_num))
-                queue.recv([p])
 
-                # Attempt send now
+                # Add to queue
+                self.buffers_fst[rotor_id].recv([p])
+
+                # Attempt to send now
+                self.capacity[flow_dst.id] -= 1
                 self._send(rotor_id)
+                continue
+
+            # From my hosts
+            if flow_src.id == self.id:
+                queue = self.buffers_dir[flow_dst.id]
+            else: # or indirect
+                queue = self.buffers_ind[flow_dst.id]
+            queue.recv([p])
+            self.capacity[flow_dst.id] -= 1
 
 
 
+    #TODO remove
+    @Delay(0)
     def add_demand_to(self, dst, packets):
-        if dst.id != self.id:
-            self.buffers_dir[dst.id].recv(packets)
-            # TODO cleaner than just brute force
-            for rotor_id in range(len(self.rotors)):
-                self._send(rotor_id)
+        self._recv(-1, packets)
 
     # Printing stuffs
     ################
