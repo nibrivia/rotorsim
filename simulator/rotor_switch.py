@@ -8,18 +8,19 @@ class Empty:
 
 class RotorSwitch:
     def __init__(self,
-            id, n_ports,
-            slot_duration, reconfiguration_time, clock_jitter,
+            id, n_ports, n_rotor,
+            slice_duration, reconfiguration_time, clock_jitter,
             verbose, logger = None):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
 
         # About time
-        self.slot_duration        = slot_duration
+        self.slice_duration       = slice_duration
         self.reconfiguration_time = reconfiguration_time
         self.clock_jitter         = clock_jitter
-        self.slot_t               = -1
+        self.slice_t              = -1
+        self.n_rotor              = n_rotor
 
         # About IO
         self.verbose = verbose
@@ -30,21 +31,22 @@ class RotorSwitch:
     def add_matchings(self, matchings_by_slot):
         self.matchings_by_slot = matchings_by_slot
 
-    def new_slot(self):
-        self.slot_t += 1
+    def new_slice(self):
+        self.slice_t += 1
         n_slots = len(self.matchings_by_slot)
 
         # Skip if it's not our turn
-        if self.slot_t % n_slots != self.id:
-            Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
+        if self.slice_t % self.n_rotor != self.id:
+            Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
             return
 
-        print("%s switching! (%d)" % (self, self.slot_t))
+        print("%s switching! (%d)" % (self, self.slice_t))
 
         # Compute our new matching
-        current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
+        slot_t = self.slice_t // self.n_rotor
+        current_matchings = self.matchings_by_slot[slot_t % n_slots]
         self.install_matchings(current_matchings)
-        Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
+        Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
 
 
 

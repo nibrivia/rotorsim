@@ -29,7 +29,8 @@ class RotorNet:
         self.rotors = [RotorSwitch(
                             id = i,
                             n_ports = n_tor,
-                            slot_duration        = slot_duration,
+                            n_rotor = n_rotor,
+                            slice_duration       = slot_duration/n_rotor,
                             reconfiguration_time = reconfiguration_time,
                             clock_jitter         = jitter,
                             verbose = verbose,
@@ -99,9 +100,9 @@ class RotorNet:
         """Run the simulation for n_cycles cycles"""
         # Register first events
         for t in self.tors:
-            t.new_slot()
+            t.start()
         for r in self.rotors:
-            r.new_slot()
+            r.new_slice()
 
         # Start events
         R.limit = n_cycles

@@ -152,15 +152,20 @@ def main(
         R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing
-    for raw_slot in range(max_slots):
-        cycle = raw_slot // net.n_slots
-        slot  = raw_slot %  net.n_slots
+    slice_duration = slot_duration / n_rotor
+    for raw_slice in range(max_slots*n_rotor):
+        cycle =  raw_slice // (n_rotor*net.n_slots)
+        slot  = (raw_slice // n_rotor) % net.n_slots
+        sli_t =  raw_slice % n_rotor
         if slot != 0 and not verbose:
             continue
-        time = raw_slot*slot_duration
+        time = raw_slice*slice_duration
         R.call_in(time,
-                print, "\n\033[1;91m@%.2f Slice %s/%s\033[00m" % (
-                    time, raw_slot+1, max_slots),
+                print, "\n\033[1;91m@%.2f Cyle %s/%s, Slot %s/%s, Slice %s/%s\033[00m" % (
+                    time,
+                    cycle+1, n_cycles,
+                    slot+1, net.n_slots,
+                    sli_t+1, n_rotor),
                 priority = -100)
         if not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)

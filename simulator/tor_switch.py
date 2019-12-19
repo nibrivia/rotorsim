@@ -18,8 +18,9 @@ class ToRSwitch:
 
         # ... about time
         self.packets_per_slot = packets_per_slot
-        self.slot_t        = -1
+        self.slice_t       = -1
         self.slot_duration = slot_duration
+        self.slice_duration = slot_duration / n_rotor
         self.clock_jitter  = clock_jitter
 
         # ... about IO
@@ -45,104 +46,45 @@ class ToRSwitch:
         self.connections = dict()
         self.capacity = self.compute_capacity()
 
-    def vprint(self, msg="", level = 0):
-        if self.verbose:
-            pad = "  " * level
-            print("%s%s" % (pad, msg))
-
-    def add_demand_to(self, dst, packets):
-        if dst.id != self.id:
-            self.buffers_dir[dst.id].recv(packets)
-            self.capacity[dst.id] -= len(packets)
-            self.tot_demand += len(packets)
+    # One-time setup
+    ################
 
     def connect_rotor(self, rotor, queue):
         # queue is an object with a .recv that can be called with (packets)
         self.rotors[rotor.id] = queue
 
-
     def add_matchings(self, matchings_by_slot_rotor):
         self.matchings_by_slot_rotor = matchings_by_slot_rotor
 
+    def start(self):
+        self.new_slice()
 
-    def new_slot(self):
-        self.slot_t += 1
+
+    # Every slice setup
+    ###################
+
+    def new_slice(self):
+        self.slice_t += 1
+        slot_t = self.slice_t // len(self.rotors)
         n_slots = len(self.matchings_by_slot_rotor)
-        matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % n_slots]
+        matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
+
 
         # For all active matchings, connect them up!
-        for rotor_id, matchings in enumerate(matchings_in_effect):
-            # Skip if it's not that rotor's turn
-            if self.slot_t % n_slots != rotor_id:
-                continue
+        rotor_id = self.slice_t % len(self.rotors)
+        matchings = matchings_in_effect[rotor_id]
+        print("%s: slot %s/%s, slice %s/%s -> Rot %s" % (
+            self, slot_t+1,n_slots, self.slice_t+1, len(self.rotors), rotor_id))
 
-            for src, dst in matchings:
-                if src.id == self.id:
-                    self.connect_to(rotor_id, dst)
+        for src, dst in matchings:
+            if src.id == self.id:
+                self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot
-        Delay(self.slot_duration, jitter = self.clock_jitter)(self.new_slot)()
-
-
-    def send(self, rotor_id, queue, amount):
-        if amount == 0:
-            return
-
-        link_dst, link_remaining = self.connections[rotor_id]
-
-        # Check link capacity
-        assert link_remaining >= amount, \
-            "%s, flow%s, rotor%s attempting to send %d, but capacity %s" % (
-                self, queue, rotor_id, amount, link_remaining)
-
-
-        # Update link remaining
-        link_remaining -= amount
-        self.connections[rotor_id] = (link_dst, link_remaining)
-
-        # Update our capacity
-        for i in range(amount):
-            flow_dst = queue.packets[i].dst
-            self.capacity[flow_dst.id] += 1
-            self.tot_demand -= 1
-
-        # Move the actual packets
-        # TODO scheduling the sends so that they can happen over time...
-        queue.send_to(self.rotors[rotor_id], amount)
-
-
-    def recv(self, rotor_id, packets):
-        for p in packets:
-            # Receive the packets
-            flow_src = p.src
-            flow_dst = p.dst
-            seq_num = p.seq_num
-
-            # case: packet was destined for this tor
-            if flow_dst.id == self.id:
-                # accept packet into the receive buffer
-                self.buffers_rcv[flow_src.id].recv([p])
-
-                # send an ack to the flow that sent this packet
-                # TODO remove transport layer stuff from here
-                p.flow.recv([p])
-
-            else:
-                queue = self.buffers_ind[flow_dst.id]
-                if False:
-                    # This check is skipped due to packets being added in mid-course
-                    assert queue.size < self.packets_per_slot, \
-                            "%s at capacity to %s. Capacities %s, qsize %s" % (
-                                self, flow_dst, self.capacity, queue.size)
-                queue.recv([p])
-
-                # Update book-keeping
-                self.tot_demand += 1
-                self.capacity[flow_dst.id] -= 1
-
-
+        Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
 
     def connect_to(self, rotor_id, tor):
+        """This gets called for every rotor and starts the process for that one"""
         # Set the connection
         self.connections[rotor_id] = (tor, self.packets_per_slot)
 
@@ -157,6 +99,10 @@ class ToRSwitch:
         self.send_direct(rotor_id)
         self.send_new_indirect(rotor_id)
 
+
+    # SENDING ALGORITHMS
+    ####################
+
     @Delay(0, priority = 1)
     def send_old_indirect(self, rotor_id):
         # Get connection data
@@ -166,8 +112,10 @@ class ToRSwitch:
         queue = self.buffers_ind[dst.id]
 
         # Verify link violations
-        assert queue.size <= self.packets_per_slot, \
-                "%s->%s old indirect %d > capacity" % (self, dst, queue.size)
+        # Skip due to weird TCP interactions
+        if False:
+            assert queue.size <= self.packets_per_slot, \
+                    "%s->%s old indirect %d > capacity" % (self, dst, queue.size)
 
         # Stop here if there's nothing to do
         if queue.size == 0:
@@ -176,7 +124,7 @@ class ToRSwitch:
         self.vprint("\033[0;33mOld Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
 
         # Send the data
-        self.send(rotor_id, queue, queue.size)
+        self.send(rotor_id, queue, min(queue.size, self.packets_per_slot))
 
     @Delay(0, priority = 2)
     def send_direct(self, rotor_id):
@@ -258,6 +206,76 @@ class ToRSwitch:
         self.offers[rotor_id] = offer
         self.capacities[rotor_id] = capacity
 
+
+
+    # Actual packets moving
+    ########################
+
+    def send(self, rotor_id, queue, amount):
+        if amount == 0:
+            return
+
+        link_dst, link_remaining = self.connections[rotor_id]
+
+        # Check link capacity
+        assert link_remaining >= amount, \
+            "%s, flow%s, rotor%s attempting to send %d, but capacity %s" % (
+                self, queue, rotor_id, amount, link_remaining)
+
+
+        # Update link remaining
+        link_remaining -= amount
+        self.connections[rotor_id] = (link_dst, link_remaining)
+
+        # Update our capacity
+        for i in range(amount):
+            flow_dst = queue.packets[i].dst
+            self.capacity[flow_dst.id] += 1
+            self.tot_demand -= 1
+
+        # Move the actual packets
+        # TODO scheduling the sends so that they can happen over time...
+        queue.send_to(self.rotors[rotor_id], amount)
+
+
+    def recv(self, rotor_id, packets):
+        for p in packets:
+            # Receive the packets
+            flow_src = p.src
+            flow_dst = p.dst
+            seq_num = p.seq_num
+
+            # case: packet was destined for this tor
+            if flow_dst.id == self.id:
+                # accept packet into the receive buffer
+                self.buffers_rcv[flow_src.id].recv([p])
+
+                # send an ack to the flow that sent this packet
+                # TODO remove transport layer stuff from here
+                p.flow.recv([p])
+
+            else:
+                queue = self.buffers_ind[flow_dst.id]
+                if False:
+                    # This check is skipped due to packets being added in mid-course
+                    assert queue.size < self.packets_per_slot, \
+                            "%s at capacity to %s. Capacities %s, qsize %s" % (
+                                self, flow_dst, self.capacity, queue.size)
+                queue.recv([p])
+
+                # Update book-keeping
+                self.tot_demand += 1
+                self.capacity[flow_dst.id] -= 1
+
+
+    def add_demand_to(self, dst, packets):
+        if dst.id != self.id:
+            self.buffers_dir[dst.id].recv(packets)
+            self.capacity[dst.id] -= len(packets)
+            self.tot_demand += len(packets)
+
+    ################
+    # Printing stuffs
     def __str__(self):
         return "ToR %s" % self.id
 
@@ -276,5 +294,11 @@ class ToRSwitch:
             s += "%2d " % b.size
 
         return s
+
+    def vprint(self, msg="", level = 0):
+        if self.verbose:
+            pad = "  " * level
+            print("%s%s" % (pad, msg))
+
 
 
