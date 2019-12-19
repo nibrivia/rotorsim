@@ -70,9 +70,6 @@ class TCPFlow:
 					flows.append(flow)
 		return flows
 
-	def assign_buffer(self, out_buffer):
-		self.out_buffer = out_buffer
-
 	@property
 	def id(self):
 		return self.flow_id
@@ -100,7 +97,7 @@ class TCPFlow:
 								flow = self,
 								high_thput = self.high_thput)
 				# deliver the packets via the out buffer
-				self.out_buffer.recv([packet])
+				self.src.add_demand_to(self.dst, [packet])
 				self.sent.append(packet)
 				self.outstanding += 1
 

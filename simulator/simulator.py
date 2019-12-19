@@ -159,7 +159,8 @@ def main(
             continue
         time = raw_slot*slot_duration
         R.call_in(time,
-                print, "\n\033[1;91m@%.2f Cycle %s/%s, Slot %s/%s, Total Slot %s/%s\033[00m" % (time, cycle+1, n_cycles, slot+1, net.n_slots, raw_slot+1, max_slots),
+                print, "\n\033[1;91m@%.2f Slice %s/%s\033[00m" % (
+                    time, raw_slot+1, max_slots),
                 priority = -100)
         if not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)

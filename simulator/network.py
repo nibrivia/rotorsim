@@ -108,10 +108,6 @@ class RotorNet:
         R.run_next()
 
     def open_connection(self, tcpflow):
-        # get buffer on tor which this flow will send packets through
-        out_buffer = self.tors[tcpflow.src].buffers_dir[tcpflow.dst]
-        tcpflow.assign_buffer(out_buffer)
-
         # override src and dst to tor objects
         tcpflow.src = self.tors[tcpflow.src]
         tcpflow.dst = self.tors[tcpflow.dst]

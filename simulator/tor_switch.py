@@ -32,7 +32,7 @@ class ToRSwitch:
                                    src = self.id, dst = dst,
                                    logger = logger, verbose = verbose)
                                 for dst in range(n_tor)]
-        self.buffers_dst = [Buffer(parent = self,
+        self.buffers_ind = [Buffer(parent = self,
                                    src = self.id, dst = dst,
                                    logger = logger, verbose = verbose)
                                 for dst in range(n_tor)]
@@ -50,11 +50,11 @@ class ToRSwitch:
             pad = "  " * level
             print("%s%s" % (pad, msg))
 
-    def add_demand_to(self, dst, amount):
+    def add_demand_to(self, dst, packets):
         if dst.id != self.id:
-            self.buffers_dir[dst.id].add_n(amount, src = self, dst = dst)
-            self.capacity[dst.id] -= amount
-            self.tot_demand += amount
+            self.buffers_dir[dst.id].recv(packets)
+            self.capacity[dst.id] -= len(packets)
+            self.tot_demand += len(packets)
 
     def connect_rotor(self, rotor, queue):
         # queue is an object with a .recv that can be called with (packets)
@@ -128,9 +128,12 @@ class ToRSwitch:
                 p.flow.recv([p])
 
             else:
-                queue = self.buffers_dst[flow_dst.id]
-                assert queue.size < self.packets_per_slot, \
-                        "%s at capacity to %s with %s" % (self, flow_dst, self.capacity)
+                queue = self.buffers_ind[flow_dst.id]
+                if False:
+                    # This check is skipped due to packets being added in mid-course
+                    assert queue.size < self.packets_per_slot, \
+                            "%s at capacity to %s. Capacities %s, qsize %s" % (
+                                self, flow_dst, self.capacity, queue.size)
                 queue.recv([p])
 
                 # Update book-keeping
@@ -160,7 +163,7 @@ class ToRSwitch:
         dst, remaining = self.connections[rotor_id]
 
         # All indirect traffic to dst
-        queue = self.buffers_dst[dst.id]
+        queue = self.buffers_ind[dst.id]
 
         # Verify link violations
         assert queue.size <= self.packets_per_slot, \
@@ -261,7 +264,7 @@ class ToRSwitch:
     def buffer_str(self):
         s = "\n" + str(self)
         s += "\nOld Indirect\n  "
-        for dst, b in enumerate(self.buffers_dst):
+        for dst, b in enumerate(self.buffers_ind):
             s += "%2d " % b.size
 
         s += "\nDirect\n  "
