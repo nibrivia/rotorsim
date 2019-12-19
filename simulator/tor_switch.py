@@ -400,7 +400,7 @@ class ToRSwitch:
                 print(self.route)
                 rotor_id = self.tor_to_rotor[next_hop]
                 queue = Buffer(parent = self, 
-                        src = flow_src, dst = flow_dst,
+                        src = flow_src.id, dst = flow_dst.id,
                         verbose = True, name = "temp" + str(p))
                 queue.recv([p])
                 self.schedule_send(rotor_id, queue, 1, priority = True)
