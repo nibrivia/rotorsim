@@ -47,8 +47,6 @@ class RotorSwitch:
             self.new_slice() # This passes through, it has a delay on it
             return
 
-        print("%s switching! (%d)" % (self, self.slice_t))
-
         # Compute our new matching
         slot_t = self.slice_t // self.n_rotor
         current_matchings = self.matchings_by_slot[slot_t % n_slots]

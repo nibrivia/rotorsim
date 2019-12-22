@@ -82,9 +82,6 @@ class ToRSwitch:
         # For all active matchings, connect them up!
         for rotor_id in range(len(self.rotors)):
             matchings = matchings_in_effect[rotor_id]
-            print("%s: slot %s/%s, slice %s/%s -> Rot %s" % (
-                self, slot_t+1,n_slots, self.slice_t+1, len(self.rotors), rotor_id))
-
             for src, dst in matchings:
                 if src.id == self.id:
                     self.connect_to(rotor_id, dst)
@@ -111,8 +108,6 @@ class ToRSwitch:
         # Switch up relevant matching
         rotor_id = self.slice_t % len(self.rotors)
         matchings = matchings_in_effect[rotor_id]
-        print("%s: slot %s/%s, slice %s/%s -> Rot %s" % (
-            self, slot_t+1,n_slots, self.slice_t+1, len(self.rotors), rotor_id))
 
         for src, dst in matchings:
             if src.id == self.id:
