@@ -138,4 +138,5 @@ class TCPFlow:
 		# output is newline-separated
 		print('\n'.join(out))
 
-	
+	def __str__(self):
+		return "Flow %s" % self.flow_id
