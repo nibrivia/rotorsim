@@ -105,10 +105,10 @@ class RotorNet:
     def run(self, n_cycles = 1):
         """Run the simulation for n_cycles cycles"""
         # Register first events
-        for t in self.tors:
-            t.start()
         for r in self.rotors:
             r.start()
+        for t in self.tors:
+            t.start()
 
         # Start events
         R.limit = n_cycles*self.cycle_duration

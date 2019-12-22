@@ -34,6 +34,8 @@ class RotorSwitch:
         self.matchings_by_slot = matchings_by_slot
 
     def start(self):
+        self._enable()
+        self.install_matchings(self.matchings_by_slot[0])
         self._new_slice()
 
     def _new_slice(self):
@@ -68,7 +70,7 @@ class RotorSwitch:
         Delay(delay = self.reconfiguration_time, jitter = 0, priority = -100)(self._enable)()
 
     def connect_tors(self, tors):
-        self._disable()
+        assert not self.enabled
         self.tors = tors
         for t_id, tor in enumerate(tors):
             # This handle thing is essentially giving the illusion that

@@ -119,7 +119,7 @@ class ToRSwitch:
                 self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot
-        Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
+        Delay(self.slice_duration, jitter = self.clock_jitter, priority=-1)(self.new_slice)()
         self.make_route()
 
     def connect_to(self, rotor_id, tor):
