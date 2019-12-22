@@ -139,4 +139,4 @@ class TCPFlow:
 		print('\n'.join(out))
 
 	def __str__(self):
-		return "Flow %s" % self.flow_id
+		return "Flow %s%s" % (self.flow_id, self.high_thput)
