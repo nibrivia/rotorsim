@@ -1,0 +1,37 @@
+---
+title: "Opera"
+author: "Olivia Brode-Roger"
+date: "12/21/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(hrbrthemes)
+```
+
+```{r data, }
+opera <- read_csv("opera.csv")
+```
+
+```{r plots, }
+opera_tors <- opera %>% 
+    group_by(time, flow, flow_src, flow_dst, packet) %>% 
+        summarize(src = max(src), # t > r, so max gets the tor...
+                  dst = max(dst), # this is... hacky...
+                  tor = min(src))
+
+opera_tors %>%
+    filter(flow %in% c("Flow 21False", "Flow 24True")) %>% 
+    #filter(flow %in% c("Flow 32", "Flow 5", "Flow 1", "Flow 24", "Flow 29", "Flow 35", "Flow 31")) %>% 
+    ggplot(aes(y = time,
+               x = src,
+               yend = time+.1,
+               xend = dst,
+               color = !grepl("True", flow))) +
+    geom_segment() +
+    scale_y_reverse() +
+    theme_ipsum_rc() +
+    labs(color = "Low latency") +
+    facet_wrap(~flow)
+```
