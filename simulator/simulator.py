@@ -164,10 +164,11 @@ def main(
         #num_flows = n_tor*n_cycles
         workload = "chen"
     generate_flows(
-            interflow_arrival_slots = interflow_arrival/slot_duration,
-            num_tors  = n_tor,
-            max_slots = max_slots,
-            workload  = workload)
+            interflow_arrival = interflow_arrival,
+            num_tors   = n_tor,
+            num_rotors = n_rotor,
+            time_limit = time_limit,
+            workload   = workload)
 
     # open connection for each flow at the time it should arrive
     flows = load_flows(slot_duration)
