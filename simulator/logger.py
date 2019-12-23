@@ -14,8 +14,11 @@ class Log:
     def log(self, src, dst, packet):
         msg = "%.3f, %s, %s, %s, %s, %s, %s\n" % \
                         (self.timer.time,
-                            src, dst,
-                            packet.flow, packet.src, packet.dst, packet.seq_num)
+                            src.id, dst.id,
+                            packet.flow.flow_id,
+                            packet.src.id,
+                            packet.dst.id,
+                            packet.seq_num)
         self.cache.append(msg)
         if len(self.cache) > 100:
             self._flush()

@@ -27,7 +27,7 @@ class TCPFlow:
 		self.n_sent = 0
 		self.acked = []
 		self.outstanding = 0
-		self.name = "Flow %s%s" % (self.flow_id, self.high_thput)
+		self.name = "Flow " + str(self.flow_id)
 
 		self.completed = float('inf')
 
