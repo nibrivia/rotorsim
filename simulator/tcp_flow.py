@@ -24,7 +24,7 @@ class TCPFlow:
 		self.dst     = dst
 
 		self.cwnd = 1 # packets
-		self.sent = []
+		self.n_sent = 0
 		self.acked = []
 		self.outstanding = 0
 
@@ -81,16 +81,16 @@ class TCPFlow:
 		# determine number of packets to send depending on cwnd
 		
 		# make packets to hand to the sending buffer
-		while self.outstanding < self.cwnd:
-				packet = Packet(src = self.src,
-								dst = self.dst,
-								seq_num = len(self.sent) + 1,
-								flow = self,
-								high_thput = self.high_thput)
-				# deliver the packets via the out buffer
-				self.src.add_demand_to(self.dst, [packet])
-				self.sent.append(packet)
-				self.outstanding += 1
+		while self.outstanding < self.cwnd and self.n_sent < self.size:
+			packet = Packet(src = self.src,
+							dst = self.dst,
+							seq_num = self.n_sent,
+							flow = self,
+							high_thput = self.high_thput)
+			# deliver the packets via the out buffer
+			self.src.add_demand_to(self.dst, [packet])
+			self.n_sent      += 1
+			self.outstanding += 1
 
 	def recv(self, packet):
 		# record the acked packets
@@ -116,7 +116,7 @@ class TCPFlow:
 		out.append('{}Size            {} MB'.format(' '*4, self.size))
 		out.append('{}Size            {} packets'.format(' '*4, self.size_in_pkts))
 		out.append('{}Sent            {} packets'.format(' '*4, len(self.acked)))
-		out.append('{}Inflight        {} packets'.format(' '*4, len(self.sent) - len(self.acked)))
+		out.append('{}Inflight        {} packets'.format(' '*4, self.nsent - len(self.acked)))
 		out.append('{}Unsent          {} packets'.format(' '*4, self.traffic_left))
 		out.append('{}Arrive          {} slots'.format(' '*4, self.arrival))
 		out.append('{}Complete        {} slots'.format(' '*4, self.completed))
