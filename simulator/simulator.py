@@ -30,9 +30,10 @@ def load_flows(slot_duration):
 
 @click.command()
 @click.option( # TODO change to some explicit control over network load
-        "--num_flows",
+        "--interflow_arrival",
         type=int,
-        default=1
+        default=60,
+        help="in ms"
 )
 @click.option(
         "--n_tor",
@@ -107,7 +108,7 @@ def load_flows(slot_duration):
         is_flag=True
 )
 def main(
-        num_flows,
+        interflow_arrival,
         n_tor, 
         n_rotor,
         bandwidth,
@@ -155,14 +156,18 @@ def main(
             (time_limit, cycle_duration, slot_duration, slice_duration))
 
     print("Setting up flows...")
-    open(pkts_file, 'w').close()
     # generate flows
     max_slots = n_cycles*net.n_slots
     # TODO hacky
     if workload == "all":
-        num_flows = n_tor*n_cycles
+        assert False
+        #num_flows = n_tor*n_cycles
         workload = "chen"
-    generate_flows(max_slots, num_flows, n_tor, workload)
+    generate_flows(
+            interflow_arrival_slots = interflow_arrival/slot_duration,
+            num_tors  = n_tor,
+            max_slots = max_slots,
+            workload  = workload)
 
     # open connection for each flow at the time it should arrive
     flows = load_flows(slot_duration)

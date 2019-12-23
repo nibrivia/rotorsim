@@ -20,9 +20,9 @@ WORKLOAD_FNS = defaultdict(
 # MAIN ===========================================================
 
 def generate_flows(
-	max_slots,
-	num_flows,
+        interflow_arrival_slots,
 	num_tors,
+        max_slots,
 	workload,
 	results_file='flows.csv',
 ):
@@ -43,10 +43,11 @@ def generate_flows(
 	tor_pairs = list(set(product(tors, tors)) - { (i, i) for i in tors })
 
 	# model num_flows flow arrivals with a poisson process
-	flow_arrivals_per_slot = num_flows / max_slots
+	print(interflow_arrival_slots)
+	flow_arrivals_per_slot = interflow_arrival_slots*num_tors
+	print(flow_arrivals_per_slot)
 	arrivals = list(np.random.poisson(flow_arrivals_per_slot, max_slots))
-	while sum(arrivals) != num_flows:
-		arrivals = list(np.random.poisson(flow_arrivals_per_slot, max_slots))
+	print(sum(arrivals))
 
 	# create flows 
 	flows = []
