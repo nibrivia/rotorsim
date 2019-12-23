@@ -102,7 +102,7 @@ class RotorNet:
             self.matchings.append(slot_matching)
 
 
-    def run(self, n_cycles = 1):
+    def run(self, time_limit):
         """Run the simulation for n_cycles cycles"""
         # Register first events
         for r in self.rotors:
@@ -111,7 +111,7 @@ class RotorNet:
             t.start()
 
         # Start events
-        R.limit = n_cycles*self.cycle_duration
+        R.limit = time_limit
         R.run_next()
 
     def open_connection(self, tcpflow):

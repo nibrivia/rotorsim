@@ -37,7 +37,6 @@ def generate_flows(
 
 	# get workload generator
 	generate_workload = WORKLOAD_FNS[workload]
-	print(generate_workload)
 
 	# construct tor pairs
 	tors = set(range(num_tors))

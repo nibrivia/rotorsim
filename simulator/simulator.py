@@ -2,7 +2,7 @@ from network import RotorNet
 from event import R
 from logger import Log
 from helpers import *
-from tcp_flow import TCPFlow
+from tcp_flow import TCPFlow, BYTES_PER_PACKET
 from flow_generator import generate_flows
 import sys
 import click
@@ -29,7 +29,7 @@ def load_flows(slot_duration):
 
 
 @click.command()
-@click.option(
+@click.option( # TODO change to some explicit control over network load
         "--num_flows",
         type=int,
         default=1
@@ -47,12 +47,14 @@ def load_flows(slot_duration):
 @click.option(
         "--slice_duration",
         type=float,
-        default=-1
+        default=90,
+        help='in us'
 )
 @click.option(
         "--reconfiguration_time",
         type=float,
-        default=0
+        default=0,
+        help='in us, disabled if 0'
 )
 @click.option(
         "--jitter",
@@ -60,9 +62,16 @@ def load_flows(slot_duration):
         default=0
 )
 @click.option(
-        "--packets_per_slot",
+        "--latency",
         type=int,
-        default=10
+        default=500,
+        help='latency in ns'
+)
+@click.option(
+        "--bandwidth",
+        type=int,
+        default=10e3,
+        help='bandwidth in MB/s'
 )
 @click.option(
         "--log",
@@ -75,9 +84,10 @@ def load_flows(slot_duration):
         default="pkts.txt"
 )
 @click.option(
-        "--n_cycles",
+        "--time_limit",
         type=int,
-        default=5
+        default=5000,
+        help="in ms"
 )
 @click.option(
         "--workload",
@@ -100,8 +110,9 @@ def main(
         num_flows,
         n_tor, 
         n_rotor,
-        packets_per_slot,
-        n_cycles,
+        bandwidth,
+        latency,
+        time_limit,
         workload,
         slice_duration, 
         reconfiguration_time, 
@@ -112,28 +123,36 @@ def main(
         no_log, 
         no_pause
     ):
-    print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
-            (n_tor, n_rotor, packets_per_slot, n_cycles))
 
-    print("Setting up network...")
     if no_log:
         logger = None
     else:
         logger = Log(fn = log)
         logger.add_timer(R)
 
-    if slice_duration == -1:
-        slice_duration = 1
+    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET) # (MB/s)*us works out to (B/s)*s
+
+    print("Setting up network...")
+
+    slice_duration /= 1000 #divide to be in ms
 
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
                    packets_per_slot     = packets_per_slot,
-                   reconfiguration_time = reconfiguration_time,
-                   slice_duration       = slice_duration,
+                   reconfiguration_time = reconfiguration_time/1000,
+                   slice_duration       = slice_duration, # R.time will be in ms
                    jitter               = jitter,
                    logger  = logger,
                    verbose = verbose, 
                    do_pause = not no_pause)
+
+    n_cycles = math.ceil(time_limit/(n_rotor*net.n_slots*slice_duration))
+    print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
+            (n_tor, n_rotor, packets_per_slot, n_cycles))
+    slot_duration = slice_duration*n_rotor
+    cycle_duration = slot_duration*net.n_slots
+    print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
+            (time_limit, cycle_duration, slot_duration, slice_duration))
 
     print("Setting up flows...")
     open(pkts_file, 'w').close()
@@ -146,26 +165,17 @@ def main(
     generate_flows(max_slots, num_flows, n_tor, workload)
 
     # open connection for each flow at the time it should arrive
-    slot_duration = slice_duration*n_rotor
     flows = load_flows(slot_duration)
     for f in flows:
         time_for_arrival = f.arrival * slot_duration
         R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing
-    for raw_slice in range(max_slots*n_rotor):
-        if raw_slice % 10 != 0:
-            continue
-        cycle =  raw_slice // (n_rotor*net.n_slots)
-        slot  = (raw_slice // n_rotor) % net.n_slots
-        sli_t =  raw_slice % n_rotor
-        time = raw_slice*slice_duration
+    for cycle in range(n_cycles):
+        time = cycle*cycle_duration
         R.call_in(time,
-                print, "\033[1;91m@%.2f Cycle %s/%s, Slot %s/%s, Slice %s/%s\033[00m" % (
-                    time,
-                    cycle+1, n_cycles,
-                    slot+1, net.n_slots,
-                    sli_t+1, n_rotor),
+                print, "\033[1;91m@%.2f Cycle %s/%s\033[00m" % (
+                    time, cycle+1, n_cycles),
                 priority = -100)
         if not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)
@@ -173,7 +183,7 @@ def main(
 
     print("Starting simulator...")
     # Start the simulator
-    net.run(n_cycles)
+    net.run(time_limit)
 
     if not no_log:
         logger.close()
