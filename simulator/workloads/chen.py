@@ -2,9 +2,11 @@
 import random
 from collections import Counter
 
-LARGE_FLOW_PROB  = 0.05
-SMALL_FLOW_PROB  = 0.15
-MEDIUM_FLOW_PROB = 0.15
+SMALL_FLOW_PROB  = 0.25
+MEDIUM_FLOW_PROB = 0.50
+LARGE_FLOW_PROB  = 0.25
+
+assert LARGE_FLOW_PROB + SMALL_FLOW_PROB + MEDIUM_FLOW_PROB == 1
 
 def chen_distribution(
 	size_of_small_flows =1,    # MB 
