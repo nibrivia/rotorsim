@@ -60,14 +60,17 @@ class Delay:
         self.priority = priority
 
     def __call__(self, fn):
-        @wraps(fn)
-        def called_fn(*args, **kwargs):
-            jitter = 0
-            if self.jitter != 0:
-                # avoid a critical-path call to random
+        if self.jitter == 0:
+            @wraps(fn)
+            def called_fn(*args, **kwargs):
+                R.call_in(self.delay, fn, *args, priority = self.priority, **kwargs)
+            return called_fn
+        else:
+            @wraps(fn)
+            def called_fn(*args, **kwargs):
                 jitter = random.uniform(-self.jitter, self.jitter)
-            R.call_in(self.delay+jitter, fn, *args, priority = self.priority, **kwargs)
-        return called_fn
+                R.call_in(self.delay+jitter, fn, *args, priority = self.priority, **kwargs)
+            return called_fn
 
 def stop_simulation(r):
     r.stop()

@@ -3,6 +3,7 @@ from buffer import *
 from helpers import *
 from event import Delay, R
 from functools import lru_cache
+from collections import deque
 
 class ToRSwitch:
     def __init__(self, name,
@@ -59,6 +60,10 @@ class ToRSwitch:
         self.capacity    = [self.packets_per_slot for _ in range(n_tor)]
         self.tor_to_rotor = dict()
 
+        self.tables       = dict()
+        self.non_zero_dir = dict()
+        self.last_sent = 0
+
     # One-time setup
     ################
 
@@ -87,7 +92,8 @@ class ToRSwitch:
                     self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot, just like normal
-        Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)()
+        self.new_slice = Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)
+        self.new_slice()
         self.make_route()
 
         # TODO be smarter about this
@@ -114,8 +120,16 @@ class ToRSwitch:
                 self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot
-        Delay(self.slice_duration, jitter = self.clock_jitter, priority=-1)(self.new_slice)()
-        self.make_route()
+        self.new_slice() # is a delay() object
+
+        # If we've already computed it for this topology, get it from the cache
+        # As a side effect, this means that since make_route doesn't run that 
+        # often, it can be pretty inefficiently implemented :)
+        if rotor_id in self.tables:
+            #print("cached")
+            self.route, self.tor_to_rotor = self.tables[rotor_id]
+        else:
+            self.make_route(rotor_id)
 
     def connect_to(self, rotor_id, tor):
         """This gets called for every rotor and starts the process for that one"""
@@ -140,15 +154,16 @@ class ToRSwitch:
     # By having a delay 0 here, this means that every ToR will have gone
     # through its start, which will then mean that we can call link_state
     @Delay(0)
-    def make_route(self):
+    def make_route(self, slice_id = None):
         # Routing table
         self.route = [(None, self.n_tor*1000) for _ in range(self.n_tor)]
         self.route[self.id] = ([], 0)
-        queue = [self]
+        queue = deque()
+        queue.append(self)
 
         #This is a bastardized dijkstra - it assumes all cost are one
         while len(queue) > 0:
-            tor    = queue.pop()
+            tor    = queue.popleft()
             path, cost = self.route[tor.id]
 
             # Take the new connection...
@@ -164,6 +179,9 @@ class ToRSwitch:
         self.tor_to_rotor = dict()
         for rotor_id, (tor, _) in enumerate(self.connections):
             self.tor_to_rotor[tor.id] = rotor_id
+
+        if slice_id is not None:
+            self.tables[slice_id] = (self.route, self.tor_to_rotor)
 
 
     # SENDING ALGORITHMS
@@ -184,15 +202,18 @@ class ToRSwitch:
 
         # Direct traffic
         if self.buffers_dir[dst.id].size > 0:
+            # We need to update bookeeping here
+            if self.buffers_dir[dst.id].size == 1:
+                del self.non_zero_dir[dst.id]
+
             self.vprint("\033[0;32mDirect: %s:%d\033[00m" % (self, rotor_id), 2)
             return self.buffers_dir[dst.id]
 
         # New indirect traffic
-        for buf in shuffle(self.buffers_dir):
-            # TODO figure out how RotorLB works here...
-            if buf.size > 0 and self.capacities[rotor_id][buf.dst] > 0:
-                self.vprint("\033[1;33mNew\033[0;33m Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
-                return buf
+        for ind_id, buf in self.non_zero_dir.items():
+            if buf.size == 1:
+                del self.non_zero_dir[ind_id]
+            return buf
 
         return None
 
@@ -203,7 +224,7 @@ class ToRSwitch:
     def _enable_out(self, rotor_id):
         self.out_enable[rotor_id] = True
         # We're done transmitting, try again
-        Delay(0)(self._send)(rotor_id)
+        self._send(rotor_id)
 
     # Useful only for pretty prints: what comes first, packets second
     def _send(self, rotor_id):
@@ -224,7 +245,7 @@ class ToRSwitch:
 
         # We're back to being busy, and come back when we're done
         self.out_enable[rotor_id] = False
-        Delay(delay = self.packet_ttime)(self._enable_out)(rotor_id)
+        R.call_in(delay = self.packet_ttime, fn = self._enable_out, rotor_id = rotor_id)
 
         # Actually move the packet
         if False:
@@ -232,52 +253,54 @@ class ToRSwitch:
             print("%s sending from %s on port %s, amount %s" % (
                 self, queue, rotor_id, 1))
 
-    def _recv(self, port_id, packets):
-        for p in packets:
-            # Receive the packets
-            flow_src = p.src
-            flow_dst = p.dst
-            seq_num = p.seq_num
+    def _recv(self, port_id, p):
+        # Receive the p
+        flow_src = p.src
+        flow_dst = p.dst
+        seq_num = p.seq_num
 
-            # You have arrived :)
-            if flow_dst.id == self.id:
-                # accept packet into the receive buffer
-                self.buffers_rcv[flow_src.id].recv([p])
+        # You have arrived :)
+        if flow_dst.id == self.id:
+            # accept packet into the receive buffer
+            self.buffers_rcv[flow_src.id].recv(p)
 
-                # send an ack to the flow that sent this packet
-                # TODO remove transport layer stuff from here
-                p.flow.recv([p])
-                continue
+            # send an ack to the flow that sent this packet
+            # TODO remove transport layer stuff from here
+            p.flow.recv(p)
+            return
 
-            # Time-sensitive stuff
-            if not p.high_thput:
-                # Get next hop
-                path, _ = self.route[flow_dst.id]
-                next_hop = path[0]
-                rotor_id = self.tor_to_rotor[next_hop]
+        # Time-sensitive stuff
+        if not p.high_thput:
+            # Get next hop
+            path, _ = self.route[flow_dst.id]
+            next_hop = path[0]
+            rotor_id = self.tor_to_rotor[next_hop]
 
-                # Add to queue
-                self.buffers_fst[rotor_id].recv([p])
+            # Add to queue
+            self.buffers_fst[rotor_id].recv(p)
 
-                # Attempt to send now
-                self.capacity[flow_dst.id] -= 1
-                self._send(rotor_id)
-                continue
-
-            # From my hosts
-            if flow_src.id == self.id:
-                queue = self.buffers_dir[flow_dst.id]
-            else: # or indirect
-                queue = self.buffers_ind[flow_dst.id]
-            queue.recv([p])
+            # Attempt to send now
             self.capacity[flow_dst.id] -= 1
+            self._send(rotor_id)
+            return
+
+        # From my hosts
+        if flow_src.id == self.id:
+            queue = self.buffers_dir[flow_dst.id]
+            self.non_zero_dir[flow_dst.id] = self.buffers_dir[flow_dst.id]
+        else: # or indirect
+            queue = self.buffers_ind[flow_dst.id]
+
+        queue.recv(p)
+        self.capacity[flow_dst.id] -= 1
 
 
 
     #TODO remove
     @Delay(0)
     def add_demand_to(self, dst, packets):
-        self._recv(-1, packets)
+        for p in packets:
+            self._recv(-1, p)
 
     # Printing stuffs
     ################
@@ -292,7 +315,7 @@ class ToRSwitch:
             s += "%2d " % b.size
 
         s += "\nDirect\n  "
-        for dst, b in enumerate(self.buffers_dir):
+        for dst, b in self.buffers_dir.items():
             s += "%2d " % b.size
 
         s += "\nReceived\n  "

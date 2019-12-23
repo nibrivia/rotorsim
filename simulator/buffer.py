@@ -21,6 +21,7 @@ class Buffer():
         self.size = 0
 
     def send_to(self, to, num_packets):
+        assert num_packets == 1
         if num_packets > 0 and self.verbose:
             print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts (%s) \033[00m"
                     % (R.time, self.parent, to, self.src, self.dst, num_packets, self),
@@ -29,30 +30,29 @@ class Buffer():
         assert len(self.packets) >= num_packets, \
                 "%s sending more packets (%d) than inqueue (%d)" % (self, num_packets, len(self.packets))
 
-        moving_packets = [self.packets.popleft() for _ in range(num_packets)]
-        self.size -= num_packets
+        p = self.packets.popleft()
+        self.size -= 1
 
         if self.verbose:
             a = ["s", "B"]
-            for p in moving_packets:
-                print(a[int(p.high_thput)], end = "")
-            print()
+            s = a[int(p.high_thput)]
+            print(s)
 
         if to is None:
-            return moving_packets
+            return p
 
-        to.recv(moving_packets)
+        to.recv(p)
 
         if not self.logger is None:
             self.logger.log(
                     src = self.parent, dst = to,
-                    packets = moving_packets)
+                    packet = p)
 
-    def recv(self, packets):
+    def recv(self, packet):
         #for p in packets:
         #    assert p.dst == self.dst
-        self.packets.extend(packets)
-        self.size = len(self.packets)
+        self.packets.append(packet)
+        self.size += 1
 
     def add_n(self, amount, src = None, dst = None):
         if src is None:

@@ -80,16 +80,16 @@ class RotorSwitch:
             tor.connect_rotor(self, handle)
 
     #@Delay(0)
-    def recv(self, tor, packets):
+    def recv(self, tor, packet):
         if self.enabled:
             dst = self.dests[tor.id]
             if self.verbose:
-                print("@%.2f                 %s to \033[01m%s\033[00m: %2d pkts\033[00m"
-                        % (R.time, self, dst, len(packets)))
+                print("@%.2f                 %s to \033[01m%s\033[00m\033[00m"
+                        % (R.time, self, dst))
             if self.logger is not None:
-                self.logger.log(src = self, dst = dst, packets = packets)
+                self.logger.log(src = self, dst = dst, packet = packet)
 
-            self.dests[tor.id].recv(self.id, packets)
+            self.dests[tor.id].recv(self.id, packet)
 
         else:
             # Could assert false, but just drop

@@ -11,13 +11,12 @@ class Log:
     def add_timer(self, timer):
         self.timer = timer
 
-    def log(self, src, dst, packets):
-        msgs = ["%.3f, %s, %s, %s, %s, %s, %s\n" %
+    def log(self, src, dst, packet):
+        msg = "%.3f, %s, %s, %s, %s, %s, %s\n" % \
                         (self.timer.time,
                             src, dst,
-                            p.flow, p.src, p.dst, p.seq_num)
-                    for p in packets]
-        self.cache.extend(msgs)
+                            packet.flow, packet.src, packet.dst, packet.seq_num)
+        self.cache.append(msg)
         if len(self.cache) > 100:
             self._flush()
 

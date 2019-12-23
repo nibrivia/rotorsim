@@ -141,7 +141,7 @@ def main(
     max_slots = n_cycles*net.n_slots
     # TODO hacky
     if workload == "all":
-        num_flows = n_tor*10
+        num_flows = n_tor*n_cycles
         workload = "chen"
     generate_flows(max_slots, num_flows, n_tor, workload)
 
@@ -154,6 +154,8 @@ def main(
 
     # set up printing
     for raw_slice in range(max_slots*n_rotor):
+        if raw_slice % 10 != 0:
+            continue
         cycle =  raw_slice // (n_rotor*net.n_slots)
         slot  = (raw_slice // n_rotor) % net.n_slots
         sli_t =  raw_slice % n_rotor
