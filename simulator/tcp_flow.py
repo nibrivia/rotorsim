@@ -23,7 +23,7 @@ class TCPFlow:
 		self.src     = src
 		self.dst     = dst
 
-		self.cwnd = 1 * BYTES_PER_PACKET # bytes
+		self.cwnd = 1 # packets
 		self.sent = []
 		self.acked = []
 		self.outstanding = 0
@@ -79,21 +79,12 @@ class TCPFlow:
 			return
 
 		# determine number of packets to send depending on cwnd
-		num_pkts_to_send = int(self.cwnd // BYTES_PER_PACKET)
 		
 		# make packets to hand to the sending buffer
-		while self.outstanding < num_pkts_to_send:
-			for i in range(num_pkts_to_send):
-
-				# check can send 
-				if len(self.sent) >= self.size_in_pkts:
-					if len(self.sent) - len(self.acked) == 0:
-						self.completed = min(self.completed, int(R.time // self.slot_duration))
-					return
-
+		while self.outstanding < self.cwnd:
 				packet = Packet(src = self.src,
 								dst = self.dst,
-								seq_num = len(self.sent) + i,
+								seq_num = len(self.sent) + 1,
 								flow = self,
 								high_thput = self.high_thput)
 				# deliver the packets via the out buffer
@@ -101,17 +92,13 @@ class TCPFlow:
 				self.sent.append(packet)
 				self.outstanding += 1
 
-		return num_pkts_to_send
-
-	def recv(self, packets):
+	def recv(self, packet):
 		# record the acked packets
-		for acked_packet in packets:			
-			self.acked.append(acked_packet)
+		self.acked.append(packet)
 
 		# update cwnd and outstanding based on packets acked now
-		acked_now = len(packets)
-		self.cwnd += (acked_now * BYTES_PER_PACKET / self.cwnd)
-		self.outstanding -= acked_now
+		self.cwnd += (1 / self.cwnd)
+		self.outstanding -= 1
 
 		# now do send again
 		self.send()
