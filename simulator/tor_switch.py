@@ -12,6 +12,7 @@ class ToRSwitch:
             logger, verbose):
         # Stuff about me
         self.id      = int(name)
+        self.name    = "Tor %d" % self.id
 
         # ... about others
         self.n_tor  = n_tor
@@ -306,7 +307,7 @@ class ToRSwitch:
     ################
 
     def __str__(self):
-        return "ToR %s" % self.id
+        return self.name
 
     def buffer_str(self):
         s = "\n" + str(self)

@@ -27,6 +27,7 @@ class TCPFlow:
 		self.n_sent = 0
 		self.acked = []
 		self.outstanding = 0
+		self.name = "Flow %s%s" % (self.flow_id, self.high_thput)
 
 		self.completed = float('inf')
 
@@ -126,4 +127,4 @@ class TCPFlow:
 		print('\n'.join(out))
 
 	def __str__(self):
-		return "Flow %s%s" % (self.flow_id, self.high_thput)
+		return self.name

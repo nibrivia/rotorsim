@@ -10,15 +10,15 @@ class Registry:
         self.queue = []
         self.limit = limit
         self.has_run = False
-        self.counts  = count()
+        self.count  = 0
 
     def call_in(self, delay, fn, *args, priority = 0, **kwargs):
         """This will register the call in `delay` time from now, ties broken by priority, then first to register"""
         if self.has_run:
             assert delay >= 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
-        count = next(self.counts)
-        heapq.heappush(self.queue, (self.time+delay, priority, count, fn, args, kwargs))
+        self.count += 1
+        heapq.heappush(self.queue, (self.time+delay, priority, self.count, fn, args, kwargs))
         return count
 
     def stop(self):
