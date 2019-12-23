@@ -72,7 +72,12 @@ class ToRSwitch:
         self.rotors[rotor.id] = queue
 
     def add_matchings(self, matchings_by_slot_rotor):
-        self.matchings_by_slot_rotor = matchings_by_slot_rotor
+        self.matchings_by_slot_rotor = [[ None for _ in m] for m in matchings_by_slot_rotor]
+        for slot, matchings_by_rotor in enumerate(matchings_by_slot_rotor):
+            for rotor_id, matchings in enumerate(matchings_by_rotor):
+                for src, dst in matchings:
+                    if src.id == self.id:
+                        self.matchings_by_slot_rotor[slot][rotor_id] = dst
 
     def set_tor_refs(self, tors):
         self.tors = tors
@@ -86,10 +91,8 @@ class ToRSwitch:
 
         # For all active matchings, connect them up!
         for rotor_id in range(len(self.rotors)):
-            matchings = matchings_in_effect[rotor_id]
-            for src, dst in matchings:
-                if src.id == self.id:
-                    self.connect_to(rotor_id, dst)
+            dst = matchings_in_effect[rotor_id]
+            self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot, just like normal
         self.new_slice = Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)
@@ -113,11 +116,8 @@ class ToRSwitch:
 
         # Switch up relevant matching
         rotor_id = self.slice_t % len(self.rotors)
-        matchings = matchings_in_effect[rotor_id]
-
-        for src, dst in matchings:
-            if src.id == self.id:
-                self.connect_to(rotor_id, dst)
+        dst = matchings_in_effect[rotor_id]
+        self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot
         self.new_slice() # is a delay() object
