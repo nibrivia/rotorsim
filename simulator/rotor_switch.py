@@ -77,6 +77,7 @@ class RotorSwitch:
             handle = Empty()
             handle.recv = partial(self.recv, tor)
             handle.name = str(self)
+            handle.id   = self.id
             tor.connect_rotor(self, handle)
 
     #@Delay(0)
