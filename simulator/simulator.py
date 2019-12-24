@@ -72,7 +72,7 @@ def load_flows(slot_duration):
         "--bandwidth",
         type=int,
         default=10e3,
-        help='bandwidth in MB/s'
+        help='bandwidth in Mb/s'
 )
 @click.option(
         "--log",
@@ -131,11 +131,12 @@ def main(
         logger = Log(fn = log)
         logger.add_timer(R)
 
-    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET) # (MB/s)*us works out to (B/s)*s
+    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (MB/s)*us works out to (B/s)*s
 
     print("Setting up network...")
 
     slice_duration /= 1000 #divide to be in ms
+    bandwidth /= 8 # Everything else uses MB/s
 
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
