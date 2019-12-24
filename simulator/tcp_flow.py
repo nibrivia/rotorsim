@@ -6,7 +6,7 @@ from event import R
 from packet import Packet
 
 BYTES_PER_PACKET = 1500
-HIGH_THPUT_BOUNDARY = 1 # MB
+HIGH_THPUT_BOUNDARY = 15 # MB, from Opera paper
 
 class TCPFlow:
     def __init__(
