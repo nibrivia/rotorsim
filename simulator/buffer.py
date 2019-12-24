@@ -43,7 +43,7 @@ class Buffer():
 
         to.recv(p)
 
-        if not self.logger is None:
+        if False and not self.logger is None:
             self.logger.log(
                     src = self.parent, dst = to,
                     packet = p)
