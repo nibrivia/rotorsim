@@ -29,11 +29,11 @@ def generate_flows(
 ):
 	# csv header
 	fields = [
-		'FLOW_ARRIVAL_IN_SLOTS',
-		'FLOW_ID',
-		'FLOW_SIZE_IN_BYTES',
-		'FLOW_SRC',
-		'FLOW_DST',
+		'arrival',
+		'id',
+		'size_bytes',
+		'src',
+		'dst',
 	]
 
 	# get workload generator

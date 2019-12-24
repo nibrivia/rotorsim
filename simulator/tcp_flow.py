@@ -20,6 +20,7 @@ class TCPFlow:
 		self.arrival = arrival
 		self.flow_id = flow_id
 		self.size    = size # MB
+		self.size_pkt = size*1e6/BYTES_PER_PACKET
 		self.src     = src
 		self.dst     = dst
 
@@ -82,7 +83,7 @@ class TCPFlow:
 		# determine number of packets to send depending on cwnd
 		
 		# make packets to hand to the sending buffer
-		while self.outstanding < self.cwnd and self.n_sent < self.size:
+		while self.outstanding < self.cwnd and self.n_sent < self.size_pkt:
 			packet = Packet(src = self.src,
 							dst = self.dst,
 							seq_num = self.n_sent,
