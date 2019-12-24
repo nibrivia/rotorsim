@@ -42,6 +42,6 @@ if __name__ == '__main__':
 
 
 chen_size = \
-        SMALL_FLOW_PROB  * 1 +
-        MEDIUM_FLOW_PROB * 10 +
+        SMALL_FLOW_PROB  * 1 + \
+        MEDIUM_FLOW_PROB * 10 + \
         LARGE_FLOW_PROB  * 1000

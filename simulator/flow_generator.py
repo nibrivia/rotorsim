@@ -4,8 +4,8 @@ import csv
 from itertools import product
 import numpy as np
 
-from workloads.websearch import websearch_workload_distribution as websearch
-from workloads.chen import chen_distribution as chen
+from workloads.websearch import websearch_distribution, websearch_size
+from workloads.chen import chen_distribution, chen_size
 
 from collections import defaultdict
 
@@ -13,14 +13,14 @@ from collections import defaultdict
 # HELPERS ========================================================
 
 WORKLOAD_FNS = defaultdict(
-        websearch = websearch,
-        chen      = chen,
+        websearch = (websearch_distribution, websearch_size),
+        chen      = (chen_distribution, chen_size),
         default   = lambda _: Exception('Unrecognized workload {}'.format(workload)))
 
 # MAIN ===========================================================
 
 def generate_flows(
-    interflow_arrival,
+    load, bandwidth,
     time_limit,
     num_tors,
     num_rotors,
@@ -37,14 +37,15 @@ def generate_flows(
     ]
 
     # get workload generator
-    generate_workload = WORKLOAD_FNS[workload]
-    average_flow
+    generate_workload, size = WORKLOAD_FNS[workload]
 
     # construct tor pairs
     tors = set(range(num_tors))
     tor_pairs = list(set(product(tors, tors)) - { (i, i) for i in tors })
 
     # model num_flows flow arrivals with a poisson process
+    print("size of 1 flow: %s" % (size))
+    interflow_arrival = 1000 * size / bandwidth / load # in ms, so *1000
     print(interflow_arrival)
     flow_arrivals_per_ms = num_tors*num_rotors/interflow_arrival
     print(flow_arrivals_per_ms)

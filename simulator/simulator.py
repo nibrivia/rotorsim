@@ -30,10 +30,10 @@ def load_flows(slot_duration):
 
 @click.command()
 @click.option( # TODO change to some explicit control over network load
-        "--interflow_arrival",
-        type=int,
-        default=60,
-        help="in ms"
+        "--load",
+        type=float,
+        default=0.3,
+        help="% of link capacity to use"
 )
 @click.option(
         "--n_tor",
@@ -108,20 +108,20 @@ def load_flows(slot_duration):
         is_flag=True
 )
 def main(
-        interflow_arrival,
-        n_tor, 
+        load,
+        n_tor,
         n_rotor,
         bandwidth,
         latency,
         time_limit,
         workload,
-        slice_duration, 
-        reconfiguration_time, 
+        slice_duration,
+        reconfiguration_time,
         jitter,
-        log, 
+        log,
         pkts_file,
-        verbose, 
-        no_log, 
+        verbose,
+        no_log,
         no_pause
     ):
 
@@ -144,7 +144,7 @@ def main(
                    slice_duration       = slice_duration, # R.time will be in ms
                    jitter               = jitter,
                    logger  = logger,
-                   verbose = verbose, 
+                   verbose = verbose,
                    do_pause = not no_pause)
 
     n_cycles = math.ceil(time_limit/(n_rotor*net.n_slots*slice_duration))
@@ -164,7 +164,8 @@ def main(
         #num_flows = n_tor*n_cycles
         workload = "chen"
     generate_flows(
-            interflow_arrival = interflow_arrival,
+            load = load,
+            bandwidth  = bandwidth,
             num_tors   = n_tor,
             num_rotors = n_rotor,
             time_limit = time_limit,
@@ -198,7 +199,7 @@ def main(
     if verbose and False:
         for f in flows:
             f.dump_status()
-    
+
     print("done")
 
 if __name__ == "__main__":
