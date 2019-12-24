@@ -26,7 +26,7 @@ class TCPFlow:
 
 		self.cwnd = 1 # packets
 		self.n_sent = 0
-		self.acked = []
+		self.n_acked = 0
 		self.outstanding = 0
 		self.name = "Flow " + str(self.flow_id)
 
@@ -96,7 +96,7 @@ class TCPFlow:
 
 	def recv(self, packet):
 		# record the acked packets
-		self.acked.append(packet)
+		self.n_acked += 1
 
 		# update cwnd and outstanding based on packets acked now
 		self.cwnd += (1 / self.cwnd)

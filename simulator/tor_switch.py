@@ -263,7 +263,7 @@ class ToRSwitch:
         # You have arrived :)
         if flow_dst.id == self.id:
             # accept packet into the receive buffer
-            self.buffers_rcv[flow_src.id].recv(p)
+            #self.buffers_rcv[flow_src.id].recv(p)
 
             # send an ack to the flow that sent this packet
             # TODO remove transport layer stuff from here
