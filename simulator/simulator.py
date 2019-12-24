@@ -131,7 +131,7 @@ def main(
         logger = Log(fn = log)
         logger.add_timer(R)
 
-    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (MB/s)*us works out to (B/s)*s
+    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
 
     print("Setting up network...")
 
