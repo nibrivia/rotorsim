@@ -12,7 +12,7 @@ class Log:
         self.timer = timer
 
     def log(self, src, dst, rotor, packet):
-        msg = "%.3f,%s,%s,%s,%s\n" % \
+        msg = "%.3f,%s,%s,%s,%s,%s\n" % \
                         (self.timer.time,
                             src.id, dst.id,
                             packet.flow.flow_id,
