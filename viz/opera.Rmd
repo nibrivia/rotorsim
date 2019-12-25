@@ -35,3 +35,41 @@ opera_tors %>%
     labs(color = "Low latency") +
     facet_wrap(~flow)
 ```
+
+```{r large, }
+library(data.table)
+opera_large <- read_csv("opera-websearch.csv", col_types = "iiiiii")
+opera_flows <- opera_large %>%
+    group_by(flow) %>%
+        summarize(size = n_distinct(packet)*1500/1e6,
+                  n_packets = n(),
+                  start = min(time),
+                  stop  = max(time)) %>%
+        ungroup() %>% 
+    mutate(fct = stop-start)
+
+flows <- read_csv("../simulator/flows.csv")
+packets_per_flow <- opera_flows %>%
+    group_by(n_packets) %>%
+        summarize(count = n()) %>% 
+        ungroup() %>% 
+    mutate(mb    = n_packets*1500/1e6)
+
+packets_per_flow %>%
+    ggplot(aes(x = mb,
+               y = count)) +
+    geom_point()
+
+opera_flows %>%
+    ggplot(aes(x = size,
+               y = fct,
+               color = size < 1)) +
+    geom_jitter() +
+    scale_y_log10(label=comma) +
+    scale_x_log10(label=comma) +
+    theme_ipsum_rc() +
+    labs(title = "FCT for Chen distribution™",
+         x = "Flow size (MB)",
+         y = "Flow completion time (ms)",
+         caption = "github.com/nibrivia/rotorsim")
+```
