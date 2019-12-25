@@ -10,3 +10,5 @@ data
 plot_flows.py
 pkts.txt
 *.gz
+.Rhistory
+*.tbl
