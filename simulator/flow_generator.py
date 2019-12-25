@@ -6,6 +6,7 @@ import numpy as np
 
 from workloads.websearch import websearch_distribution, websearch_size
 from workloads.chen import chen_distribution, chen_size
+from workloads.uniform import log_uniform_distribution, log_uniform_size
 
 from collections import defaultdict
 
@@ -13,8 +14,9 @@ from collections import defaultdict
 # HELPERS ========================================================
 
 WORKLOAD_FNS = defaultdict(
-        websearch = (websearch_distribution, websearch_size),
-        chen      = (chen_distribution, chen_size),
+        websearch   = (websearch_distribution, websearch_size),
+        chen        = (chen_distribution, chen_size),
+        log_uniform = (log_uniform_distribution, log_uniform_size),
         default   = lambda _: Exception('Unrecognized workload {}'.format(workload)))
 
 # MAIN ===========================================================

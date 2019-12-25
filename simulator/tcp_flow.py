@@ -65,7 +65,7 @@ class TCPFlow:
                 if i != 0:
                     flow_arrival = int(row[0])
                     flow_id      = int(row[1])
-                    flow_size    = int(row[2])
+                    flow_size    = float(row[2])
                     flow_src     = int(row[3])
                     flow_dst     = int(row[4])
                     flow = cls(flow_arrival, flow_id, flow_size, flow_src,flow_dst)
