@@ -64,10 +64,10 @@ def websearch_distribution(
     else:
         size = random.uniform(6667, 20000)
 
-    # range [6MB, 20GB]
-    return int(size)
+    # range [6KB, 20MB]
+    return size/1000
 
-websearch_size = 0 + \
+websearch_size = (\
         .15 * (   6+    6)/2 + \
         .05 * (   6+   13)/2 + \
         .10 * (  13+   19)/2 + \
@@ -78,5 +78,5 @@ websearch_size = 0 + \
         .10 * ( 667+ 1333)/2 + \
         .10 * (1333+ 3333)/2 + \
         .07 * (3333+ 6667)/2 + \
-        .03 * (6667+20000)/2
+        .03 * (6667+20000)/2 ) / 1000
 
