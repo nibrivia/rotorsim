@@ -63,9 +63,10 @@ opera_flows <- opera_large %>%
     left_join(flows, by = c("flow" = "id")) %>% 
     mutate(completed = size >= size_bytes)
 
+opera_flows <- read_csv("opera-65-8-1000-flows.csv")
 opera_flows %>%
-    filter(completed) %>% 
-    ggplot(aes(x = size_bytes,
+    #filter(completed) %>% 
+    ggplot(aes(x = size*1500/1e6,
                y = fct,
                color = size < 15)) +
     geom_jitter() +
