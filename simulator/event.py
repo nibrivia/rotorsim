@@ -14,8 +14,8 @@ class Registry:
 
     def call_in(self, delay, fn, *args, priority = 0, **kwargs):
         """This will register the call in `delay` time from now, ties broken by priority, then first to register"""
-        if self.has_run:
-            assert delay >= 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
+        #if self.has_run:
+            #assert delay >= 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
         self.count += 1
         heapq.heappush(self.queue, (self.time+delay, priority, self.count, fn, args, kwargs))

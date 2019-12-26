@@ -90,7 +90,7 @@ class RotorSwitch:
             if self.logger is not None:
                 self.logger.log(src = tor, dst = dst, rotor = self, packet = packet)
 
-            self.dests[tor.id].recv(self.id, packet)
+            self.dests[tor.id].recv(packet)
 
         else:
             # Could assert false, but just drop

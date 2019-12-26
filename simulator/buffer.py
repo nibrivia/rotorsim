@@ -20,33 +20,19 @@ class Buffer():
         # Cached, this is used a lot
         self.size = 0
 
-    def send_to(self, to, num_packets):
-        assert num_packets == 1
-        if num_packets > 0 and self.verbose:
-            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts (%s) \033[00m"
-                    % (R.time, self.parent, to, self.src, self.dst, num_packets, self),
-                    end = "")
-
-        assert len(self.packets) >= num_packets, \
-                "%s sending more packets (%d) than inqueue (%d)" % (self, num_packets, len(self.packets))
-
+    def pop(self):
         p = self.packets.popleft()
         self.size -= 1
 
         if self.verbose:
+            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts (%s) \033[00m"
+                    % (R.time, self.parent, to, self.src, self.dst, num_packets, self),
+                    end = "")
             a = ["s", "B"]
             s = a[int(p.high_thput)]
             print(s)
 
-        if to is None:
-            return p
-
-        to.recv(p)
-
-        if False and not self.logger is None:
-            self.logger.log(
-                    src = self.parent, dst = to,
-                    packet = p)
+        return p
 
     def recv(self, packet):
         #for p in packets:

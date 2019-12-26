@@ -63,6 +63,7 @@ class ToRSwitch:
 
         self.tables       = dict()
         self.non_zero_dir = dict()
+        self.dests        = dict()
         self.last_sent = 0
 
     # One-time setup
@@ -98,6 +99,7 @@ class ToRSwitch:
         # Set a countdown for the next slot, just like normal
         self.new_slice = Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)
         self.new_slice()
+        #R.call_in(0, self.make_route)
         self.make_route()
 
         # TODO be smarter about this
@@ -136,6 +138,7 @@ class ToRSwitch:
         """This gets called for every rotor and starts the process for that one"""
         # Set the connection
         self.connections[rotor_id] = (tor, self.packets_per_slot)
+        self.dests[rotor_id] = tor
 
         # Get capacities for indirection
         self.capacities[rotor_id] = tor.capacity
@@ -211,6 +214,7 @@ class ToRSwitch:
             return self.buffers_dir[dst.id]
 
         # New indirect traffic
+        # TODO should actually load balance
         for ind_id, buf in self.non_zero_dir.items():
             if buf.size == 1:
                 del self.non_zero_dir[ind_id]
@@ -240,21 +244,19 @@ class ToRSwitch:
             return
 
         # Send the packet
-        p = queue.packets[0]
+        p = queue.pop()
         self.capacity[p.dst.id] += 1
-        queue.send_to(self.rotors[rotor_id], 1)
+        self.dests[rotor_id].recv(p)
+
+        if self.logger is not None:
+            self.logger.log(src = self, dst = self.dests[rotor_id],
+                    rotor = self.rotors[rotor_id], packet = p)
 
         # We're back to being busy, and come back when we're done
         self.out_enable[rotor_id] = False
         R.call_in(delay = self.packet_ttime, fn = self._enable_out, rotor_id = rotor_id)
 
-        # Actually move the packet
-        if False:
-            print()
-            print("%s sending from %s on port %s, amount %s" % (
-                self, queue, rotor_id, 1))
-
-    def _recv(self, port_id, p):
+    def _recv(self, p):
         # Receive the p
         flow_src = p.src
         flow_dst = p.dst
@@ -301,7 +303,7 @@ class ToRSwitch:
     @Delay(0)
     def add_demand_to(self, dst, packets):
         for p in packets:
-            self._recv(-1, p)
+            self._recv(p)
 
     # Printing stuffs
     ################
