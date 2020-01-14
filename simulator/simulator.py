@@ -80,11 +80,6 @@ def load_flows(slot_duration):
         default="out.csv"
 )
 @click.option(
-        "--pkts-file",
-        type=str,
-        default="pkts.txt"
-)
-@click.option(
         "--time_limit",
         type=int,
         default=5000,
@@ -119,7 +114,6 @@ def main(
         reconfiguration_time,
         jitter,
         log,
-        pkts_file,
         verbose,
         no_log,
         no_pause
