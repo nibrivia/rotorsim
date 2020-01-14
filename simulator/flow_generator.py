@@ -13,11 +13,24 @@ from collections import defaultdict
 
 # HELPERS ========================================================
 
+class FlowDistribution:
+    def __init__(self, cdf):
+        self.cdf = [(0,0)] + cdf
+        self.pdf = [(p-self.cdf[i-1][0], size) for i, (p, size) in enumerate(self.cdf) if i >= 1]
+        self.probs, self.sizes = zip(*self.pdf)
+        self.mean = sum(p*size for p, size in self.pdf)
+
+    def get_flows(n=1):
+        return np.random.choice(self.sizes, size = n, p = self.probs)
+
+websearch_cdf = [(1,1)]
+simple_cdf = [(0.049, 10e3), (0.999, 1e6), (1, 1e9)]
 WORKLOAD_FNS = defaultdict(
-        websearch   = (websearch_distribution, websearch_size),
-        chen        = (chen_distribution, chen_size),
-        log_uniform = (log_uniform_distribution, log_uniform_size),
+        websearch   = FlowDistribution(websearch_cdf),
+        chen        = FlowDistribution(simple_cdf),
+        #log_uniform = FlowDistribution(log_uniform_distribution, log_uniform_size),
         default   = lambda _: Exception('Unrecognized workload {}'.format(workload)))
+
 
 # MAIN ===========================================================
 

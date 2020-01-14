@@ -1,8 +1,8 @@
-from network import RotorNet
+#from network import RotorNet
 from event import R
 from logger import Log
 from helpers import *
-from tcp_flow import TCPFlow, BYTES_PER_PACKET
+#from tcp_flow import TCPFlow, BYTES_PER_PACKET
 from flow_generator import generate_flows
 import sys
 import click
