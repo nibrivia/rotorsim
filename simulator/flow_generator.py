@@ -1,4 +1,3 @@
-
 import numpy as np
 import csv
 from itertools import product
@@ -10,6 +9,7 @@ from workloads.chen import chen_distribution, chen_size
 from workloads.uniform import log_uniform_distribution, log_uniform_size
 
 from collections import defaultdict
+from helpers import *
 
 
 # HELPERS ========================================================
@@ -21,7 +21,7 @@ class FlowDistribution:
         self.cdf = [(0,0)] + cdf
         self.pdf = [(p-self.cdf[i-1][0], size) for i, (p, size) in enumerate(self.cdf) if i >= 1]
         self.probs, self.sizes = zip(*self.pdf)
-        self.size = sum(p*size for p, size in self.pdf)
+        self.size = sum(p*size for p, size in self.pdf) # in bits
 
     def get_flows(self, n=1):
         return np.random.choice(self.sizes, size = n, p = self.probs)
@@ -62,17 +62,24 @@ def generate_flows(
     tor_pairs = np.array(list(set(product(tors, tors)) - { (i, i) for i in tors }))
 
     # Find interflow arrival rate
-    # bits / bits/s / load * 1000 = 1000*s / load = ms
-    interflow_arrival = 1000 * workload.size / bandwidth / load # in ms, so *1000
-    flow_arrivals_per_ms = num_tors*num_rotors/interflow_arrival
+    # bits / Mbits/s / load * 1000 = 1000*s / load = ms
+    capacity  = num_tors*num_rotors*bandwidth*1e6 # Gb
+    n_flows   = int(capacity/workload.size*load)
+    iflow_wait = time_limit/n_flows
 
     # arrivals
-    print(workload.size/1e6)
-    print(1/flow_arrivals_per_ms)
-    print(interflow_arrival)
-    arrivals = list(np.random.poisson(lam=flow_arrivals_per_ms, size=int(time_limit*flow_arrivals_per_ms)))
-    print(arrivals)
-    n_flows  = len(arrivals)
+    #n_flows = flow_arrivals_per_ms*time_limit
+    offered_load = workload.size*n_flows
+    print("load      %d flows x %.3fMb/flow = %dGb" %
+            (n_flows, workload.size/1e6, offered_load/1e9))
+    print("net load %dGb / %dGb = %.2f%%" % (offered_load/1e9, capacity/1e9, 100*offered_load/capacity))
+    print("iflow all %.3fus" % (iflow_wait*1000))
+    waits = [w/1e6 for w in np.random.poisson(lam=iflow_wait*1e6, size=n_flows)] # returns int, so in ns
+    arrivals = [0 for _ in waits]
+    t = 0
+    for i, w in enumerate(waits):
+        t += w
+        arrivals[i] = t
 
     # pairs
     pairs_idx = np.random.choice(len(tor_pairs), size = n_flows)

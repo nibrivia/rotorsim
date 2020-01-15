@@ -76,7 +76,7 @@ class RotorNet:
         """Run the simulation for n_cycles cycles"""
         # Add flows
         for f in flows:
-            R.call_in(f.arrival*self.slot_duration, self.open_connection, f)
+            R.call_in(f.arrival, self.open_connection, f)
 
         # Start first event
         R.call_in(0, self.do_slice)

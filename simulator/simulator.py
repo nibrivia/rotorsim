@@ -148,8 +148,8 @@ def main(
     cycle_duration = slot_duration*net.n_slots
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
             (time_limit, cycle_duration, slot_duration, slice_duration))
-    print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fTb/s" %
-            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_rotor*bandwidth/1e6))
+    print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fGb/s" %
+            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_rotor*bandwidth/1e3))
 
     print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
