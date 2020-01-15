@@ -163,8 +163,7 @@ def main(
 
     # open connection for each flow at the time it should arrive
     for f in flows:
-        arrival, flow_id, size, src, dst = f
-        time_for_arrival = arrival * slot_duration
+        time_for_arrival = f.arrival * slot_duration
         R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing

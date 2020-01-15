@@ -66,8 +66,6 @@ class RotorNet:
 
     def run(self, time_limit):
         """Run the simulation for n_cycles cycles"""
-        # Register first events
-
         # Start events
         R.limit = time_limit
         R.run_next()

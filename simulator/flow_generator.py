@@ -14,7 +14,7 @@ from collections import defaultdict
 
 # HELPERS ========================================================
 
-Flow = collections.namedtuple('Flow', 'arrival id size src dst')
+Flow = collections.namedtuple('Flow', 'arrival id size src dst remaining')
 
 class FlowDistribution:
     def __init__(self, cdf):
@@ -78,7 +78,7 @@ def generate_flows(
     sizes = workload.get_flows(n = n_flows)
 
     # start, id, size, src, dst
-    flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs))
+    flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs), sizes)
     flows = [Flow(*f) for f in flows]
     print(flows[0])
 
