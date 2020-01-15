@@ -130,7 +130,6 @@ def main(
     print("Setting up network...")
 
     slice_duration /= 1000 #divide to be in ms
-    bandwidth /= 8 # Everything else uses MB/s
 
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
@@ -149,8 +148,10 @@ def main(
     cycle_duration = slot_duration*net.n_slots
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
             (time_limit, cycle_duration, slot_duration, slice_duration))
+    print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fTb/s" %
+            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_rotor*bandwidth/1e6))
 
-    print("Setting up flows...")
+    print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
     max_slots = n_cycles*net.n_slots
     flows = generate_flows(
@@ -160,26 +161,25 @@ def main(
             num_rotors = n_rotor,
             time_limit = time_limit,
             workload_name   = workload)
+    for f in flows:
+        print(f)
 
     # open connection for each flow at the time it should arrive
-    for f in flows:
-        time_for_arrival = f.arrival * slot_duration
-        R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing
     for cycle in range(n_cycles):
         time = cycle*cycle_duration
-        R.call_in(time,
-                print, "\033[1;91m@%.2f Cycle %s/%s\033[00m" % (
-                    time, cycle+1, n_cycles),
-                priority = -100)
+        #R.call_in(time,
+                #print, "\033[1;91m@%.2f Cycle %s/%s\033[00m" % (
+                    #time, cycle+1, n_cycles),
+                #priority = -100)
         if verbose and not no_pause:
             R.call_in(time, print_demand, net.tors, priority=100)
             R.call_in(time, pause, priority=100)
 
     print("Starting simulator...")
     # Start the simulator
-    net.run(time_limit)
+    net.run(flows = flows, time_limit = time_limit)
 
     if not no_log:
         logger.close()

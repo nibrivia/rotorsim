@@ -35,8 +35,7 @@ class RotorNet:
         self.matchings = [[(self.tors[src], self.tors[dst]) for src, dst in m]
                 for m in self.matchings]
 
-
-        # This is what we'll distribute
+        # Breakup matchings by slot, and rotor
         self.matchings_by_slot_rotor = []
         for slot in range(self.n_slots):
             slot_matchings = []
@@ -46,6 +45,9 @@ class RotorNet:
                 rotor_matchings = self.matchings[matching_i]
                 slot_matchings.append(rotor_matchings)
             self.matchings_by_slot_rotor.append(slot_matchings)
+
+        # Actual demand matrix
+        self.from_to = [[[] for _ in range(n_tor)] for __ in range(n_tor)]
 
         # I/O stuff
         self.verbose  = verbose
@@ -63,15 +65,29 @@ class RotorNet:
             # Add to the list of matchings
             self.matchings.append(slot_matching)
 
+    def do_slice(self):
+        # Just for clarity:
+        #  - slice is the time between any topology change in Opera
+        #  - slot  is the time for a whole rotation of RotorNet
+        #  - cycle is the time for a whole topology period
+        pass
 
-    def run(self, time_limit):
+    def run(self, flows, time_limit):
         """Run the simulation for n_cycles cycles"""
+        # Add flows
+        for f in flows:
+            R.call_in(f.arrival*self.slot_duration, self.open_connection, f)
+
+        # Start first event
+        R.call_in(0, self.do_slice)
+
         # Start events
         R.limit = time_limit
         R.run_next()
 
     def open_connection(self, tcpflow):
-        pass
+        #print(tcpflow)
+        self.from_to[tcpflow.src][tcpflow.dst].append(tcpflow)
 
     def print_demand(self):
         if self.verbose:

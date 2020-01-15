@@ -67,7 +67,11 @@ def generate_flows(
     flow_arrivals_per_ms = num_tors*num_rotors/interflow_arrival
 
     # arrivals
-    arrivals = list(np.random.poisson(flow_arrivals_per_ms, time_limit))
+    print(workload.size/1e6)
+    print(1/flow_arrivals_per_ms)
+    print(interflow_arrival)
+    arrivals = list(np.random.poisson(lam=flow_arrivals_per_ms, size=int(time_limit*flow_arrivals_per_ms)))
+    print(arrivals)
     n_flows  = len(arrivals)
 
     # pairs
@@ -80,7 +84,9 @@ def generate_flows(
     # start, id, size, src, dst
     flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs), sizes)
     flows = [Flow(*f) for f in flows]
-    print(flows[0])
+    for f in flows:
+        pass
+        #print(f)
 
 
     # write flows out to csv in increasing arrival order
