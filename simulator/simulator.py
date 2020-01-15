@@ -1,4 +1,4 @@
-#from network import RotorNet
+from network import RotorNet
 from event import R
 from logger import Log
 from helpers import *
@@ -125,7 +125,7 @@ def main(
         logger = Log(fn = log)
         logger.add_timer(R)
 
-    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
+    #packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
 
     print("Setting up network...")
 
@@ -134,7 +134,7 @@ def main(
 
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
-                   packets_per_slot     = packets_per_slot,
+                   #packets_per_slot     = packets_per_slot,
                    reconfiguration_time = reconfiguration_time/1000,
                    slice_duration       = slice_duration, # R.time will be in ms
                    jitter               = jitter,
@@ -143,8 +143,8 @@ def main(
                    do_pause = not no_pause)
 
     n_cycles = math.ceil(time_limit/(n_rotor*net.n_slots*slice_duration))
-    print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
-            (n_tor, n_rotor, packets_per_slot, n_cycles))
+    #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
+            #(n_tor, n_rotor, packets_per_slot, n_cycles))
     slot_duration = slice_duration*n_rotor
     cycle_duration = slot_duration*net.n_slots
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
@@ -153,23 +153,18 @@ def main(
     print("Setting up flows...")
     # generate flows
     max_slots = n_cycles*net.n_slots
-    # TODO hacky
-    if workload == "all":
-        assert False
-        #num_flows = n_tor*n_cycles
-        workload = "chen"
-    generate_flows(
+    flows = generate_flows(
             load = load,
             bandwidth  = bandwidth,
             num_tors   = n_tor,
             num_rotors = n_rotor,
             time_limit = time_limit,
-            workload   = workload)
+            workload_name   = workload)
 
     # open connection for each flow at the time it should arrive
-    flows = load_flows(slot_duration)
     for f in flows:
-        time_for_arrival = f.arrival * slot_duration
+        arrival, flow_id, size, src, dst = f
+        time_for_arrival = arrival * slot_duration
         R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing
