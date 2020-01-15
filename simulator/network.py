@@ -86,7 +86,7 @@ class RotorNet:
         R.run_next()
 
     def open_connection(self, tcpflow):
-        #print(tcpflow)
+        print(tcpflow)
         self.from_to[tcpflow.src][tcpflow.dst].append(tcpflow)
 
     def print_demand(self):

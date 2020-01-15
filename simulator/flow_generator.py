@@ -74,9 +74,12 @@ def generate_flows(
             (n_flows, workload.size/1e6, offered_load/1e9))
     print("net load %dGb / %dGb = %.2f%%" % (offered_load/1e9, capacity/1e9, 100*offered_load/capacity))
     print("iflow all %.3fus" % (iflow_wait*1000))
-    waits = [w/1e6 for w in np.random.poisson(lam=iflow_wait*1e6, size=n_flows)] # returns int, so in ns
-    arrivals = [0 for _ in waits]
+    # np.poisson returns int, so in ns, then convert back to ms
+    waits = [w/1e6 for w in np.random.poisson(lam=iflow_wait*1e6, size=n_flows)]
+
+    # Convert waits into times
     t = 0
+    arrivals = [0 for _ in waits]
     for i, w in enumerate(waits):
         t += w
         arrivals[i] = t
