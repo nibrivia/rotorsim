@@ -47,7 +47,9 @@ class RotorNet:
             self.matchings_by_slot_rotor.append(slot_matchings)
 
         # Actual demand matrix
-        self.from_to = [[[] for _ in range(n_tor)] for __ in range(n_tor)]
+        self.xpand_from_to = [[[] for _ in range(n_tor)] for __ in range(n_tor)]
+        self.rotor_from_to = [[[] for _ in range(n_tor)] for __ in range(n_tor)]
+        self.cache_from_to = [[[] for _ in range(n_tor)] for __ in range(n_tor)]
 
         # I/O stuff
         self.verbose  = verbose
@@ -65,12 +67,51 @@ class RotorNet:
             # Add to the list of matchings
             self.matchings.append(slot_matching)
 
-    def do_slice(self):
+    @property
+    def slice_id(self):
+        return round(R.time/self.slice_duration)
+
+    def do_slice(self, tor_id):
         # Just for clarity:
-        #  - slice is the time between any topology change in Opera
-        #  - slot  is the time for a whole rotation of RotorNet
+        #  - slice is the time between any topology change
+        #  - slot  is the time for each rotor to change once
         #  - cycle is the time for a whole topology period
-        pass
+
+        # Call ourselves back at the end of the slice
+        R.call_in(self.slice_duration, self.do_slice, tor_id = tor_id)
+
+        # Expander
+        for dst in range(self.n_tor):
+            capacity = 1
+            for f in self.xpand_from_to[tor_id][dst]:
+                if capacity == 0:
+                    break
+                amount = min(capacity, f.remaining)
+                f.send(amount) # TODO implement flow method
+                capacity -= amount
+
+        # RotorNet
+        rotor_dst = 0 # TODO
+        # Old indirect
+        # Direct
+        for f in self.rotor_from_to[tor_id][rotor_dst]:
+            pass
+        # New indirect
+
+
+        # CacheNet
+        cache_flows = self.cache_from_to[tor_id]
+        for f in cache_flows:
+            break
+
+            if f.dst in self.cache_links[tor_id]:
+                # send 
+                pass
+            else:
+                # try to get cache
+                pass
+
+
 
     def run(self, flows, time_limit):
         """Run the simulation for n_cycles cycles"""
@@ -78,16 +119,21 @@ class RotorNet:
         for f in flows:
             R.call_in(f.arrival, self.open_connection, f)
 
-        # Start first event
-        R.call_in(0, self.do_slice)
+        # Start first events
+        for tor in range(self.n_tor):
+            R.call_in(0, self.do_slice, tor_id = tor)
 
         # Start events
         R.limit = time_limit
         R.run_next()
 
     def open_connection(self, tcpflow):
-        print(tcpflow)
-        self.from_to[tcpflow.src][tcpflow.dst].append(tcpflow)
+        if tcpflow.size < 1e6:
+            self.xpand_from_to[tcpflow.src][tcpflow.dst].append(tcpflow)
+        elif tcpflow.size < 1e9:
+            self.rotor_from_to[tcpflow.src][tcpflow.dst].append(tcpflow)
+        else:
+            self.cache_from_to[tcpflow.src][tcpflow.dst].append(tcpflow)
 
     def print_demand(self):
         if self.verbose:
