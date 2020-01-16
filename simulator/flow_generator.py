@@ -63,7 +63,7 @@ def generate_flows(
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
-    capacity  = num_tors*num_rotors*bandwidth*1e6 # Gb
+    capacity  = num_tors*num_rotors*bandwidth*1e6*time_limit/1e3 # Gb
     n_flows   = int(capacity/workload.size*load)
     iflow_wait = time_limit/n_flows
 
@@ -72,17 +72,17 @@ def generate_flows(
     offered_load = workload.size*n_flows
     print("load      %d flows x %.3fMb/flow = %dGb" %
             (n_flows, workload.size/1e6, offered_load/1e9))
-    print("net load %dGb / %dGb = %.2f%%" % (offered_load/1e9, capacity/1e9, 100*offered_load/capacity))
+    print("net load %.3fGb / %.3fGb = %.2f%%" % (offered_load/1e9, capacity/1e9, 100*offered_load/capacity))
     print("iflow all %.3fus" % (iflow_wait*1000))
     # np.poisson returns int, so in ns, then convert back to ms
-    waits = [w/1e6 for w in np.random.poisson(lam=iflow_wait*1e6, size=n_flows)]
+    waits = np.random.poisson(lam=iflow_wait*1e6, size=n_flows)
 
     # Convert waits into times
     t = 0
     arrivals = [0 for _ in waits]
     for i, w in enumerate(waits):
         t += w
-        arrivals[i] = t
+        arrivals[i] = t/1e6
 
     # pairs
     pairs_idx = np.random.choice(len(tor_pairs), size = n_flows)

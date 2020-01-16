@@ -318,7 +318,7 @@ class ToRSwitch:
             s += "%2d " % b.size
 
         s += "\nDirect\n  "
-        for dst, b in self.buffers_dir.items():
+        for dst, b in enumerate(self.buffers_dir):
             s += "%2d " % b.size
 
         s += "\nReceived\n  "

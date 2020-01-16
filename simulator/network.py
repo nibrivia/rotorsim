@@ -110,6 +110,10 @@ class RotorNet:
         for t in self.tors:
             t.start()
 
+        # Flows
+        for f in flows:
+            R.call_in(f.arrival, self.open_connection, f)
+
         # Start events
         R.limit = time_limit
         R.run_next()

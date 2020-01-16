@@ -173,7 +173,7 @@ def main(
                     time, cycle+1, n_cycles),
                 priority = -100)
         if verbose and not no_pause:
-            R.call_in(time, print_demand, net.tors, priority=100)
+            #R.call_in(time, print_demand, net.tors, priority=100)
             R.call_in(time, pause, priority=100)
 
     print("Starting simulator...")
