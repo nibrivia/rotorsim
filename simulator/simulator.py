@@ -2,7 +2,7 @@ from network import RotorNet
 from event import R
 from logger import Log
 from helpers import *
-from tcp_flow import TCPFlow, BYTES_PER_PACKET
+#from tcp_flow import TCPFlow, BYTES_PER_PACKET
 from flow_generator import generate_flows
 import sys
 import click
@@ -80,11 +80,6 @@ def load_flows(slot_duration):
         default="out.csv"
 )
 @click.option(
-        "--pkts-file",
-        type=str,
-        default="pkts.txt"
-)
-@click.option(
         "--time_limit",
         type=int,
         default=5000,
@@ -119,7 +114,6 @@ def main(
         reconfiguration_time,
         jitter,
         log,
-        pkts_file,
         verbose,
         no_log,
         no_pause
@@ -131,12 +125,12 @@ def main(
         logger = Log(fn = log)
         logger.add_timer(R)
 
+    BYTES_PER_PACKET=1500
     packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
 
     print("Setting up network...")
 
     slice_duration /= 1000 #divide to be in ms
-    bandwidth /= 8 # Everything else uses MB/s
 
     net = RotorNet(n_rotor = n_rotor,
                    n_tor   = n_tor,
@@ -149,34 +143,27 @@ def main(
                    do_pause = not no_pause)
 
     n_cycles = math.ceil(time_limit/(n_rotor*net.n_slots*slice_duration))
-    print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
-            (n_tor, n_rotor, packets_per_slot, n_cycles))
+    #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
+            #(n_tor, n_rotor, packets_per_slot, n_cycles))
     slot_duration = slice_duration*n_rotor
     cycle_duration = slot_duration*net.n_slots
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
             (time_limit, cycle_duration, slot_duration, slice_duration))
+    print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fGb/s" %
+            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_rotor*bandwidth/1e3))
 
-    print("Setting up flows...")
+    print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
     max_slots = n_cycles*net.n_slots
-    # TODO hacky
-    if workload == "all":
-        assert False
-        #num_flows = n_tor*n_cycles
-        workload = "chen"
-    generate_flows(
+    flows = generate_flows(
             load = load,
             bandwidth  = bandwidth,
             num_tors   = n_tor,
             num_rotors = n_rotor,
             time_limit = time_limit,
-            workload   = workload)
+            workload_name   = workload)
 
     # open connection for each flow at the time it should arrive
-    flows = load_flows(slot_duration)
-    for f in flows:
-        time_for_arrival = f.arrival * slot_duration
-        R.call_in(time_for_arrival, net.open_connection, f)
 
     # set up printing
     for cycle in range(n_cycles):
@@ -191,7 +178,7 @@ def main(
 
     print("Starting simulator...")
     # Start the simulator
-    net.run(time_limit)
+    net.run(flows = flows, time_limit = time_limit)
 
     if not no_log:
         logger.close()
