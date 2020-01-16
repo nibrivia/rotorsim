@@ -22,8 +22,8 @@ class Flow:
         self.arrival = arrival
         self.id      = flow_id
         self.size    = size
-        self.src     = self.src
-        self.dst     = self.dst
+        self.src     = src
+        self.dst     = dst
 
         self.remaining_packets = size/BYTES_PER_PACKET
         self.n_sent = 0
@@ -31,6 +31,9 @@ class Flow:
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
         return 
+
+    def __str__(self):
+        return "%.3f, %d, %d, %d, %d" % (self.arrival, self.id, self.size, self.src, self.dst)
 
 class FlowDistribution:
     def __init__(self, cdf):
@@ -108,7 +111,7 @@ def generate_flows(
     sizes = workload.get_flows(n = n_flows)
 
     # start, id, size, src, dst
-    flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs), sizes)
+    flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs))
     flows = [Flow(*f) for f in flows]
     for f in flows:
         pass
@@ -121,6 +124,6 @@ def generate_flows(
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         # write flows
-        csv_writer.writerows(flows)
+        csv_writer.writerows(str(f) for f in flows)
 
     return flows

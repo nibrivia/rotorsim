@@ -24,36 +24,24 @@ class ToRSwitch:
         self.slice_t       = -1
         #self.slot_duration = slot_duration
         self.slice_duration = slice_duration
-        self.clock_jitter  = clock_jitter
-        self.packet_ttime  = self.slice_duration / packets_per_slot
+        self.clock_jitter   = clock_jitter
+        self.packet_ttime   = self.slice_duration / packets_per_slot
 
         self.recv = Delay(self.packet_ttime)(self._recv)
 
         # ... about IO
         self.verbose = verbose
+        self.logger  = logger
 
         # Demand
-        self.logger = logger
-        self.buffers_dir = [Buffer(parent = self,
-                                   src = self.id, dst = dst,
-                                   name = "dir[%s]" % dst,
-                                   logger = logger, verbose = verbose)
-                                for dst in range(n_tor)]
+        self.flows_cache = [[] for dst in range(n_tor)]
+        self.flows_rotor = [[] for dst in range(n_tor)]
+        self.flows_xpand = [[] for dst in range(n_tor)]
         self.buffers_ind = [Buffer(parent = self,
                                    src = self.id, dst = dst,
                                    name = "ind[%s]" % dst,
                                    logger = logger, verbose = verbose)
                                 for dst in range(n_tor)]
-        self.buffers_rcv = [Buffer(parent = self,
-                                   src = src, dst = self.id,
-                                   name = "rcv[%s]" % src,
-                                   logger = logger, verbose = verbose)
-                                for src in range(n_tor)]
-        self.buffers_fst = [Buffer(parent = self,
-                                   src = self.id, dst = rotor_id,
-                                   name = "fst[Rot %s]" % rotor_id,
-                                   logger = logger, verbose = verbose)
-                                for rotor_id in range(n_rotor)]
 
         # Each item has the form (tor, link_remaining)
         self.connections = [None for _ in range(n_rotor)]
@@ -86,7 +74,7 @@ class ToRSwitch:
 
     def start(self):
         # This is the first time, we need to connect everyone
-        self.slice_t += 1
+        self.slice_t = 0
         slot_t = self.slice_t // len(self.rotors)
         n_slots = len(self.matchings_by_slot_rotor)
         matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
@@ -191,13 +179,20 @@ class ToRSwitch:
     # SENDING ALGORITHMS
     ####################
 
-    def next_queue(self, rotor_id):
+    def next_queue(self, port_id):
+        # TODO based on the port_id, choose which function to call
+        pass
+
+    def next_queue_cache(self, port_id):
+        for f in self.flows_cache:
+            if f.dst == self.cache_links[port_id]:
+                # TODO send
+                pass
+
+    def next_queue_rotor(self, port_id):
+        rotor_id = port_id # TODO translate this
         dst, remaining = self.connections[rotor_id]
 
-        # Priority queue
-        if self.buffers_fst[rotor_id].size > 0:
-            self.vprint("\033[0;31mLow latency: %s:%d\033[00m" % (self, rotor_id), 2)
-            return self.buffers_fst[rotor_id]
 
         # Old indirect traffic
         if self.buffers_ind[dst.id].size > 0:
@@ -221,6 +216,13 @@ class ToRSwitch:
             return buf
 
         return None
+
+    def next_queue_xpand(self, port_id):
+        # Priority queue
+        if self.buffers_fst[port_id].size > 0:
+            self.vprint("\033[0;31mLow latency: %s:%d\033[00m" % (self, rotor_id), 2)
+            return self.buffers_fst[rotor_id]
+
 
 
     # Actual packets moving
