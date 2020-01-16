@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import csv
 from itertools import product
 import collections
@@ -14,7 +15,22 @@ from helpers import *
 
 # HELPERS ========================================================
 
-Flow = collections.namedtuple('Flow', 'arrival id size src dst remaining')
+BYTES_PER_PACKET = 1500
+
+class Flow:
+    def __init__(self, arrival, flow_id, size, src, dst):
+        self.arrival = arrival
+        self.id      = flow_id
+        self.size    = size
+        self.src     = self.src
+        self.dst     = self.dst
+
+        self.remaining_packets = size/BYTES_PER_PACKET
+        self.n_sent = 0
+
+    def send(self, n_packets):
+        n_packets = min(n_packets, self.remaining_packets)
+        return 
 
 class FlowDistribution:
     def __init__(self, cdf):
