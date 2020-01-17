@@ -26,6 +26,9 @@ class RotorNet:
         self.n_cache = 1
         self.n_rotor = n_switches - self.n_xpand - self.n_cache
 
+        print("%d xpander, %d rotor, %d cache. %d total" %
+                (self.n_xpand, self.n_rotor, self.n_cache, self.n_switches))
+
         # Matchings need to be done early to get constants
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
@@ -128,7 +131,13 @@ class RotorNet:
 
     def open_connection(self, flow):
         # override src and dst to tor objects
-        print("@%.2f Should start flow %d" % (R.time, flow.id))
+        print("@%.2f Should start flow %d [%.3fMb]" % (R.time, flow.id, flow.size/1e6))
+        if flow.size < 1e6:
+            self.tors[flow.src].flows_xpand[flow.dst].append(flow)
+        elif flow.size < 100e6:
+            self.tors[flow.src].flows_rotor[flow.dst].append(flow)
+        else:
+            self.tors[flow.src].flows_cache[flow.dst].append(flow)
 
         # begin sending
         #tcpflow.send()
