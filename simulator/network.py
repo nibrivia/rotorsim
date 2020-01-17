@@ -8,7 +8,7 @@ from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
     def __init__(self,
-                 n_rotor, 
+                 n_switches, 
                  n_tor,
                  packets_per_slot,
                  slice_duration = 1, 
@@ -17,33 +17,41 @@ class RotorNet:
                  logger = None,
                  verbose = True, 
                  do_pause = True):
-        self.n_rotor = n_rotor
+
+        # Network config
         self.n_tor   = n_tor
+
+        self.n_switches = n_switches
+        self.n_xpand = round(min(5, n_switches/3))
+        self.n_cache = 1
+        self.n_rotor = n_switches - self.n_xpand - self.n_cache
 
         # Matchings need to be done early to get constants
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
         self.slice_duration = slice_duration
-        self.slot_duration  = slice_duration*n_rotor
+        self.slot_duration  = slice_duration*self.n_rotor
         self.cycle_duration = self.slot_duration * self.n_slots
 
         # Internal variables
         self.rotors = [RotorSwitch(
                             id = i,
-                            n_ports = n_tor,
-                            n_rotor = n_rotor,
+                            n_ports  = n_tor,
+                            n_rotor  = self.n_rotor, # TODO check n_rotor vs n_switches
                             slice_duration       = slice_duration,
                             reconfiguration_time = reconfiguration_time,
                             clock_jitter         = jitter,
                             verbose = verbose,
                             logger  = logger)
-                for i in range(n_rotor)]
+                for i in range(self.n_rotor)]
 
         self.tors = [ToRSwitch(
                             name    = i,
                             n_tor   = n_tor,
-                            n_rotor = n_rotor,
+                            n_xpand = self.n_xpand,
+                            n_rotor = self.n_rotor,
+                            n_cache = self.n_cache,
                             packets_per_slot = packets_per_slot,
                             slice_duration = slice_duration,
                             clock_jitter  = jitter,

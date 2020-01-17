@@ -7,19 +7,18 @@ from collections import deque
 
 class ToRSwitch:
     def __init__(self, name,
-            n_tor,
+            n_tor, n_xpand, n_rotor, n_cache,
             slice_duration, packets_per_slot, clock_jitter,
-            logger, verbose,
-            n_rotor = 10):
+            logger, verbose):
         # Stuff about me
         self.id      = int(name)
         self.name    = "Tor %d" % self.id
 
         # ... about others
-        self.n_switches = 10
-        self.n_expander = 4
-        self.n_rotor    = 3
-        self.n_cache    = 3
+        self.n_xpand = n_xpand
+        self.n_rotor = n_rotor
+        self.n_cache = n_cache
+        self.n_switches = n_xpand + n_rotor + n_cache
 
         self.n_tor  = n_tor
 
@@ -51,8 +50,8 @@ class ToRSwitch:
                                 for dst in range(n_tor)]
 
         # Each item has the form (tor, link_remaining)
-        self.connections = [(None, 0) for _ in range(n_rotor)] # TODO ???
-        self.capacities  = [0         for _ in range(n_rotor)] # Capacities of destination
+        self.connections = [(None, 0) for _ in range(self.n_rotor)] # TODO ???
+        self.capacities  = [0         for _ in range(self.n_rotor)] # Capacities of destination
         self.capacity    = [self.packets_per_slot for _ in range(n_tor)]
         self.tor_to_rotor = dict()
 
@@ -206,12 +205,12 @@ class ToRSwitch:
         dst, remaining = self.connections[rotor_id]
 
 
-        # Old indirect traffic
+        # Old indirect traffic, deal with packets that are here
         if self.buffers_ind[dst.id].size > 0:
             self.vprint("\033[0;33mOld Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
             return self.buffers_ind[dst.id]
 
-        # Direct traffic
+        # Direct traffic, deal with the flows here
         if len(self.flows_rotor[dst.id]) > 0:
             # We need to update bookeeping here
             if self.buffers_dir[dst.id].size == 1:

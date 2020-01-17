@@ -41,7 +41,7 @@ def load_flows(slot_duration):
         default=4
 )
 @click.option(
-        "--n_rotor",
+        "--n_switches",
         type=int,
         default=2
 )
@@ -105,7 +105,7 @@ def load_flows(slot_duration):
 def main(
         load,
         n_tor,
-        n_rotor,
+        n_switches,
         bandwidth,
         latency,
         time_limit,
@@ -132,7 +132,7 @@ def main(
 
     slice_duration /= 1000 #divide to be in ms
 
-    net = RotorNet(n_rotor = n_rotor,
+    net = RotorNet(n_switches = n_switches,
                    n_tor   = n_tor,
                    packets_per_slot     = packets_per_slot,
                    reconfiguration_time = reconfiguration_time/1000,
@@ -142,15 +142,15 @@ def main(
                    verbose = verbose,
                    do_pause = not no_pause)
 
-    n_cycles = math.ceil(time_limit/(n_rotor*net.n_slots*slice_duration))
+    n_cycles = math.ceil(time_limit/(net.n_rotor*net.n_slots*slice_duration))
     #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             #(n_tor, n_rotor, packets_per_slot, n_cycles))
-    slot_duration = slice_duration*n_rotor
+    slot_duration = slice_duration*net.n_rotor
     cycle_duration = slot_duration*net.n_slots
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
             (time_limit, cycle_duration, slot_duration, slice_duration))
     print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fGb/s" %
-            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_rotor*bandwidth/1e3))
+            (n_tor, net.n_rotor, n_tor*net.n_rotor, bandwidth/1e3, n_tor*net.n_rotor*bandwidth/1e3))
 
     print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
@@ -159,7 +159,7 @@ def main(
             load = load,
             bandwidth  = bandwidth,
             num_tors   = n_tor,
-            num_rotors = n_rotor,
+            num_rotors = n_switches,
             time_limit = time_limit,
             workload_name   = workload)
 
