@@ -17,6 +17,8 @@ from helpers import *
 
 BYTES_PER_PACKET = 1500
 
+Packet = collections.namedtuple('Packet', 'src_id dst_id seq_num tag flow_id')
+
 class Flow:
     def __init__(self, arrival, flow_id, size, src, dst):
         self.arrival = arrival
@@ -25,8 +27,25 @@ class Flow:
         self.src     = src
         self.dst     = dst
 
-        self.remaining_packets = size/BYTES_PER_PACKET
+        self.remaining_packets = math.ceil(size/BYTES_PER_PACKET)
         self.n_sent = 0
+
+        if size < 1e6:
+            self.tag = "xpand"
+        elif size < 1e9:
+            self.tag = "rotor"
+        else:
+            self.tag = "cache"
+
+    def pop(self):
+        assert self.remaining_packets > 0, "Flow %d has no more packets to send" % self.id
+
+        p = Packet(self.src, self.dst, self.n_sent, self.tag, self.id)
+
+        self.remaining_packets -= 1
+        self.n_sent += 1
+
+        return p
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)

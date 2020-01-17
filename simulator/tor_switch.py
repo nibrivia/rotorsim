@@ -211,20 +211,32 @@ class ToRSwitch:
             return self.buffers_ind[dst.id]
 
         # Direct traffic, deal with the flows here
-        if len(self.flows_rotor[dst.id]) > 0:
+        flows = self.flows_rotor[dst.id]
+        if len(flows) > 0:
+            f = flows[0]
             # We need to update bookeeping here
-            if self.buffers_dir[dst.id].size == 1:
-                del self.non_zero_dir[dst.id]
+            #if len(flows) == 1 and f.remaining_packets == 1:
+            #    del self.non_zero_dir[dst.id]
+
+            if f.remaining_packets == 1:
+                print("                               Flow %d done" % f.id)
+                self.flows_rotor[dst.id].pop(0)
 
             self.vprint("\033[0;32mDirect: %s:%d\033[00m" % (self, rotor_id), 2)
-            return self.buffers_dir[dst.id]
+            return f
 
         # New indirect traffic
         # TODO should actually load balance
-        for ind_id, buf in self.non_zero_dir.items():
-            if buf.size == 1:
-                del self.non_zero_dir[ind_id]
-            return buf
+        for flow_dst, flows in enumerate(self.flows_rotor):
+            if len(flows) > 0:
+                self.vprint("\033[0;31mNew Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
+                f = flows[0]
+
+                if f.remaining_packets == 1:
+                    print("                           Flow %d done" % f.id)
+                    self.flows_rotor[flow_dst].pop(0)
+
+                return f
 
         return None
 
@@ -239,18 +251,18 @@ class ToRSwitch:
     # Actual packets moving
     ########################
 
-    def _enable_out(self, rotor_id):
-        self.out_enable[rotor_id] = True
+    def _enable_out(self, port_id):
+        self.out_enable[port_id] = True
         # We're done transmitting, try again
-        self._send(rotor_id)
+        self._send(port_id)
 
     # Useful only for pretty prints: what comes first, packets second
-    def _send(self, rotor_id):
+    def _send(self, port_id):
         # If we're still transmitting, stop
-        if not self.out_enable[rotor_id]:
+        if not self.out_enable[port_id]:
             return
 
-        queue = self.next_queue(rotor_id)
+        queue = self.next_queue(port_id)
 
         # Nothing to do, return
         if queue is None:
@@ -258,37 +270,44 @@ class ToRSwitch:
 
         # Send the packet
         p = queue.pop()
-        self.capacity[p.dst.id] += 1
-        self.dests[rotor_id].recv(p)
+        self.capacity[p.dst_id] += 1
+        self.dests[port_id].recv(p)
 
         if self.logger is not None:
-            self.logger.log(src = self, dst = self.dests[rotor_id],
-                    rotor = self.rotors[rotor_id], packet = p)
+            self.logger.log(src = self, dst = self.dests[port_id],
+                    rotor = self.switches[port_id], packet = p)
+
+        if self.verbose:
+            if p.tag == "xpand":
+                self.vprint("\033[0;31m", end = "")
+            if p.tag == "rotor":
+                self.vprint("\033[0;32m", end = "")
+            if p.tag == "cache":
+                self.vprint("\033[0;33m", end = "")
+            self.vprint("@%.3f   %s %s->%d %3d[%s->%s]#%d\033[00m"
+                    % (R.time, p.tag, self.id, self.dests[port_id].id,
+                        p.flow_id, p.src_id, p.dst_id, p.seq_num))
 
         # We're back to being busy, and come back when we're done
-        self.out_enable[rotor_id] = False
-        R.call_in(delay = self.packet_ttime, fn = self._enable_out, rotor_id = rotor_id)
+        self.out_enable[port_id] = False
+        R.call_in(delay = self.packet_ttime, fn = self._enable_out, port_id = port_id)
 
     def _recv(self, p):
-        # Receive the p
-        flow_src = p.src
-        flow_dst = p.dst
-        seq_num = p.seq_num
-
         # You have arrived :)
-        if flow_dst.id == self.id:
+        if p.dst_id == self.id:
             # accept packet into the receive buffer
             #self.buffers_rcv[flow_src.id].recv(p)
-
-            # send an ack to the flow that sent this packet
-            # TODO remove transport layer stuff from here
-            p.flow.recv(p)
             return
 
         # Time-sensitive stuff
-        if not p.high_thput:
+        if p.tag == "cache":
+            assert False, "Cache should always hit home..."
+
+
+        # Low latency, through the expander
+        if p.tag == "xpand":
             # Get next hop
-            path, _ = self.route[flow_dst.id]
+            path, _ = self.route[p.dst_id]
             next_hop = path[0]
             rotor_id = self.tor_to_rotor[next_hop]
 
@@ -296,19 +315,20 @@ class ToRSwitch:
             self.buffers_fst[rotor_id].recv(p)
 
             # Attempt to send now
-            self.capacity[flow_dst.id] -= 1
+            self.capacity[p.dst_id] -= 1
             self._send(rotor_id)
             return
 
         # From my hosts
-        if flow_src.id == self.id:
-            queue = self.buffers_dir[flow_dst.id]
+        if p.src_id == self.id:
+            assert False
+            queue = self.buffers_dir[p.dst_id]
             self.non_zero_dir[flow_dst.id] = self.buffers_dir[flow_dst.id]
         else: # or indirect
-            queue = self.buffers_ind[flow_dst.id]
+            queue = self.buffers_ind[p.dst_id]
 
         queue.recv(p)
-        self.capacity[flow_dst.id] -= 1
+        self.capacity[p.dst_id] -= 1
 
 
 
@@ -340,9 +360,9 @@ class ToRSwitch:
 
         return s
 
-    def vprint(self, msg="", level = 0):
+    def vprint(self, msg="", level = 0, *args, **kwargs):
         if self.verbose:
             pad = "  " * level
-            print("%s%s" % (pad, msg))
+            print("%s%s" % (pad, msg), *args, **kwargs)
 
 

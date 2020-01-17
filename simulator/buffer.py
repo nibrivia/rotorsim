@@ -23,16 +23,8 @@ class Buffer():
     def pop(self):
         p = self.packets.popleft()
         self.size -= 1
-
-        if self.verbose:
-            print("@%.2f        \033[01m%s\033[00m to %s   [%s->%s]: %2d pkts (%s) \033[00m"
-                    % (R.time, self.parent, to, self.src, self.dst, num_packets, self),
-                    end = "")
-            a = ["s", "B"]
-            s = a[int(p.high_thput)]
-            print(s)
-
         return p
+
 
     def recv(self, packet):
         #for p in packets:
