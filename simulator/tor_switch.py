@@ -7,17 +7,24 @@ from collections import deque
 
 class ToRSwitch:
     def __init__(self, name,
-            n_tor, n_rotor,
+            n_tor,
             slice_duration, packets_per_slot, clock_jitter,
-            logger, verbose):
+            logger, verbose,
+            n_rotor = 10):
         # Stuff about me
         self.id      = int(name)
         self.name    = "Tor %d" % self.id
 
         # ... about others
+        self.n_switches = 10
+        self.n_expander = 4
+        self.n_rotor    = 3
+        self.n_cache    = 3
+
         self.n_tor  = n_tor
-        self.rotors = [None for _ in range(n_rotor)]
-        self.out_enable = [True for _ in range(n_rotor)]
+
+        self.switches   = [None for _ in range(self.n_switches)] # queues
+        self.out_enable = [True for _ in range(self.n_switches)]
 
         # ... about time
         self.packets_per_slot = packets_per_slot
@@ -44,8 +51,8 @@ class ToRSwitch:
                                 for dst in range(n_tor)]
 
         # Each item has the form (tor, link_remaining)
-        self.connections = [None for _ in range(n_rotor)]
-        self.capacities  = [None for _ in range(n_rotor)]
+        self.connections = [(None, 0) for _ in range(n_rotor)] # TODO ???
+        self.capacities  = [0         for _ in range(n_rotor)] # Capacities of destination
         self.capacity    = [self.packets_per_slot for _ in range(n_tor)]
         self.tor_to_rotor = dict()
 
@@ -57,9 +64,9 @@ class ToRSwitch:
     # One-time setup
     ################
 
-    def connect_rotor(self, rotor, queue):
+    def connect_switch(self, port, queue):
         # queue is an object with a .recv that can be called with (packets)
-        self.rotors[rotor.id] = queue
+        self.switches[port] = queue
 
     def add_matchings(self, matchings_by_slot_rotor):
         self.matchings_by_slot_rotor = [[ None for _ in m] for m in matchings_by_slot_rotor]
@@ -75,12 +82,12 @@ class ToRSwitch:
     def start(self):
         # This is the first time, we need to connect everyone
         self.slice_t = 0
-        slot_t = self.slice_t // len(self.rotors)
+        slot_t = self.slice_t // self.n_rotor
         n_slots = len(self.matchings_by_slot_rotor)
         matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
 
         # For all active matchings, connect them up!
-        for rotor_id in range(len(self.rotors)):
+        for rotor_id in range(self.n_rotor):
             dst = matchings_in_effect[rotor_id]
             self.connect_to(rotor_id, dst)
 
@@ -101,12 +108,12 @@ class ToRSwitch:
 
     def new_slice(self):
         self.slice_t += 1
-        slot_t = self.slice_t // len(self.rotors)
+        slot_t = self.slice_t // self.n_rotor
         n_slots = len(self.matchings_by_slot_rotor)
         matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
 
         # Switch up relevant matching
-        rotor_id = self.slice_t % len(self.rotors)
+        rotor_id = self.slice_t % self.n_rotor
         dst = matchings_in_effect[rotor_id]
         self.connect_to(rotor_id, dst)
 
@@ -180,8 +187,13 @@ class ToRSwitch:
     ####################
 
     def next_queue(self, port_id):
-        # TODO based on the port_id, choose which function to call
-        pass
+        # Kinda hacky, but ok
+        if port_id < self.n_rotor:
+            return self.next_queue_rotor(port_id)
+        if port_id < self.n_rotor + self.n_expand:
+            return self.next_queue_xpand(port_id)
+        else:
+            return self.next_queue_cache(port_id)
 
     def next_queue_cache(self, port_id):
         for f in self.flows_cache:
@@ -200,7 +212,7 @@ class ToRSwitch:
             return self.buffers_ind[dst.id]
 
         # Direct traffic
-        if self.buffers_dir[dst.id].size > 0:
+        if len(self.flows_rotor[dst.id]) > 0:
             # We need to update bookeeping here
             if self.buffers_dir[dst.id].size == 1:
                 del self.non_zero_dir[dst.id]
