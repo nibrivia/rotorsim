@@ -49,10 +49,9 @@ class Flow:
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
-        return 
 
     def __str__(self):
-        return "%.3f, %d, %d, %d, %d" % (self.arrival, self.id, self.size, self.src, self.dst)
+        return "%s %3d[%s->%s]\033[00m" % (self.tag, self.id, self.src, self.dst)
 
 class FlowDistribution:
     def __init__(self, cdf):
@@ -66,9 +65,15 @@ class FlowDistribution:
 
 websearch_cdf = [(1,1)]
 simple_cdf = [(0.049, 10e3), (0.999, 1e6), (1, 1e9)]
+xpand_cdf = [(1, 10e3)]
+rotor_cdf = [(1, 10e6)]
+cache_cdf = [(1, 10e9)]
 WORKLOAD_FNS = defaultdict(
         websearch   = FlowDistribution(websearch_cdf),
         chen        = FlowDistribution(simple_cdf),
+        xpand       = FlowDistribution(xpand_cdf),
+        rotor       = FlowDistribution(rotor_cdf),
+        cache       = FlowDistribution(cache_cdf),
         #log_uniform = FlowDistribution(log_uniform_distribution, log_uniform_size),
         default   = lambda _: Exception('Unrecognized workload {}'.format(workload)))
 
