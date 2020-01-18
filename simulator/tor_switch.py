@@ -33,6 +33,7 @@ class ToRSwitch:
         self.slice_duration = slice_duration
         self.clock_jitter   = clock_jitter
         self.packet_ttime   = self.slice_duration / packets_per_slot
+        self.packet_ttime = 0
 
         self.recv = Delay(self.packet_ttime)(self._recv)
 
@@ -43,12 +44,12 @@ class ToRSwitch:
         # Demand
         self.flows_cache = [[] for dst in range(n_tor)]
         self.flows_rotor = [[] for dst in range(n_tor)]
-        self.flows_xpand = [[] for dst in range(n_tor)]
+        self.flows_xpand = {port_id: [] for port_id in self.xpand_ports}
         self.buffers_ind = [Buffer(parent = self,
                                    src = self.id, dst = dst,
                                    name = "ind[%s]" % dst,
                                    logger = logger, verbose = verbose)
-                                for dst in range(n_tor)] # holds indirected packets
+                                for dst in range(n_tor)] # holds indirected packets (rotor)
 
         # TODO cache
 
@@ -57,8 +58,14 @@ class ToRSwitch:
         self.capacity    = [self.packets_per_slot for _ in range(self.n_tor)]
 
         # xpander
-        self.connections  = dict() # Destination ToRs
-        self.tor_to_rotor = dict() # the rotor to use to get the next destination
+        self.connections = dict() # Destination ToRs
+        self.tor_to_port = dict() # the rotor to use to get the next destination
+        self.port_to_tor = dict()
+        self.buffers_fst = {port_id: Buffer(parent = self,
+                                   src = self.id, dst = None,
+                                   name = "fst[%s]" % port_id,
+                                   logger = logger, verbose = verbose)
+                                for port_id in self.xpand_ports} # holds indirected packets (xpand)
 
 
     # One-time setup
@@ -82,7 +89,7 @@ class ToRSwitch:
     def port_type(self, port_id):
         if port_id < self.n_rotor:
             return "rotor"
-        if port_id < self.n_rotor + self.n_cache:
+        if port_id < self.n_rotor + self.n_xpand:
             return "xpand"
         else:
             return "rotor"
@@ -118,9 +125,6 @@ class ToRSwitch:
         for port_id, dst_tor in xpand_matchings.items():
             self.ports[port_id][0] = dst_tor
 
-        for xpand_id in self.xpand_ports:
-            self.make_route(xpand_id)
-
 
     def set_tor_refs(self, tors):
         self.tors = tors
@@ -149,10 +153,8 @@ class ToRSwitch:
         ##########
 
         # This only iterates over the very beginning of the connections: the rotors
-        self.tor_to_rotor = dict()
-        for port_id, matching in enumerate(self.xpand_matchings):
-            tor, _ = self.ports[port_id]
-            self.tor_to_rotor[tor.id] = port_id
+        for port_id, tor in self.xpand_matchings.items():
+            self.tor_to_port[tor.id] = port_id
 
 
     # Every slice setup
@@ -189,7 +191,7 @@ class ToRSwitch:
     def link_state(self):
         # TODO do this in connect_to, reduces complexity by at least O(n_tor)
         links = dict()
-        for port_id in range(self.n_rotor):
+        for port_id in self.xpand_ports:
             tor, _ = self.ports[port_id]
             links[tor.id] = 1
         return links
@@ -205,10 +207,14 @@ class ToRSwitch:
         queue = deque()
         queue.append(self)
 
+        print()
+        print()
+        print("Routing", self)
         #This is a bastardized dijkstra - it assumes all cost are one
         while len(queue) > 0:
             tor    = queue.popleft()
             path, cost = self.route[tor.id]
+            print("  ", tor, tor.link_state)
 
             # Take the new connection...
             for con_id in tor.link_state:
@@ -230,7 +236,6 @@ class ToRSwitch:
         if port_type == "rotor":
             return self.next_queue_rotor(port_id)
         if port_type == "xpand":
-            print("XX")
             return self.next_queue_xpand(port_id)
         if port_type == "cache":
             return self.next_queue_cache(port_id)
@@ -270,7 +275,6 @@ class ToRSwitch:
         # TODO should actually load balance
         for flow_dst, flows in enumerate(self.flows_rotor):
             if len(flows) > 0:
-                self.vprint("\033[0;31mNew Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
                 f = flows[0]
 
                 if f.remaining_packets == 1:
@@ -283,9 +287,27 @@ class ToRSwitch:
 
     def next_queue_xpand(self, port_id):
         # Priority queue
+
+        # If there are already packets waiting
         if self.buffers_fst[port_id].size > 0:
-            self.vprint("\033[0;31mLow latency: %s:%d\033[00m" % (self, rotor_id), 2)
-            return self.buffers_fst[rotor_id]
+            return self.buffers_fst[port_id]
+
+        # If we have flows waiting
+        flows = self.flows_xpand[port_id]
+        if len(flows) > 0:
+            f = flows[0]
+
+            # Remove if we're done
+            if f.remaining_packets == 1:
+                print("                           Flow %d done" % f.id)
+                self.flows_xpand[port_id].pop(0)
+
+            return f
+
+        # No packets, no flows, nothing to do...
+
+
+
 
 
 
@@ -329,8 +351,8 @@ class ToRSwitch:
                 self.vprint("\033[0;32m", end = "")
             if p.tag == "cache":
                 self.vprint("\033[0;33m", end = "")
-            self.vprint("@%.3f   %s %s->%d %3d[%s->%s]#%d\033[00m"
-                    % (R.time, p.tag, self.id, dst_tor.id,
+            self.vprint("@%.3f   %s %d:%d->%d %3d[%s->%s]#%d\033[00m"
+                    % (R.time, p.tag, self.id, port_id, dst_tor.id,
                         p.flow_id, p.src_id, p.dst_id, p.seq_num))
 
         # We're back to being busy, and come back when we're done
@@ -354,14 +376,13 @@ class ToRSwitch:
             # Get next hop
             path, _ = self.route[p.dst_id]
             next_hop = path[0]
-            rotor_id = self.tor_to_rotor[next_hop]
+            port_id = self.tor_to_port[next_hop]
 
             # Add to queue
-            self.buffers_fst[rotor_id].recv(p)
+            self.buffers_fst[port_id].recv(p)
 
             # Attempt to send now
-            self.capacity[p.dst_id] -= 1
-            self._send(rotor_id)
+            self._send(port_id)
             return
 
         # From my hosts
@@ -374,6 +395,27 @@ class ToRSwitch:
 
         queue.recv(p)
         self.capacity[p.dst_id] -= 1
+
+    def recv_flow(self, flow):
+        # Add the flow, and then attempt to send
+        if flow.size < 1e6:
+            path, _ = self.route[flow.dst]
+            n_tor   = path[0]
+            port_id = self.tor_to_port[n_tor]
+
+            self.flows_xpand[port_id].append(flow)
+            self._send(port_id)
+
+        elif flow.size < 100e6:
+            self.flows_rotor[flow.dst].append(flow)
+            for port_id in self.rotor_ports:
+                self._send(port_id)
+
+        else:
+            self.flows_cache[flow.dst].append(flow)
+            for port_id in self.cache_ports:
+                self._send(port_id)
+
 
 
 

@@ -89,9 +89,9 @@ class RotorSwitch:
     def recv(self, tor, packet):
         if self.enabled:
             dst = self.dests[tor.id]
-            if self.verbose:
-                print("@%.2f                 %s to \033[01m%s\033[00m\033[00m"
-                        % (R.time, self, dst))
+            #if self.verbose:
+                #print("@%.2f                 %s to \033[01m%s\033[00m\033[00m"
+                        #% (R.time, self, dst))
             if self.logger is not None:
                 self.logger.log(src = tor, dst = dst, rotor = self, packet = packet)
 

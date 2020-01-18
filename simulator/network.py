@@ -100,13 +100,14 @@ class RotorNet:
 
         # EXPANDER
         ##########
-        for xpand_id in self.xpand_ports:
+        for i, xpand_id in enumerate(self.xpand_ports):
             # Install one matching per switch, never changes
             xpand = self.switches[xpand_id]
-            xpand_matchings = [self.matchings[xpand_id]]
+            xpand_matchings = [self.matchings[i]]
             xpand.add_matchings(xpand_matchings, 1)
         for tor in self.tors:
-            all_xpand_matchings = zip(self.xpand_ports, self.matchings[:self.n_xpand])
+            all_xpand_matchings = zip(self.xpand_ports,
+                    (self.matchings[i] for i, _ in enumerate(self.xpand_ports)))
             tor_xpand_matchings = {xpand_id: [d for s, d in m if s == tor][0]
                     for xpand_id, m in all_xpand_matchings}
             tor.add_xpand_matchings(tor_xpand_matchings)
@@ -173,13 +174,7 @@ class RotorNet:
 
     def open_connection(self, flow):
         # override src and dst to tor objects
-        print("@%.3f Should start flow %s" % (R.time, flow))
-        if flow.size < 1e6:
-            self.tors[flow.src].flows_xpand[flow.dst].append(flow)
-        elif flow.size < 100e6:
-            self.tors[flow.src].flows_rotor[flow.dst].append(flow)
-        else:
-            self.tors[flow.src].flows_cache[flow.dst].append(flow)
+        self.tors[flow.src].recv_flow(flow)
 
         # begin sending
         #tcpflow.send()
