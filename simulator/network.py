@@ -173,7 +173,7 @@ class RotorNet:
 
     def open_connection(self, flow):
         # override src and dst to tor objects
-        print("@%.2f Should start flow %d [%.3fMb]" % (R.time, flow.id, flow.size/1e6))
+        print("@%.3f Should start flow %s" % (R.time, flow))
         if flow.size < 1e6:
             self.tors[flow.src].flows_xpand[flow.dst].append(flow)
         elif flow.size < 100e6:
