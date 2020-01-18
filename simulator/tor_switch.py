@@ -245,23 +245,28 @@ class ToRSwitch:
         # Do the current flow
         f = self.active_flow[port_id]
         if f is not None:
-            if f.remaining_packets == 1:
-                self.active_flow[port_id] = None
-                print("                    Flow %s done" % f)
-
-                # Free up our matching
-                R.call_in(0, switch.release_matching, tor = self)
-            return f
+            return None # We're not simulating at the packet level
 
         # Or try to establish a new one....
         for i, f in enumerate(self.flows_cache):
             if switch.request_matching(self, f.dst):
-                self.active_flow[port_id] = f
+                print("@%.3f %s got matching" % (R.time, f))
+
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
-                print("got matching")
-                return f
-        print("no matchings available")
+
+                fct = f.remaining_packets * self.packet_ttime
+                self.active_flow[port_id] = f
+
+                R.call_in(fct, self.cache_flow_done, port_id = port_id)
+
+                return None # Still not simulating packet level
+        print("@%.3f no matchings available %s" % (R.time, self))
+
+    def cache_flow_done(self, port_id):
+        print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
+        self.active_flow[port_id] = None
+        self.switches[port_id].release_matching(self)
 
     def next_queue_rotor(self, port_id):
         rotor_id = port_id # TODO translate this
@@ -423,7 +428,7 @@ class ToRSwitch:
                 self._send(port_id)
 
         else:
-            print("%.3f got flow %s" % (R.time, flow))
+            print("@%.3f %s got flow" % (R.time, flow))
             self.flows_cache.append(flow)
             # TODO attempt to create a new cache connection
             for port_id in self.cache_ports:
