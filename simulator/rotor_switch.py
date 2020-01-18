@@ -8,21 +8,15 @@ class Empty:
 
 class RotorSwitch:
     def __init__(self,
-            id, n_ports, n_rotor,
-            slice_duration, reconfiguration_time, clock_jitter,
+            id, n_ports,
             verbose, logger = None):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
+        # dests[1] is the destination of a packet arriving in on port 1
 
         # About time
-        self.slice_duration       = slice_duration
-        self.reconfiguration_time = reconfiguration_time
-        self.clock_jitter         = clock_jitter
         self.slice_t              = -1
-        self.n_rotor              = n_rotor
-
-        self.new_slice = Delay(slice_duration, jitter = clock_jitter)(self._new_slice)
 
         # About IO
         self.verbose = verbose
@@ -30,12 +24,21 @@ class RotorSwitch:
 
         self._disable()
 
-    def add_matchings(self, matchings_by_slot):
+    def add_matchings(self, matchings_by_slot, n_rotor):
         self.matchings_by_slot = matchings_by_slot
+        self.n_rotor = n_rotor
 
-    def start(self):
+    def start(self, slice_duration):
         self._enable()
+        print(self)
         self.install_matchings(self.matchings_by_slot[0])
+
+        # Create a recursive call
+        if slice_duration > 0:
+            self.new_slice = Delay(slice_duration)(self._new_slice)
+        else:
+            self.new_slice = lambda: None
+
         self._new_slice()
 
     def _new_slice(self):
@@ -51,6 +54,8 @@ class RotorSwitch:
         slot_t = self.slice_t // self.n_rotor
         current_matchings = self.matchings_by_slot[slot_t % n_slots]
         self.install_matchings(current_matchings)
+
+        # Re-call ourselves
         self.new_slice()
 
 
@@ -65,7 +70,7 @@ class RotorSwitch:
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time, high priority so that reconf 0 has no down time
-        Delay(delay = self.reconfiguration_time, jitter = 0, priority = -100)(self._enable)()
+        self._enable()
 
     def connect_tors(self, tors):
         assert not self.enabled
@@ -78,7 +83,7 @@ class RotorSwitch:
             handle.recv = partial(self.recv, tor)
             handle.name = str(self)
             handle.id   = self.id
-            tor.connect_switch(self.id, handle)
+            tor.connect_queue(self.id, handle)
 
     #@Delay(0)
     def recv(self, tor, packet):
