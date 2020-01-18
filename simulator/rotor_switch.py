@@ -73,6 +73,7 @@ class RotorSwitch:
 
         # TODO notify
         for tor in self.tors:
+            tor._send(self.id)
             # tor.cache_free(dst.id)
             pass
 
