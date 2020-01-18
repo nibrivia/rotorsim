@@ -251,6 +251,7 @@ class ToRSwitch:
         for i, f in enumerate(self.flows_cache):
             if switch.request_matching(self, f.dst):
                 #print("@%.3f %s got matching" % (R.time, f))
+                print("\033[0;33mflow %d start (%s)\033[00m" % (f.id, f.tag))
 
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
@@ -265,6 +266,7 @@ class ToRSwitch:
 
     def cache_flow_done(self, port_id):
         #print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
+        print("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
         self.active_flow[port_id] = None
         self.switches[port_id].release_matching(self)
 
@@ -287,7 +289,6 @@ class ToRSwitch:
             #    del self.non_zero_dir[dst.id]
 
             if f.remaining_packets == 1:
-                print("                    Flow %s done" % f)
                 self.flows_rotor[dst.id].pop(0)
 
             self.vprint("\033[0;32mDirect: %s:%d\033[00m" % (self, rotor_id), 2)
@@ -300,7 +301,6 @@ class ToRSwitch:
                 f = flows[0]
 
                 if f.remaining_packets == 1:
-                    print("                    Flow %s done" % f)
                     self.flows_rotor[flow_dst].pop(0)
 
                 return f
@@ -321,7 +321,6 @@ class ToRSwitch:
 
             # Remove if we're done
             if f.remaining_packets == 1:
-                print("                    Flow %s done" % f)
                 self.flows_xpand[port_id].pop(0)
 
             return f
@@ -378,6 +377,12 @@ class ToRSwitch:
     def _recv(self, p):
         # You have arrived :)
         if p.dst_id == self.id:
+            if p.tag == "xpand":
+                print("\033[0;31m", end = "")
+            if p.tag == "rotor":
+                print("\033[0;32m", end = "")
+            if p.is_last:
+                print("flow %s done  (%s)\033[00m" % (p.flow_id, p.tag))
             # accept packet into the receive buffer
             #self.buffers_rcv[flow_src.id].recv(p)
             return

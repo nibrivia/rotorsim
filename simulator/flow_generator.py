@@ -17,7 +17,7 @@ from helpers import *
 
 BYTES_PER_PACKET = 1500
 
-Packet = collections.namedtuple('Packet', 'src_id dst_id seq_num tag flow_id')
+Packet = collections.namedtuple('Packet', 'src_id dst_id seq_num tag flow_id is_last')
 
 class Flow:
     def __init__(self, arrival, flow_id, size, src, dst):
@@ -39,13 +39,22 @@ class Flow:
         else:
             self.tag = "cache"
 
-    def start(self):
-        self.started = True
-
     def pop(self):
         assert self.remaining_packets > 0, "Flow %d has no more packets to send" % self.id
 
-        p = Packet(self.src, self.dst, self.n_sent, self.tag, self.id)
+        if not self.started:
+            if self.tag == "xpand":
+                print("\033[0;31m", end = "")
+            if self.tag == "rotor":
+                print("\033[0;32m", end = "")
+            if self.tag == "cache":
+                print("\033[0;33m", end = "")
+            print("flow %d start (%s)\033[00m" % (self.id, self.tag))
+            self.start = R.time
+            self.started = True
+
+        p = Packet(self.src, self.dst, self.n_sent,
+                self.tag, self.id, self.remaining_packets == 1)
 
         self.remaining_packets -= 1
         self.n_sent += 1
@@ -69,7 +78,7 @@ class FlowDistribution:
         return np.random.choice(self.sizes, size = n, p = self.probs)
 
 websearch_cdf = [(1,1)]
-simple_cdf = [(0.049, 10e3), (0.999, 1e6), (1, 1e9)]
+simple_cdf = [(0.049, 10e3), (0.99, 1e6), (1, 1e9)]
 xpand_cdf = [(1, 10e3)]
 rotor_cdf = [(1, 10e6)]
 cache_cdf = [(1, 1e9)]
