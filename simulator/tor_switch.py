@@ -226,11 +226,13 @@ class ToRSwitch:
 
     def next_queue(self, port_id):
         # Kinda hacky, but ok
-        if port_id < self.n_rotor:
+        port_type = self.port_type(port_id)
+        if port_type == "rotor":
             return self.next_queue_rotor(port_id)
-        if port_id < self.n_rotor + self.n_expand:
+        if port_type == "xpand":
+            print("XX")
             return self.next_queue_xpand(port_id)
-        else:
+        if port_type == "cache":
             return self.next_queue_cache(port_id)
 
     def next_queue_cache(self, port_id):
