@@ -64,7 +64,7 @@ class RotorSwitch:
 
 
     def release_matching(self, tor):
-        print("%s releasing matching from %s" % (self, tor))
+        #print("%s releasing matching from %s" % (self, tor))
         self.available_up[tor.id] = True
         dst = self.dests[tor.id]
         self.available_dn[dst.id] = True

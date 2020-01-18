@@ -250,7 +250,7 @@ class ToRSwitch:
         # Or try to establish a new one....
         for i, f in enumerate(self.flows_cache):
             if switch.request_matching(self, f.dst):
-                print("@%.3f %s got matching" % (R.time, f))
+                #print("@%.3f %s got matching" % (R.time, f))
 
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
@@ -261,10 +261,10 @@ class ToRSwitch:
                 R.call_in(fct, self.cache_flow_done, port_id = port_id)
 
                 return None # Still not simulating packet level
-        print("@%.3f no matchings available %s" % (R.time, self))
+        #print("@%.3f no matchings available %s" % (R.time, self))
 
     def cache_flow_done(self, port_id):
-        print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
+        #print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
         self.active_flow[port_id] = None
         self.switches[port_id].release_matching(self)
 
@@ -428,7 +428,6 @@ class ToRSwitch:
                 self._send(port_id)
 
         else:
-            print("@%.3f %s got flow" % (R.time, flow))
             self.flows_cache.append(flow)
             # TODO attempt to create a new cache connection
             for port_id in self.cache_ports:
