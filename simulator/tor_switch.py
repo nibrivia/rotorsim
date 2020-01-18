@@ -113,7 +113,7 @@ class ToRSwitch:
     def add_xpand_matchings(self, xpand_matchings):
         assert len(xpand_matchings) == self.n_xpand
 
-        if True: # TODO check with > 1 expander
+        if False: # TODO check with > 1 expander
             print(xpand_matchings)
             print()
             print(self, "->")
@@ -207,14 +207,10 @@ class ToRSwitch:
         queue = deque()
         queue.append(self)
 
-        print()
-        print()
-        print("Routing", self)
         #This is a bastardized dijkstra - it assumes all cost are one
         while len(queue) > 0:
             tor    = queue.popleft()
             path, cost = self.route[tor.id]
-            print("  ", tor, tor.link_state)
 
             # Take the new connection...
             for con_id in tor.link_state:
@@ -265,7 +261,7 @@ class ToRSwitch:
             #    del self.non_zero_dir[dst.id]
 
             if f.remaining_packets == 1:
-                print("                               Flow %d done" % f.id)
+                print("                    Flow %s done" % f)
                 self.flows_rotor[dst.id].pop(0)
 
             self.vprint("\033[0;32mDirect: %s:%d\033[00m" % (self, rotor_id), 2)
@@ -278,7 +274,7 @@ class ToRSwitch:
                 f = flows[0]
 
                 if f.remaining_packets == 1:
-                    print("                           Flow %d done" % f.id)
+                    print("                    Flow %s done" % f)
                     self.flows_rotor[flow_dst].pop(0)
 
                 return f
@@ -299,7 +295,7 @@ class ToRSwitch:
 
             # Remove if we're done
             if f.remaining_packets == 1:
-                print("                           Flow %d done" % f.id)
+                print("                    Flow %s done" % f)
                 self.flows_xpand[port_id].pop(0)
 
             return f
@@ -335,8 +331,6 @@ class ToRSwitch:
         # Send the packet
         p = queue.pop()
         if self.port_type(port_id) == "rotor":
-            print(p.dst_id)
-            print(self.capacities)
             self.capacity[p.dst_id] += 1
         dst_q.recv(p)
 

@@ -30,7 +30,6 @@ class RotorSwitch:
 
     def start(self, slice_duration):
         self._enable()
-        print(self)
         self.install_matchings(self.matchings_by_slot[0])
 
         # Create a recursive call

@@ -67,7 +67,7 @@ websearch_cdf = [(1,1)]
 simple_cdf = [(0.049, 10e3), (0.999, 1e6), (1, 1e9)]
 xpand_cdf = [(1, 10e3)]
 rotor_cdf = [(1, 10e6)]
-cache_cdf = [(1, 10e9)]
+cache_cdf = [(1, 1e9)]
 WORKLOAD_FNS = defaultdict(
         websearch   = FlowDistribution(websearch_cdf),
         chen        = FlowDistribution(simple_cdf),
@@ -84,7 +84,7 @@ def generate_flows(
     load, bandwidth,
     time_limit,
     num_tors,
-    num_rotors,
+    num_switches,
     workload_name,
     results_file='flows.csv',
 ):
@@ -106,7 +106,7 @@ def generate_flows(
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
-    capacity  = num_tors*num_rotors*bandwidth*1e6*time_limit/1e3 # Gb
+    capacity  = num_tors*num_switches*bandwidth*1e6*time_limit/1e3 # Gb
     n_flows   = int(capacity/workload.size*load)
     iflow_wait = time_limit/n_flows
 

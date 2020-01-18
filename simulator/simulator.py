@@ -159,7 +159,7 @@ def main(
             load = load,
             bandwidth  = bandwidth,
             num_tors   = n_tor,
-            num_rotors = n_switches,
+            num_switches = n_switches,
             time_limit = time_limit,
             workload_name   = workload)
 
