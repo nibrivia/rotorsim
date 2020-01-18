@@ -254,10 +254,11 @@ class ToRSwitch:
             return f
 
         # Or try to establish a new one....
-        for f in self.flows_cache:
+        for i, f in enumerate(self.flows_cache):
             if switch.request_matching(self, f.dst):
                 self.active_flow[port_id] = f
                 self.ports[port_id][0] = self.tors[f.dst]
+                self.flows_cache.pop(i)
                 print("got matching")
                 return f
         print("no matchings available")
@@ -354,7 +355,7 @@ class ToRSwitch:
             self.logger.log(src = self, dst = dst_tor,
                     rotor = self.switches[port_id], packet = p)
 
-        if self.verbose:
+        if self.verbose and p.seq_num % 1000 == 0:
             if p.tag == "xpand":
                 self.vprint("\033[0;31m", end = "")
             if p.tag == "rotor":
