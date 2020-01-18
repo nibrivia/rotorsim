@@ -42,7 +42,7 @@ class Flow:
     def pop(self):
         assert self.remaining_packets > 0, "Flow %d has no more packets to send" % self.id
 
-        if not self.started:
+        if False and not self.started:
             if self.tag == "xpand":
                 print("\033[0;31m", end = "")
             if self.tag == "rotor":
@@ -162,6 +162,6 @@ def generate_flows(
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         # write flows
-        csv_writer.writerows(str(f) for f in flows)
+        csv_writer.writerows((f.id, f.arrival) for f in flows)
 
     return flows

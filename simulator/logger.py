@@ -11,7 +11,15 @@ class Log:
     def add_timer(self, timer):
         self.timer = timer
 
+    def log_flow_done(self, flow_id):
+        print("LOG")
+        msg = "%d,%d\n" % (self.timer.time*1000, flow_id)
+        self.cache.append(msg)
+        if len(self.cache) > 100:
+            self._flush()
+
     def log(self, src, dst, rotor, packet):
+        return
         msg = "%d,%d,%d,%d,%d,%d\n" % \
                         (self.timer.time*1000,
                             src.id, dst.id,
