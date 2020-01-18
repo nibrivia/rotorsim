@@ -15,6 +15,10 @@ class RotorSwitch:
         self.dests = [None for _ in range(n_ports)]
         # dests[1] is the destination of a packet arriving in on port 1
 
+        # for cache
+        self.available_up = [True for _ in range(n_ports)]
+        self.available_dn = [True for _ in range(n_ports)]
+
         # About time
         self.slice_t              = -1
 
@@ -39,6 +43,38 @@ class RotorSwitch:
             self.new_slice = lambda: None
 
         self._new_slice()
+
+    # Returns True/False if the connection can be established
+    def request_matching(self, tor, dst_id):
+        print("%s: %s requesting matching to %s" % (self, tor, dst_id))
+        # You should know better than that
+        assert self.available_up[tor.id]
+
+        # Make sure the connection can be established
+        if not self.available_dn[dst_id]:
+            return False
+
+        # True it
+        self.available_up[tor.id] = False
+        self.available_dn[dst_id] = False
+
+        self.dests[tor.id] = self.tors[dst_id]
+
+        return True
+
+
+    def release_matching(self, tor):
+        print("%s releasing matching from %s" % (self, tor))
+        self.available_up[tor.id] = True
+        dst = self.dests[tor.id]
+        self.available_dn[dst.id] = True
+
+        self.dests[tor.id] = None
+
+        # TODO notify
+        for tor in self.tors:
+            # tor.cache_free(dst.id)
+            pass
 
     def _new_slice(self):
         self.slice_t += 1
@@ -82,7 +118,7 @@ class RotorSwitch:
             handle.recv = partial(self.recv, tor)
             handle.name = str(self)
             handle.id   = self.id
-            tor.connect_queue(self.id, handle)
+            tor.connect_queue(port_id = self.id, switch = self, queue = handle)
 
     #@Delay(0)
     def recv(self, tor, packet):

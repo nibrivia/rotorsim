@@ -19,6 +19,7 @@ class ToRSwitch:
         self.n_rotor = n_rotor
         self.n_cache = n_cache
         self.n_switches = n_xpand + n_rotor + n_cache
+        self.switches = [None for _ in range(self.n_switches)]
 
         self.n_tor  = n_tor
 
@@ -33,7 +34,6 @@ class ToRSwitch:
         self.slice_duration = slice_duration
         self.clock_jitter   = clock_jitter
         self.packet_ttime   = self.slice_duration / packets_per_slot
-        self.packet_ttime = 0
 
         self.recv = Delay(self.packet_ttime)(self._recv)
 
@@ -42,7 +42,7 @@ class ToRSwitch:
         self.logger  = logger
 
         # Demand
-        self.flows_cache = [[] for dst in range(n_tor)]
+        self.flows_cache = []
         self.flows_rotor = [[] for dst in range(n_tor)]
         self.flows_xpand = {port_id: [] for port_id in self.xpand_ports}
         self.buffers_ind = [Buffer(parent = self,
@@ -52,6 +52,7 @@ class ToRSwitch:
                                 for dst in range(n_tor)] # holds indirected packets (rotor)
 
         # TODO cache
+        self.active_flow = {port_id: None for port_id in self.cache_ports}
 
         # rotor
         self.capacities  = [0    for _ in range(self.n_tor)] # Capacities of destination
@@ -92,10 +93,12 @@ class ToRSwitch:
         if port_id < self.n_rotor + self.n_xpand:
             return "xpand"
         else:
-            return "rotor"
+            return "cache"
 
-    def connect_queue(self, port_id, queue):
+    def connect_queue(self, port_id, switch, queue):
         # queue is an object with a .recv that can be called with (packets)
+        self.switches[port_id] = switch
+
         if self.port_type(port_id) == "xpand":
             self.connections[port_id] = queue
 
@@ -237,10 +240,27 @@ class ToRSwitch:
             return self.next_queue_cache(port_id)
 
     def next_queue_cache(self, port_id):
+        switch = self.switches[port_id]
+
+        # Do the current flow
+        f = self.active_flow[port_id]
+        if f is not None:
+            if f.remaining_packets == 1:
+                self.active_flow[port_id] = None
+                print("                    Flow %s done" % f)
+
+                # Free up our matching
+                R.call_in(0, switch.release_matching, tor = self)
+            return f
+
+        # Or try to establish a new one....
         for f in self.flows_cache:
-            if f.dst == self.cache_links[port_id]:
-                # TODO send
-                pass
+            if switch.request_matching(self, f.dst):
+                self.active_flow[port_id] = f
+                self.ports[port_id][0] = self.tors[f.dst]
+                print("got matching")
+                return f
+        print("no matchings available")
 
     def next_queue_rotor(self, port_id):
         rotor_id = port_id # TODO translate this
@@ -299,10 +319,6 @@ class ToRSwitch:
                 self.flows_xpand[port_id].pop(0)
 
             return f
-
-        # No packets, no flows, nothing to do...
-
-
 
 
 
@@ -406,7 +422,9 @@ class ToRSwitch:
                 self._send(port_id)
 
         else:
-            self.flows_cache[flow.dst].append(flow)
+            print("%.3f got flow %s" % (R.time, flow))
+            self.flows_cache.append(flow)
+            # TODO attempt to create a new cache connection
             for port_id in self.cache_ports:
                 self._send(port_id)
 

@@ -27,6 +27,8 @@ class Flow:
         self.src     = src
         self.dst     = dst
 
+        self.started = False
+
         self.remaining_packets = math.ceil(size/BYTES_PER_PACKET)
         self.n_sent = 0
 
@@ -36,6 +38,9 @@ class Flow:
             self.tag = "rotor"
         else:
             self.tag = "cache"
+
+    def start(self):
+        self.started = True
 
     def pop(self):
         assert self.remaining_packets > 0, "Flow %d has no more packets to send" % self.id
