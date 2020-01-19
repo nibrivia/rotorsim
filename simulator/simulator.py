@@ -168,13 +168,13 @@ def main(
     # set up printing
     for cycle in range(n_cycles):
         time = cycle*cycle_duration
-        #R.call_in(time,
-        #        print, "\033[1;91m@%.2f Cycle %s/%s\033[00m" % (
-        #            time, cycle+1, n_cycles),
-        #        priority = -100)
         if verbose and not no_pause:
             #R.call_in(time, print_demand, net.tors, priority=100)
             R.call_in(time, pause, priority=100)
+    for time in range(time_limit):
+        R.call_in(time,
+                print, "\033[1;91m%dms of %dms \033[00m" % (time, time_limit),
+                priority = -100)
 
     print("Starting simulator...")
     # Start the simulator
