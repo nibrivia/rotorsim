@@ -1,0 +1,30 @@
+---
+title: "3nets"
+author: "Olivia Brode-Roger"
+date: "1/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(hrbrthemes)
+library(scales)
+```
+
+```{r data, }
+end_times <- read_csv("../simulator/out.csv")
+flows     <- read_csv("../simulator/flows.csv") %>%
+    left_join(end_times, by = c("id" = "flow_id")) %>% 
+    mutate(fct = time_ms - arrival)
+```
+
+```{r plots, options}
+flows %>%
+    ggplot(aes(x = size_bytes/1e6,
+               y = fct)) +
+    geom_point() +
+    scale_x_log10(label = partial(comma, accuracy = .01), breaks = c(.01, .1, 1, 10, 100, 1000)) +
+    scale_y_log10(label = partial(comma, accuracy = .001)) +
+    theme_ipsum_rc() +
+    labs(x = "Size (Mb)")
+```
