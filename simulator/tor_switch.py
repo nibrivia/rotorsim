@@ -266,7 +266,7 @@ class ToRSwitch:
 
     def cache_flow_done(self, port_id):
         #print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
-        print("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
+        self.vprint("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
 
         self.logger.log_flow_done(self.active_flow[port_id].id)
         self.active_flow[port_id] = None
@@ -379,13 +379,14 @@ class ToRSwitch:
     def _recv(self, p):
         # You have arrived :)
         if p.dst_id == self.id:
-            if p.tag == "xpand":
-                print("\033[0;31m", end = "")
-            if p.tag == "rotor":
-                print("\033[0;32m", end = "")
-            if p.is_last:
-                print("flow %s done  (%s)\033[00m" % (p.flow_id, p.tag))
-                self.logger.log_flow_done(p.flow_id)
+            if self.verbose:
+                if p.tag == "xpand":
+                    print("\033[0;31m", end = "")
+                if p.tag == "rotor":
+                    print("\033[0;32m", end = "")
+                if p.is_last:
+                    print("flow %s done  (%s)\033[00m" % (p.flow_id, p.tag))
+                    self.logger.log_flow_done(p.flow_id)
             # accept packet into the receive buffer
             #self.buffers_rcv[flow_src.id].recv(p)
             return

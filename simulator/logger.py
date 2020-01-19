@@ -11,7 +11,6 @@ class Log:
         self.timer = timer
 
     def log_flow_done(self, flow_id):
-        print("LOG")
         msg = "%f,%d\n" % (self.timer.time, flow_id)
         self.cache.append(msg)
         if len(self.cache) > 100:

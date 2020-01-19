@@ -104,11 +104,9 @@ def generate_flows(
 ):
     # csv header
     fields = [
-        'arrival',
         'id',
-        'size_bytes',
-        'src',
-        'dst',
+        'arrival',
+        'size_bytes'
     ]
 
     # get workload generator
@@ -151,10 +149,6 @@ def generate_flows(
     # start, id, size, src, dst
     flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs))
     flows = [Flow(*f) for f in flows]
-    for f in flows:
-        pass
-        #print(f)
-
 
     # write flows out to csv in increasing arrival order
     with open(results_file, 'w') as csv_file:
@@ -162,6 +156,6 @@ def generate_flows(
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         # write flows
-        csv_writer.writerows((f.id, f.arrival) for f in flows)
+        csv_writer.writerows((f.id, f.arrival, f.size) for f in flows)
 
     return flows
