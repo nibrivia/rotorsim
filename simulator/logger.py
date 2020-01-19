@@ -5,15 +5,14 @@ class Log:
         self.cache = [] # Use array to avoid n^2 string append
 
         # Initialize the .csv
-        print("time, src, dst, flow, rotor, packet",
-                file = self.file)
+        print("time_ms,flow_id", file = self.file)
 
     def add_timer(self, timer):
         self.timer = timer
 
     def log_flow_done(self, flow_id):
         print("LOG")
-        msg = "%d,%d\n" % (self.timer.time*1000, flow_id)
+        msg = "%f,%d\n" % (self.timer.time, flow_id)
         self.cache.append(msg)
         if len(self.cache) > 100:
             self._flush()
