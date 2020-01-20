@@ -300,12 +300,15 @@ class ToRSwitch:
         # TODO should actually load balance
         # TODO Check destination capacity
         for flow_dst, flows in enumerate(self.flows_rotor):
-            if len(flows) > 0:
-                f = flows[0]
+            # If we can't send anything to the dest, skip it
+            if self.capacities[port_id][flow_dst] <= 0:
+                continue
 
+            for i, f in enumerate(flows):
                 if f.remaining_packets == 1:
                     self.flows_rotor[flow_dst].pop(0)
 
+                self.vprint("\033[0;32mNew indirect: %s:%d\033[00m" % (self, rotor_id), 2)
                 return f
 
         return None
@@ -356,13 +359,14 @@ class ToRSwitch:
         p = queue.pop()
         if self.port_type(port_id) == "rotor":
             self.capacity[p.dst_id] += 1
+            self.capacities[port_id][p.dst_id] -= 1
         dst_q.recv(p)
 
         if self.logger is not None:
             self.logger.log(src = self, dst = dst_tor,
                     rotor = self.switches[port_id], packet = p)
 
-        if self.verbose and p.seq_num % 1000 == 0:
+        if self.verbose:
             if p.tag == "xpand":
                 self.vprint("\033[0;31m", end = "")
             if p.tag == "rotor":
