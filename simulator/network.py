@@ -23,7 +23,7 @@ class RotorNet:
 
         self.n_switches = n_switches
         self.n_xpand = 1 #round(min(5, n_switches/3))
-        self.n_cache = floor((n_switches - self.n_xpand) / 2)
+        self.n_cache = 0 #floor((n_switches - self.n_xpand) / 2)
         self.n_rotor = n_switches - self.n_xpand - self.n_cache
 
         print("%d xpander, %d rotor, %d cache. %d total" %

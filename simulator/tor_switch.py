@@ -397,7 +397,7 @@ class ToRSwitch:
             return
 
         # Time-sensitive stuff
-        if p.tag == "cache":
+        if p.tag == "cache" and self.n_cache > 0:
             assert False, "Cache should always hit home..."
 
 
@@ -442,10 +442,16 @@ class ToRSwitch:
                 self._send(port_id)
 
         else:
-            self.flows_cache.append(flow)
-            # TODO attempt to create a new cache connection
-            for port_id in self.cache_ports:
-                self._send(port_id)
+            if self.n_cache == 0:
+                self.flows_rotor[flow.dst].append(flow)
+                for port_id in self.rotor_ports:
+                    self._send(port_id)
+
+            else:
+                self.flows_cache.append(flow)
+                # TODO attempt to create a new cache connection
+                for port_id in self.cache_ports:
+                    self._send(port_id)
 
 
 
