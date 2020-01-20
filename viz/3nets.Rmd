@@ -32,6 +32,7 @@ flows %>%
          x = "Flow size",
          y = "Flow completion time",
          caption = "github.com/nibrivia/rotorsim")
+```
 
 ```{r cdf, }
 fct_cdf <- flows %>% 
@@ -39,14 +40,17 @@ fct_cdf <- flows %>%
     arrange(fct) %>% 
     mutate(completed = seq_along(fct)/length(fct))
 
-fct_cdf %>% 
+fct_cdf %>%
+    rbind(fct_cdf_no_cache %>% mutate(type = "no cache")) %>% 
     ggplot(aes(x = fct,
                y = completed,
-               color = as_factor(size_bytes))) +
-    geom_point(size = .1) +
+               color = type)) +
+    #geom_line() +
+    geom_point(size = .2) +
     scale_y_continuous(labels = percent) +
     scale_x_log10(breaks = c(.001, .01, .1, 1, 10, 100, 1000),
-                  labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")) +
+                  labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")
+                  ) +
     theme_ipsum_rc() +
     annotate("point", y = 1, x=max(fct_cdf$fct), size = 2) +
     labs(title = "CDF of flow completion times",
