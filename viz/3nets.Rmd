@@ -18,6 +18,7 @@ flows     <- read_csv("../simulator/flows.csv") %>%
     mutate(fct = time_ms - arrival)
 
 flows %>%
+    filter(!is.na(fct)) %>% 
     ggplot(aes(x = size_bytes/1e6,
                y = fct)) +
     geom_point() +
