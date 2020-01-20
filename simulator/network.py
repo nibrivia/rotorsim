@@ -22,7 +22,7 @@ class RotorNet:
         self.n_tor   = n_tor
 
         self.n_switches = n_switches
-        self.n_xpand = round(min(5, n_switches/3))
+        self.n_xpand = 1 #round(min(5, n_switches/3))
         self.n_cache = 1
         self.n_rotor = n_switches - self.n_xpand - self.n_cache
 
