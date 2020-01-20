@@ -298,6 +298,7 @@ class ToRSwitch:
 
         # New indirect traffic
         # TODO should actually load balance
+        # TODO Check destination capacity
         for flow_dst, flows in enumerate(self.flows_rotor):
             if len(flows) > 0:
                 f = flows[0]
