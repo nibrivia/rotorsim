@@ -29,7 +29,7 @@ class Flow:
 
         self.started = False
 
-        self.remaining_packets = math.ceil(size/BYTES_PER_PACKET)
+        self.remaining_packets = math.ceil(size/(BYTES_PER_PACKET*8))
         self.n_sent = 0
 
         if size < 1e6:
