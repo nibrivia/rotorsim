@@ -1,6 +1,6 @@
 import random
 import sys
-from math import ceil
+from math import ceil, floor
 from helpers import *
 from tor_switch import ToRSwitch
 from rotor_switch import RotorSwitch
@@ -23,7 +23,7 @@ class RotorNet:
 
         self.n_switches = n_switches
         self.n_xpand = 1 #round(min(5, n_switches/3))
-        self.n_cache = 1
+        self.n_cache = floor((n_switches - self.n_xpand) / 2)
         self.n_rotor = n_switches - self.n_xpand - self.n_cache
 
         print("%d xpander, %d rotor, %d cache. %d total" %
@@ -118,7 +118,7 @@ class RotorNet:
         for cache_id in self.cache_ports:
             # Start with a default, this will be changing though...
             cache = self.switches[cache_id]
-            cache_matchings = [self.matchings[cache_id]]
+            cache_matchings = [self.matchings[0]]
             cache.add_matchings(cache_matchings, 1)
 
         # I/O stuff
