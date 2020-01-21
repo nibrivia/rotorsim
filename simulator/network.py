@@ -8,9 +8,11 @@ from event import Registry, Delay, stop_simulation, R
 
 class RotorNet:
     def __init__(self,
-                 n_switches, 
                  n_tor,
                  packets_per_slot,
+                 n_switches,
+                 n_cache    = None,
+                 n_xpand    = None,
                  slice_duration = 1, 
                  reconfiguration_time = 0, 
                  jitter = 0,
@@ -22,8 +24,20 @@ class RotorNet:
         self.n_tor   = n_tor
 
         self.n_switches = n_switches
-        self.n_xpand = 1 #round(min(5, n_switches/3))
-        self.n_cache = 0 #floor((n_switches - self.n_xpand) / 2)
+
+        if n_xpand is not None:
+            assert n_xpand < n_switches
+            self.n_xpand = n_xpand
+        else:
+            self.n_xpand = 1 #round(min(5, n_switches/3))
+
+        if n_cache is not None:
+            assert n_cache + self.n_xpand < n_switches
+            assert n_cache < n_switches
+            self.n_cache = n_cache
+        else:
+            self.n_cache = floor((n_switches - self.n_xpand) / 2)
+
         self.n_rotor = n_switches - self.n_xpand - self.n_cache
 
         print("%d xpander, %d rotor, %d cache. %d total" %

@@ -46,6 +46,16 @@ def load_flows(slot_duration):
         default=2
 )
 @click.option(
+        "--n_cache",
+        type=int,
+        default=None
+)
+@click.option(
+        "--n_xpand",
+        type=int,
+        default=None
+)
+@click.option(
         "--slice_duration",
         type=float,
         default=90,
@@ -106,6 +116,8 @@ def main(
         load,
         n_tor,
         n_switches,
+        n_xpand,
+        n_cache,
         bandwidth,
         latency,
         time_limit,
@@ -133,6 +145,8 @@ def main(
     slice_duration /= 1000 #divide to be in ms
 
     net = RotorNet(n_switches = n_switches,
+                   n_cache = n_cache,
+                   n_xpand = n_xpand,
                    n_tor   = n_tor,
                    packets_per_slot     = packets_per_slot,
                    reconfiguration_time = reconfiguration_time/1000,
