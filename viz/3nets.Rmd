@@ -60,9 +60,10 @@ fct_cdf %>%
 ```
 
 ```{r many-experiments, }
-flow_fns <- list.files(path = "../data/", pattern = "127.*flows.csv")
+flow_fns <- list.files(path = "../data/", pattern = "127.*10ms-flows.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
+           base_fn    = strsplit(flow_fns, "-flows") %>% map_chr(1),
            split = strsplit(filename, "-"),
            n_tor      = map_chr(split, 1),
            n_switches = strsplit(map_chr(split, 2), ":"),
@@ -72,9 +73,21 @@ experiments <- tibble(filename = flow_fns) %>%
            duration   = map_chr(split, 4)) %>% 
     select(-split)
 
+arrivals <- experiments %>% 
+    mutate(arrivals = map(paste0("../data/", base_fn, ".csv"), read_csv)) %>% 
+    select(exp_id, arrivals) %>% 
+    unnest(arrivals)
+
 flows <- experiments %>% 
     mutate(flows = map(paste0("../data/", filename), col_types = "ddd--", read_csv)) %>% 
     select(exp_id, flows) %>% 
-    unnest(flows)
+    unnest(flows) %>% 
+    rename(flow_id = id) %>% 
+    left_join(arrivals, by = c("flow_id", "exp_id"))
+
+fcts <- flows %>% 
+    filter(!is.na(time_ms))
+
+
     
 ```
