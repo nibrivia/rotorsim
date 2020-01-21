@@ -134,7 +134,8 @@ def main(
     if no_log:
         logger = None
     else:
-        logger = Log(fn = log)
+        base_fn = "{n_tor}-{n_switches}:{n_cache}-{load}-{time_limit}ms".format(**locals())
+        logger = Log(fn = base_fn + ".csv")
         logger.add_timer(R)
 
     BYTES_PER_PACKET=1500
@@ -175,7 +176,8 @@ def main(
             num_tors   = n_tor,
             num_switches = n_switches,
             time_limit = time_limit,
-            workload_name   = workload)
+            workload_name   = workload,
+            results_file = base_fn + "-flows.csv")
 
     # open connection for each flow at the time it should arrive
 
