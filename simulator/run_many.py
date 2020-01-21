@@ -34,10 +34,8 @@ def run_experiment(**kwargs):
 # Runs all experiments
 def run_experiments(p_space):
     param_space = [(key, value) for key, value in p_space.items()]
-    print(param_space)
 
     n_experiments = len_param_space(param_space)
-
     print(n_experiments, "experiments to run")
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -45,12 +43,12 @@ def run_experiments(p_space):
             executor.submit(run_experiment, **params)
 
 params = dict(
-        time_limit = [1],
-        n_switches = [7],
-        n_tor      = [17],
+        time_limit = [1000],
+        n_switches = [33],
+        n_tor      = [127],
         workload   = ["chen"],
-        load       = [.1, .5, .8],
-        n_cache    = [0, 3]
+        load       = [.1, .2, .3, .4, .6, .8],
+        n_cache    = [0, 1, 2, 4, 8, 12, 16]
         )
 
 run_experiments(params)
