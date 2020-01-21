@@ -58,3 +58,19 @@ fct_cdf %>%
          x = "Flow completion time",
          caption = "github.com/nibrivia/rotorsim")
 ```
+
+```{r many-experiments, }
+flow_fns <- list.files(path = "../data/", pattern = "127.*flows.csv")
+flows <- tibble(filename = flow_fns) %>%
+    mutate(exp_id     = seq_along(filename),
+           split = strsplit(filename, "-"),
+           n_tor      = map_chr(split, 1),
+           n_switches = strsplit(map_chr(split, 2), ":"),
+           n_cache    = map_chr(n_switches, 2),
+           n_switches = map_chr(n_switches, 1),
+           load       = map_chr(split, 3),
+           duration   = map_chr(split, 4)) %>% 
+    select(-split) %>% 
+    mutate(flows = map(paste0("../data/", filename), col_types = "ddd--", read_csv))
+    
+```
