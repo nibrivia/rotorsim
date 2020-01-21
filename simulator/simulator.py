@@ -28,6 +28,11 @@ def load_flows(slot_duration):
     return flows
 
 
+# TODO fix time values
+#100us per slot +10s reconfiguration
+
+# use same seed
+
 @click.command()
 @click.option( # TODO change to some explicit control over network load
         "--load",
