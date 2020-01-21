@@ -1,5 +1,5 @@
-import os
-
+import concurrent.futures
+import subprocess
 
 # Generates cartesian product of parameters
 def gen_params(param_space, prefix = ""):
@@ -27,6 +27,8 @@ def len_param_space(param_space):
 def run_experiment(**kwargs):
     cmd = "python3 simulator.py " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
     print(cmd)
+    subprocess.run(cmd.split(), stdout=subprocess.DEVNULL)
+    print(cmd, "done")
 
 
 # Runs all experiments
@@ -34,17 +36,16 @@ def run_experiments(p_space):
     param_space = [(key, value) for key, value in p_space.items()]
     print(param_space)
 
-    n_usable_cpus = len(os.sched_getaffinity(0)) #https://docs.python.org/3/library/os.html#os.cpu_count
     n_experiments = len_param_space(param_space)
 
-    print(n_usable_cpus, "usable CPUs")
     print(n_experiments, "experiments to run")
 
-    for params in gen_params(param_space):
-        run_experiment(**params)
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for params in gen_params(param_space):
+            executor.submit(run_experiment, **params)
 
 params = dict(
-        time_limit = [1000],
+        time_limit = [1],
         n_switches = [7],
         n_tor      = [17],
         workload   = ["chen"],
