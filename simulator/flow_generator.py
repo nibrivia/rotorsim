@@ -106,7 +106,9 @@ def generate_flows(
     fields = [
         'id',
         'arrival',
-        'size_bytes'
+        'size_bytes',
+        'src',
+        'dst'
     ]
 
     # get workload generator
@@ -156,6 +158,6 @@ def generate_flows(
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         # write flows
-        csv_writer.writerows((f.id, f.arrival, f.size) for f in flows)
+        csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in flows)
 
     return flows
