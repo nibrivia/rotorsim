@@ -61,7 +61,7 @@ fct_cdf %>%
 
 ```{r many-experiments, }
 flow_fns <- list.files(path = "../data/", pattern = "127.*flows.csv")
-flows <- tibble(filename = flow_fns) %>%
+experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
            split = strsplit(filename, "-"),
            n_tor      = map_chr(split, 1),
@@ -70,7 +70,11 @@ flows <- tibble(filename = flow_fns) %>%
            n_switches = map_chr(n_switches, 1),
            load       = map_chr(split, 3),
            duration   = map_chr(split, 4)) %>% 
-    select(-split) %>% 
-    mutate(flows = map(paste0("../data/", filename), col_types = "ddd--", read_csv))
+    select(-split)
+
+flows <- experiments %>% 
+    mutate(flows = map(paste0("../data/", filename), col_types = "ddd--", read_csv)) %>% 
+    select(exp_id, flows) %>% 
+    unnest(flows)
     
 ```
