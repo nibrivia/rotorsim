@@ -60,7 +60,7 @@ fct_cdf %>%
 ```
 
 ```{r many-experiments, }
-flow_fns <- list.files(path = "../data/", pattern = "127.*10ms-flows.csv")
+flow_fns <- list.files(path = "../data/", pattern = "129.*flows.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
            base_fn    = strsplit(flow_fns, "-flows") %>% map_chr(1),
@@ -71,6 +71,7 @@ experiments <- tibble(filename = flow_fns) %>%
            n_switches = map_chr(n_switches, 1),
            load       = map_chr(split, 3),
            duration   = map_chr(split, 4)) %>% 
+    filter(n_cache %in% c(0, 16)) %>% 
     select(-split)
 
 arrivals <- experiments %>% 
@@ -88,44 +89,54 @@ flows <- experiments %>%
     left_join(arrivals, by = c("flow_id", "exp_id"))
 
 fcts <- flows %>% 
-    filter(!is.na(end)) %>% 
+    filter(!is.na(end),
+           exp_id %in% c(1, 2,  3,  4,  5 , 6,  7, 35, 36, 37, 38, 39, 40, 41)) %>% 
     mutate(fct = end-start) %>% 
-    group_by(exp_id) %>% 
+    group_by(exp_id, size_bytes) %>% 
         arrange(fct) %>% 
         mutate(cdf = seq_along(fct)/length(fct)) %>% 
-        ungroup()
+        ungroup() %>% 
+    left_join(experiments %>% select(n_cache, load, exp_id), by = c("exp_id"))
 
-fcts %>% 
-    sample_n(10000) %>% 
+fcts %>%
+    sample_n(1000000) %>%
     ggplot(aes(x = size_bytes/1e6,
                y = fct,
-               color = exp_id)) +
-    geom_point() +
+               group = paste(exp_id, size_bytes),
+               color = n_cache)) +
+    geom_violin(draw_quantiles = c(.1, .5, .9), scale = "width") +
     geom_abline(slope = 1, intercept = -1) + # because log scale...
     scale_x_log10(breaks = c(.01, .1, 1, 10, 100, 1000, 10e3),
                   labels = c("10Kb", "100Kb", "1Mb", "10Mb", "100Mb", "1Gb", "10Gb")) +
     scale_y_log10(breaks = c(.001, .01, .1, 1, 10, 100, 1000),
                   labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")) +
     theme_ipsum_rc() +
+    facet_wrap(~load) +
     labs(title = "Flow completion times",
          x = "Flow size",
          y = "Flow completion time",
          caption = "github.com/nibrivia/rotorsim")
 
+
 fcts %>% 
-    sample_n(10000) %>% 
+    filter(size_bytes > 1e6) %>% 
+    filter(size_bytes > 1e6 & load != .6) %>% 
+    #sample_n(100000) %>% 
+    mutate(load = paste0(as.numeric(load)*100, "%")) %>% 
     ggplot(aes(x = fct,
-               y = completed,
-               color = type)) +
-    #geom_line() +
-    geom_point(size = .2) +
+               y = cdf,
+               color = n_cache)) +
+    geom_line() +
+    #geom_point(size = .2) +
     scale_y_continuous(labels = percent) +
-    scale_x_log10(breaks = c(.001, .01, .1, 1, 10, 100, 1000),
-                  labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")
+    scale_x_log10(#breaks = c(.001, .01, .1, 1, 10, 100, 1000),
+                  #labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")
                   ) +
     theme_ipsum_rc() +
-    annotate("point", y = 1, x=max(fct_cdf$fct), size = 2) +
-    labs(title = "CDF of flow completion times",
+    facet_wrap(~load, scales = "free_x") +
+    labs(title = "CDF of flow completion times by load and flow size",
+         subtitle = "129 ToRs, 1000ms. 33 switches: 1 expander, and {0, 16} cache switches",
+         color = "# cache switches",
          y = NULL,
          x = "Flow completion time",
          caption = "github.com/nibrivia/rotorsim")
