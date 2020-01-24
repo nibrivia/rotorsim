@@ -8,8 +8,13 @@ from collections import deque
 class ToRSwitch:
     def __init__(self, name,
             n_tor, n_xpand, n_rotor, n_cache,
-            slice_duration, packets_per_slot, clock_jitter,
-            logger, verbose):
+            packets_per_slot, clock_jitter,
+            logger, verbose,
+            slot_duration = None, slice_duration = None
+            ):
+        assert slot_duration is     None or slice_duration is     None
+        assert slot_duration is not None or slice_duration is not None
+
         # Stuff about me
         self.id      = int(name)
         self.name    = "Tor %d" % self.id
@@ -29,11 +34,13 @@ class ToRSwitch:
 
         # ... about time
         self.packets_per_slot = packets_per_slot
-        self.slice_t       = -1
-        #self.slot_duration = slot_duration
+        self.slot_duration  = slot_duration
         self.slice_duration = slice_duration
         self.clock_jitter   = clock_jitter
-        self.packet_ttime   = self.slice_duration / packets_per_slot
+        if slice_duration is not None:
+            self.packet_ttime   = self.slice_duration / packets_per_slot
+        if slot_duration is not None:
+            self.packet_ttime   = self.slot_duration / packets_per_slot
 
         self.recv = Delay(self.packet_ttime)(self._recv)
 
@@ -113,6 +120,8 @@ class ToRSwitch:
                     if src.id == self.id:
                         self.matchings_by_slot_rotor[slot][rotor_id] = dst
 
+        self.n_slots = len(matchings_by_slot_rotor)
+
     def add_xpand_matchings(self, xpand_matchings):
         assert len(xpand_matchings) == self.n_xpand
 
@@ -137,8 +146,7 @@ class ToRSwitch:
         #######
 
         # This is the first time, we need to connect everyone
-        self.slice_t = 0
-        slot_t = self.slice_t // self.n_rotor
+        slot_t = 0
         n_slots = len(self.matchings_by_slot_rotor)
         matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
 
@@ -148,7 +156,10 @@ class ToRSwitch:
             self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot, just like normal
-        self.new_slice = Delay(self.slice_duration, jitter = self.clock_jitter)(self.new_slice)
+        if self.slot_duration is not None:
+            self.new_slice = Delay(self.slot_duration, priority = -1000)(self.new_slice)
+        if self.slice_duration is not None:
+            self.new_slice = Delay(self.slice_duration, priority = -1000)(self.new_slice)
         self.new_slice()
         self.make_route()
 
@@ -163,20 +174,37 @@ class ToRSwitch:
     # Every slice setup
     ###################
 
-    def new_slice(self):
-        self.slice_t += 1
-        slot_t = self.slice_t // self.n_rotor
-        n_slots = len(self.matchings_by_slot_rotor)
-        matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
+    @property
+    def slice_t(self):
+        assert self.slice_duration is not None
+        return int(R.time/self.slice_duration)
 
+    @property
+    def slot_t(self):
+        assert self.slot_duration is not None
+        return round(R.time/self.slot_duration)
+
+    def new_slice(self):
         # Switch up relevant matching
-        rotor_id = self.slice_t % self.n_rotor
-        dst = matchings_in_effect[rotor_id]
-        self.connect_to(rotor_id, dst)
+        if self.slice_duration is not None:
+            slot_t = self.slice_t // self.n_rotor
+            matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % self.n_slots]
+
+            rotor_id = self.slice_t % self.n_rotor
+            dst = matchings_in_effect[rotor_id]
+            self.connect_to(rotor_id, dst)
+
+        # If Rotor
+        if self.slot_duration is not None:
+            matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % self.n_slots]
+            for rotor_id in self.rotor_ports:
+                dst = matchings_in_effect[rotor_id]
+                self.connect_to(rotor_id, dst)
 
         # Set a countdown for the next slot
         self.new_slice() # is a delay() object
 
+    @Delay(0)
     def connect_to(self, port_id, tor):
         """This gets called for every rotor and starts the process for that one"""
         # Set the connection
@@ -202,7 +230,7 @@ class ToRSwitch:
 
     # By having a delay 0 here, this means that every ToR will have gone
     # through its start, which will then mean that we can call link_state
-    @Delay(0)
+    @Delay(0, priority = 100)
     def make_route(self, slice_id = None):
         # Routing table
         self.route = [(None, self.n_tor*1000) for _ in range(self.n_tor)]
@@ -308,7 +336,7 @@ class ToRSwitch:
                 if f.remaining_packets == 1:
                     self.flows_rotor[flow_dst].pop(0)
 
-                self.vprint("\033[0;32mNew indirect: %s:%d\033[00m" % (self, rotor_id), 2)
+                self.vprint("\033[0;33mNew indirect: %s:%d\033[00m" % (self, rotor_id), 2)
                 return f
 
         return None

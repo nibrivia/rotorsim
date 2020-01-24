@@ -187,8 +187,9 @@ def main(
     # open connection for each flow at the time it should arrive
 
     # set up printing
-    for cycle in range(n_cycles):
-        time = cycle*cycle_duration
+    time = 0
+    while time < time_limit:
+        time += slice_duration
         if verbose and not no_pause:
             #R.call_in(time, print_demand, net.tors, priority=100)
             R.call_in(time, pause, priority=100)

@@ -32,13 +32,15 @@ class RotorSwitch:
         self.matchings_by_slot = matchings_by_slot
         self.n_rotor = n_rotor
 
-    def start(self, slice_duration):
+    def start(self, slice_duration, is_rotor = True):
         self._enable()
         self.install_matchings(self.matchings_by_slot[0])
 
         # Create a recursive call
-        if slice_duration > 0:
-            self.new_slice = Delay(slice_duration)(self._new_slice)
+        if slice_duration is not None and slice_duration > 0:
+            self.new_slice = Delay(slice_duration, priority = -1000)(self._new_slice)
+            self.is_rotor = is_rotor
+            self.slice_duration = slice_duration
         else:
             self.new_slice = lambda: None
 
@@ -77,18 +79,21 @@ class RotorSwitch:
             # tor.cache_free(dst.id)
             pass
 
+    @property
+    def slot_t(self):
+        return round(R.time / self.slice_duration)
+
     def _new_slice(self):
-        self.slice_t += 1
         n_slots = len(self.matchings_by_slot)
 
         # Skip if it's not our turn
-        if self.slice_t % self.n_rotor != self.id:
+        if not self.is_rotor and self.slice_t % self.n_rotor != self.id:
+            assert False
             self.new_slice() # This passes through, it has a delay on it
             return
 
         # Compute our new matching
-        slot_t = self.slice_t // self.n_rotor
-        current_matchings = self.matchings_by_slot[slot_t % n_slots]
+        current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
 
         # Re-call ourselves
@@ -121,13 +126,15 @@ class RotorSwitch:
             handle.id   = self.id
             tor.connect_queue(port_id = self.id, switch = self, queue = handle)
 
-    #@Delay(0)
+    @Delay(0, priority = -100)
     def recv(self, tor, packet):
         if self.enabled:
             dst = self.dests[tor.id]
-            #if self.verbose:
-                #print("@%.2f                 %s to \033[01m%s\033[00m\033[00m"
-                        #% (R.time, self, dst))
+            if self.verbose:
+                p = packet
+                print("@%.3f         %d  ->%d %3d[%s->%s]#%d\033[00m"
+                        % (R.time, tor.id, dst.id,
+                           p.flow_id, p.src_id, p.dst_id, p.seq_num))
             if self.logger is not None:
                 self.logger.log(src = tor, dst = dst, rotor = self, packet = packet)
 

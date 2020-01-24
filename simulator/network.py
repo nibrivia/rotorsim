@@ -47,8 +47,9 @@ class RotorNet:
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
+        # TODO switch for Opera
         self.slice_duration = slice_duration
-        self.slot_duration  = slice_duration*self.n_rotor
+        self.slot_duration  = slice_duration#*self.n_rotor
         self.cycle_duration = self.slot_duration * self.n_slots
 
         # Internal variables
@@ -66,7 +67,7 @@ class RotorNet:
                             n_rotor = self.n_rotor,
                             n_cache = self.n_cache,
                             packets_per_slot = packets_per_slot,
-                            slice_duration = slice_duration,
+                            slot_duration = slice_duration,
                             clock_jitter  = jitter,
                             logger  = logger,
                             verbose = verbose)
@@ -91,7 +92,7 @@ class RotorNet:
         self.matchings_by_slot_rotor = []
         for slot in range(self.n_slots):
             slot_matchings = []
-            for rotor_id in range(self.n_rotor):
+            for rotor_id in self.rotor_ports:
                 rotor = self.switches[rotor_id]
 
                 matching_i = (slot + rotor.id*self.n_slots) % \
