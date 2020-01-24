@@ -315,9 +315,7 @@ class ToRSwitch:
         # Check if we've computed this before
         queue_t, q = self.out_queues[port_id]
         if queue_t == self.slot_id:
-            if q.size == 0:
-                return None
-            return q
+            return None
 
         # We're starting from scratch, this should be empty
         assert q.size == 0
@@ -338,16 +336,14 @@ class ToRSwitch:
         remaining -= q.size
 
         # Direct traffic
-        while remaining > 0 and len(self.flows_rotor[dst.id]) > 0:
-            f = self.flows_rotor[dst.id][0]
+        for f in self.flows_rotor[dst.id]:
+            n_packets = min(remaining, f.remaining_packets)
+            for _ in range(n_packets):
+                p = f.pop_lump()
+                q.recv(p)
+            remaining -= n_packets
 
-            p = f.pop()
-            q.recv(p)
-            remaining -= 1
-
-            if f.remaining_packets == 0:
-                self.flows_rotor[dst.id].pop(0)
-
+        self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
 
         # New indirect traffic
         # TODO should actually load balance
@@ -364,7 +360,7 @@ class ToRSwitch:
                     if tor.capacity[dst_id] <= 0:
                         continue
 
-                    p = f.pop()
+                    p = f.pop_lump()
                     q.recv(p)
                     remaining -= 1
                     delta += 1
@@ -374,11 +370,16 @@ class ToRSwitch:
                         self.flows_rotor[dst_id].pop(0)
 
 
-        self.out_queues[port_id] = (self. slot_id, q)
-        if q.size > 0:
-            return q
-        else:
-            return None
+        self.out_queues[port_id] = (self.slot_id, q)
+        dst.rx_rotor(q.empty())
+        return None
+
+    @Delay(0)
+    def rx_rotor(self, lumps):
+        t = R.time
+        for flow, n in lumps:
+            t += n*self.packet_ttime
+            self.flows[flow].rx(n=n, t=t)
 
     def next_queue_xpand(self, port_id):
         # Priority queue
@@ -454,6 +455,7 @@ class ToRSwitch:
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
         # You have arrived :)
         if p.dst_id == self.id:
+            self.flows[p.flow_id].rx()
             if p.is_last:
                 if self.verbose:
                     if p.tag == "xpand":

@@ -47,14 +47,21 @@ class Flow:
         self.n_sent = 0
         self.n_recv = 0
 
-        self.rxd = set()
-
         if size < 1e6:
             self.tag = "xpand"
         elif size < 1e9:
             self.tag = "rotor"
         else:
             self.tag = "cache"
+
+    def pop_lump(self, n=1):
+        assert self.remaining_packets >= n, \
+                "Flow %d does not have %d packets to send" % (self.id, n)
+
+        self.remaining_packets -= n
+        self.n_sent += n
+
+        return (self.id, n)
 
     def pop(self, n = 1):
         assert self.remaining_packets >= n, \
@@ -79,15 +86,17 @@ class Flow:
 
         return p
 
-    def rx(self, p, n=1):
+    def rx(self, n=1, t = None):
         self.n_recv += n
-        assert p.seq_num not in self.rxd, "%s %s %s" % (self, p, self.rxd)
-        self.rxd.add(p.seq_num)
         assert self.n_recv <= self.n_sent, self
         assert self.n_recv <= self.size_packets
 
         if self.n_recv == self.size_packets:
-            self.end = R.time
+            if t is None:
+                self.end = R.time
+            else:
+                self.end = t
+            #logger.log_flow_done(p.flow_id)
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
