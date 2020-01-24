@@ -56,8 +56,9 @@ class Flow:
         else:
             self.tag = "cache"
 
-    def pop(self):
-        assert self.remaining_packets > 0, "Flow %d has no more packets to send" % self.id
+    def pop(self, n = 1):
+        assert self.remaining_packets >= n, \
+                "Flow %d does not have %d packets to send" % (self.id, n)
 
         if False and not self.started:
             if self.tag == "xpand":
@@ -84,10 +85,9 @@ class Flow:
         self.rxd.add(p.seq_num)
         assert self.n_recv <= self.n_sent, self
         assert self.n_recv <= self.size_packets
+
         if self.n_recv == self.size_packets:
-            # Do logging
-            pass
-            #print(self, "done")
+            self.end = R.time
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)

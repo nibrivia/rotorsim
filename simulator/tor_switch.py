@@ -333,6 +333,7 @@ class ToRSwitch:
         indirect_packets = self.buffers_ind[dst.id].empty()
         q.recv_many(indirect_packets)
 
+        assert self.buffers_ind[dst.id].size == 0
         assert q.size <= self.packets_per_slot, self.buffer_str()
         remaining -= q.size
 
@@ -346,6 +347,7 @@ class ToRSwitch:
 
             if f.remaining_packets == 0:
                 self.flows_rotor[dst.id].pop(0)
+
 
         # New indirect traffic
         # TODO should actually load balance
@@ -452,7 +454,6 @@ class ToRSwitch:
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
         # You have arrived :)
         if p.dst_id == self.id:
-            self.flows[p.flow_id].rx(p)
             if p.is_last:
                 if self.verbose:
                     if p.tag == "xpand":
