@@ -401,9 +401,8 @@ class ToRSwitch:
                 self.vprint("\033[0;32m", end = "")
             if p.tag == "cache":
                 self.vprint("\033[0;33m", end = "")
-            self.vprint("@%.3f   %s %d:%d->%d %3d[%s->%s]#%d\033[00m"
-                    % (R.time, p.tag, self.id, port_id, dst_tor.id,
-                        p.flow_id, p.src_id, p.dst_id, p.seq_num))
+            self.vprint("@%.3f   %s %d:%d->%d %s\033[00m"
+                    % (R.time, p.tag, self.id, port_id, dst_tor.id, p))
 
         # We're back to being busy, and come back when we're done
         self.out_enable[port_id] = False
@@ -445,7 +444,7 @@ class ToRSwitch:
 
         # From my hosts
         if p.src_id == self.id:
-            assert False
+            assert False, "%s received packet %p"
             queue = self.buffers_dir[p.dst_id]
             self.non_zero_dir[flow_dst.id] = self.buffers_dir[flow_dst.id]
         else: # or indirect
