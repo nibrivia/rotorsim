@@ -145,7 +145,10 @@ class ToRSwitch:
     def set_tor_refs(self, tors):
         self.tors = tors
 
-    def start(self):
+    def start(self, flows):
+
+        self.flows = flows
+
         # Rotor
         #######
 
@@ -448,6 +451,7 @@ class ToRSwitch:
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
         # You have arrived :)
         if p.dst_id == self.id:
+            self.flows[p.flow_id].rx()
             if p.is_last:
                 if self.verbose:
                     if p.tag == "xpand":

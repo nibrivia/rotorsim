@@ -43,7 +43,9 @@ class Flow:
         self.started = False
 
         self.remaining_packets = math.ceil(size/(BYTES_PER_PACKET*8))
+        self.size_packets      = self.remaining_packets
         self.n_sent = 0
+        self.n_recv = 0
 
         if size < 1e6:
             self.tag = "xpand"
@@ -73,6 +75,15 @@ class Flow:
         self.n_sent += 1
 
         return p
+
+    def rx(self, n = 1):
+        self.n_recv += n
+        assert self.n_recv <= self.n_sent, self
+        assert self.n_recv <= self.size_packets
+        if self.n_recv == self.size_packets:
+            # Do logging
+            pass
+            #print(self, "done")
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
@@ -185,5 +196,8 @@ def generate_flows(
         csv_writer.writerow(fields)
         # write flows
         csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in flows)
+
+    global FLOWS
+    FLOWS = flows
 
     return flows

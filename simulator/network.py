@@ -170,6 +170,8 @@ class RotorNet:
 
     def run(self, time_limit, flows):
         """Run the simulation for n_cycles cycles"""
+        self.flows = flows
+
         # Register first events
         for s_id, s in enumerate(self.switches):
             if s_id < self.n_rotor:
@@ -177,7 +179,7 @@ class RotorNet:
             else:
                 s.start(slice_duration = float("Inf"))
         for t in self.tors:
-            t.start()
+            t.start(flows = flows)
 
         # Flows
         for f in flows:

@@ -198,7 +198,6 @@ def main(
                 print, "\033[1;91m%dms of %dms \033[00m" % (time, time_limit),
                 priority = -100)
 
-    pause()
     print("Starting simulator...")
     # Start the simulator
     net.run(flows = flows, time_limit = time_limit)
