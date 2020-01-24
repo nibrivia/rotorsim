@@ -202,6 +202,9 @@ def main(
     # Start the simulator
     net.run(flows = flows, time_limit = time_limit)
 
+    n_completed = len([f for f in flows if f.remaining_packets == 0])
+    print("%s/%s=%d%% flows completed" % (n_completed, len(flows), 100*n_completed/len(flows)))
+
     if not no_log:
         logger.close()
 

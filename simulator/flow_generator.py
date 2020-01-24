@@ -61,7 +61,7 @@ class Flow:
         self.remaining_packets -= n
         self.n_sent += n
 
-        return (self.id, n)
+        return (self.id, self.dst, n)
 
     def pop(self, n = 1):
         assert self.remaining_packets >= n, \
@@ -96,6 +96,8 @@ class Flow:
                 self.end = R.time
             else:
                 self.end = t
+            if self.tag == "rotor" and False:
+                print(self, "done")
             #logger.log_flow_done(p.flow_id)
 
     def send(self, n_packets):

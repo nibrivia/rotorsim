@@ -290,7 +290,7 @@ class ToRSwitch:
         for i, f in enumerate(self.flows_cache):
             if switch.request_matching(self, f.dst):
                 #print("@%.3f %s got matching" % (R.time, f))
-                print("\033[0;33mflow %d start (%s)\033[00m" % (f.id, f.tag))
+                self.vprint("\033[0;33mflow %d start (%s)\033[00m" % (f.id, f.tag))
 
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
@@ -372,14 +372,19 @@ class ToRSwitch:
 
         self.out_queues[port_id] = (self.slot_id, q)
         dst.rx_rotor(q.empty())
+        
         return None
 
     @Delay(0)
     def rx_rotor(self, lumps):
         t = R.time
-        for flow, n in lumps:
-            t += n*self.packet_ttime
-            self.flows[flow].rx(n=n, t=t)
+        for flow, dst, n in lumps:
+            if self.id == dst:
+                t += n*self.packet_ttime
+                self.flows[flow].rx(n=n, t=t)
+            else:
+                self.buffers_ind[dst].recv((flow, dst, n))
+                self.capacity[dst] -= n
 
     def next_queue_xpand(self, port_id):
         # Priority queue
@@ -487,17 +492,6 @@ class ToRSwitch:
             self._send(port_id)
             return
 
-        # From my hosts
-        if p.src_id == self.id:
-            assert False, "%s received packet %p"
-            queue = self.buffers_dir[p.dst_id]
-            self.non_zero_dir[flow_dst.id] = self.buffers_dir[flow_dst.id]
-        else: # or indirect
-            self.capacity[p.dst_id] -= 1
-            queue = self.buffers_ind[p.dst_id]
-
-        queue.recv(p)
-        self.capacity[p.dst_id] -= 1
 
     def recv_flow(self, flow):
         # Add the flow, and then attempt to send
