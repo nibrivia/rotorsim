@@ -38,6 +38,7 @@ class Buffer():
 
     def empty(self):
         self.size = 0
+        self.packets = []
         return self.packets
 
     def add_n(self, amount, src = None, dst = None):

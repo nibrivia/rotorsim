@@ -42,7 +42,8 @@ class ToRSwitch:
         if slot_duration is not None:
             self.packet_ttime   = self.slot_duration / packets_per_slot
 
-        self.recv = Delay(self.packet_ttime)(self._recv)
+        #self.recv = Delay(self.packet_ttime)(self._recv)
+        self.recv = self._recv
 
         # ... about IO
         self.verbose = verbose
@@ -451,7 +452,7 @@ class ToRSwitch:
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
         # You have arrived :)
         if p.dst_id == self.id:
-            self.flows[p.flow_id].rx()
+            self.flows[p.flow_id].rx(p)
             if p.is_last:
                 if self.verbose:
                     if p.tag == "xpand":

@@ -47,6 +47,8 @@ class Flow:
         self.n_sent = 0
         self.n_recv = 0
 
+        self.rxd = set()
+
         if size < 1e6:
             self.tag = "xpand"
         elif size < 1e9:
@@ -76,8 +78,10 @@ class Flow:
 
         return p
 
-    def rx(self, n = 1):
+    def rx(self, p, n=1):
         self.n_recv += n
+        assert p.seq_num not in self.rxd, "%s %s %s" % (self, p, self.rxd)
+        self.rxd.add(p.seq_num)
         assert self.n_recv <= self.n_sent, self
         assert self.n_recv <= self.size_packets
         if self.n_recv == self.size_packets:
