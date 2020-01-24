@@ -17,8 +17,15 @@ from helpers import *
 
 BYTES_PER_PACKET = 1500
 
-class Packet(collections.namedtuple('Packet', 'src_id dst_id seq_num tag flow_id is_last')):
-    __slots__ = ()
+class Packet:
+    def __init__(self, src_id, dst_id, seq_num, tag, flow_id, is_last):
+        self.src_id  = src_id
+        self.dst_id  = dst_id
+        self.seq_num = seq_num
+        self.tag     = tag
+        self.flow_id = flow_id
+        self.is_last = is_last
+
     def __str__(self):
         return "%3d[%s->%s]#%d" % (
                 self.flow_id, self.src_id, self.dst_id, self.seq_num)

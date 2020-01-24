@@ -385,6 +385,7 @@ class ToRSwitch:
 
         # Send the packet
         p = queue.pop()
+        p.intended_dest = dst_tor.id
         if self.port_type(port_id) == "rotor":
             self.capacity[p.dst_id] += 1
             self.capacities[port_id][p.dst_id] -= 1
@@ -409,6 +410,7 @@ class ToRSwitch:
         R.call_in(delay = self.packet_ttime, fn = self._enable_out, port_id = port_id)
 
     def _recv(self, p):
+        assert p.intended_dest == self.id
         # You have arrived :)
         if p.dst_id == self.id:
             if p.is_last:
