@@ -191,13 +191,14 @@ def main(
     while time < time_limit:
         time += slice_duration
         if verbose and not no_pause:
-            #R.call_in(time, print_demand, net.tors, priority=100)
+            R.call_in(time, print_demand, net.tors, priority=99)
             R.call_in(time, pause, priority=100)
     for time in range(time_limit):
         R.call_in(time,
                 print, "\033[1;91m%dms of %dms \033[00m" % (time, time_limit),
                 priority = -100)
 
+    pause()
     print("Starting simulator...")
     # Start the simulator
     net.run(flows = flows, time_limit = time_limit)

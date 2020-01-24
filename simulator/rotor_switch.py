@@ -93,7 +93,8 @@ class RotorSwitch:
             return
 
         slot_id = self.slot_t % n_slots
-        print("%.6f %s switch %d" % (R.time, self, slot_id))
+        if self.verbose:
+            print("%.6f %s switch %d" % (R.time, self, slot_id))
         # Compute our new matching
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)

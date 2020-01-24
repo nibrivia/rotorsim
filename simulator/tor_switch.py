@@ -64,6 +64,10 @@ class ToRSwitch:
         # rotor
         self.capacities  = [0    for _ in range(self.n_tor)] # Capacities of destination
         self.capacity    = [self.packets_per_slot for _ in range(self.n_tor)]
+        self.out_queues  = [(-1, Buffer(parent = self, src = self.id, dst = None,
+                                   name = "rot_port[%s]" % rotor_id,
+                                   logger = logger, verbose = verbose))
+                            for rotor_id in self.rotor_ports]
 
         # xpander
         self.connections = dict() # Destination ToRs
@@ -157,6 +161,7 @@ class ToRSwitch:
 
         # Set a countdown for the next slot, just like normal
         if self.slot_duration is not None:
+            self.slot_id = 0
             self.new_slice = Delay(self.slot_duration, priority = -1000)(self.new_slice)
         if self.slice_duration is not None:
             self.new_slice = Delay(self.slice_duration, priority = -1000)(self.new_slice)
@@ -196,9 +201,9 @@ class ToRSwitch:
 
         # If Rotor
         if self.slot_duration is not None:
-            slot_id = self.slot_t % self.n_slots
-            print("%.6f %s switch %d" % (R.time, self, slot_id))
-            matchings_in_effect = self.matchings_by_slot_rotor[slot_id]
+            self.slot_id = self.slot_t % self.n_slots
+            self.vprint("%.6f %s switch %d" % (R.time, self, self.slot_id))
+            matchings_in_effect = self.matchings_by_slot_rotor[self.slot_id]
             for rotor_id in self.rotor_ports:
                 dst = matchings_in_effect[rotor_id]
                 self.connect_to(rotor_id, dst)
@@ -303,45 +308,71 @@ class ToRSwitch:
         self.switches[port_id].release_matching(self)
 
     def next_queue_rotor(self, port_id):
+        # Check if we've computed this before
+        queue_t, q = self.out_queues[port_id]
+        if queue_t == self.slot_id:
+            if q.size == 0:
+                return None
+            return q
+
+        # We're starting from scratch, this should be empty
+        assert q.size == 0
+        remaining = self.packets_per_slot
+
         rotor_id = port_id # TODO translate this
         dst, _ = self.ports[rotor_id]
 
+        if self.buffers_ind[dst.id].size > self.packets_per_slot:
+            print(self.buffer_str())
 
-        # Old indirect traffic, deal with packets that are here
-        if self.buffers_ind[dst.id].size > 0:
-            self.vprint("\033[0;33mOld Indirect: %s:%d\033[00m" % (self, rotor_id), 2)
-            return self.buffers_ind[dst.id]
+        # Old indirect traffic goes first
+        indirect_packets = self.buffers_ind[dst.id].empty()
+        q.recv_many(indirect_packets)
 
-        # Direct traffic, deal with the flows here
-        flows = self.flows_rotor[dst.id]
-        if len(flows) > 0:
-            f = flows[0]
-            # We need to update bookeeping here
-            #if len(flows) == 1 and f.remaining_packets == 1:
-            #    del self.non_zero_dir[dst.id]
+        assert q.size <= self.packets_per_slot, self.buffer_str()
+        remaining -= q.size
 
-            if f.remaining_packets == 1:
+        # Direct traffic
+        while remaining > 0 and len(self.flows_rotor[dst.id]) > 0:
+            f = self.flows_rotor[dst.id][0]
+
+            p = f.pop()
+            q.recv(p)
+            remaining -= 1
+
+            if f.remaining_packets == 0:
                 self.flows_rotor[dst.id].pop(0)
-
-            self.vprint("\033[0;32mDirect: %s:%d\033[00m" % (self, rotor_id), 2)
-            return f
 
         # New indirect traffic
         # TODO should actually load balance
-        # TODO Check destination capacity
-        for flow_dst, flows in enumerate(self.flows_rotor):
-            # If we can't send anything to the dest, skip it
-            if self.capacities[port_id][flow_dst] <= 0:
-                continue
+        delta = 1
+        while delta > 0 and remaining > 0:
+            delta = 0
+            for dst_id, tor in enumerate(self.tors):
+                if remaining == 0:
+                    break
 
-            for i, f in enumerate(flows):
-                if f.remaining_packets == 1:
-                    self.flows_rotor[flow_dst].pop(0)
+                if len(self.flows_rotor[dst_id]) > 0:
+                    f = self.flows_rotor[dst_id][0]
 
-                self.vprint("\033[0;33mNew indirect: %s:%d\033[00m" % (self, rotor_id), 2)
-                return f
+                    if tor.capacity[dst_id] <= 0:
+                        continue
 
-        return None
+                    p = f.pop()
+                    q.recv(p)
+                    remaining -= 1
+                    delta += 1
+                    tor.capacity[dst_id] -= 1
+
+                    if f.remaining_packets == 0:
+                        self.flows_rotor[dst_id].pop(0)
+
+
+        self.out_queues[port_id] = (self. slot_id, q)
+        if q.size > 0:
+            return q
+        else:
+            return None
 
     def next_queue_xpand(self, port_id):
         # Priority queue
@@ -390,7 +421,7 @@ class ToRSwitch:
         p.intended_dest = dst_tor.id
         if self.port_type(port_id) == "rotor":
             self.capacity[p.dst_id] += 1
-            self.capacities[port_id][p.dst_id] -= 1
+            #self.capacities[port_id][p.dst_id] -= 1
 
         if self.logger is not None:
             self.logger.log(src = self, dst = dst_tor,
@@ -454,6 +485,7 @@ class ToRSwitch:
             queue = self.buffers_dir[p.dst_id]
             self.non_zero_dir[flow_dst.id] = self.buffers_dir[flow_dst.id]
         else: # or indirect
+            self.capacity[p.dst_id] -= 1
             queue = self.buffers_ind[p.dst_id]
 
         queue.recv(p)
@@ -471,6 +503,7 @@ class ToRSwitch:
 
         elif flow.size < 100e6:
             self.flows_rotor[flow.dst].append(flow)
+            self.capacity[flow.dst] -= flow.remaining_packets
             for port_id in self.rotor_ports:
                 self._send(port_id)
 
@@ -506,16 +539,18 @@ class ToRSwitch:
         s += "\nOld Indirect\n  "
         for dst, b in enumerate(self.buffers_ind):
             s += "%2d " % b.size
-
-        s += "\nDirect\n  "
-        for dst, b in enumerate(self.buffers_dir):
-            s += "%2d " % b.size
-
-        s += "\nReceived\n  "
-        for src, b in enumerate(self.buffers_rcv):
-            s += "%2d " % b.size
-
+        s += "/%d" % self.packets_per_slot
         return s
+
+        #s += "\nDirect\n  "
+        #for dst, b in enumerate(self.buffers_dir):
+        #    s += "%2d " % b.size
+
+        #s += "\nReceived\n  "
+        #for src, b in enumerate(self.buffers_rcv):
+        #    s += "%2d " % b.size
+
+        #return s
 
     def vprint(self, msg="", level = 0, *args, **kwargs):
         if self.verbose:

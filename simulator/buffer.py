@@ -32,6 +32,14 @@ class Buffer():
         self.packets.append(packet)
         self.size += 1
 
+    def recv_many(self, packets):
+        self.packets.extend(packets)
+        self.size += len(packets)
+
+    def empty(self):
+        self.size = 0
+        return self.packets
+
     def add_n(self, amount, src = None, dst = None):
         if src is None:
             src = self.src
