@@ -92,6 +92,8 @@ class RotorSwitch:
             self.new_slice() # This passes through, it has a delay on it
             return
 
+        slot_id = self.slot_t % n_slots
+        print("%.6f %s switch %d" % (R.time, self, slot_id))
         # Compute our new matching
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
@@ -126,15 +128,14 @@ class RotorSwitch:
             handle.id   = self.id
             tor.connect_queue(port_id = self.id, switch = self, queue = handle)
 
-    @Delay(0, priority = -100)
     def recv(self, tor, packet):
         if self.enabled:
             dst = self.dests[tor.id]
             if self.verbose:
                 p = packet
-                print("@%.3f         %d  ->%d %3d[%s->%s]#%d\033[00m"
-                        % (R.time, tor.id, dst.id,
-                           p.flow_id, p.src_id, p.dst_id, p.seq_num))
+                print("@%.3f (%2d)    %d  ->%d %s\033[00m"
+                        % (R.time, self.id, tor.id, dst.id, p))
+                assert p.intended_dest == dst.id
             if self.logger is not None:
                 self.logger.log(src = tor, dst = dst, rotor = self, packet = packet)
 

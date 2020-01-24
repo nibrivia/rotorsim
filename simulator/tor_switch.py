@@ -196,7 +196,9 @@ class ToRSwitch:
 
         # If Rotor
         if self.slot_duration is not None:
-            matchings_in_effect = self.matchings_by_slot_rotor[self.slot_t % self.n_slots]
+            slot_id = self.slot_t % self.n_slots
+            print("%.6f %s switch %d" % (R.time, self, slot_id))
+            matchings_in_effect = self.matchings_by_slot_rotor[slot_id]
             for rotor_id in self.rotor_ports:
                 dst = matchings_in_effect[rotor_id]
                 self.connect_to(rotor_id, dst)
@@ -204,7 +206,7 @@ class ToRSwitch:
         # Set a countdown for the next slot
         self.new_slice() # is a delay() object
 
-    @Delay(0)
+    @Delay(0, priority = -1000)
     def connect_to(self, port_id, tor):
         """This gets called for every rotor and starts the process for that one"""
         # Set the connection
@@ -383,13 +385,12 @@ class ToRSwitch:
         if queue is None:
             return
 
-        # Send the packet
+        # Get the packet
         p = queue.pop()
         p.intended_dest = dst_tor.id
         if self.port_type(port_id) == "rotor":
             self.capacity[p.dst_id] += 1
             self.capacities[port_id][p.dst_id] -= 1
-        dst_q.recv(p)
 
         if self.logger is not None:
             self.logger.log(src = self, dst = dst_tor,
@@ -404,6 +405,9 @@ class ToRSwitch:
                 self.vprint("\033[0;33m", end = "")
             self.vprint("@%.3f   %s %d:%d->%d %s\033[00m"
                     % (R.time, p.tag, self.id, port_id, dst_tor.id, p))
+
+        # Send the packet
+        dst_q.recv(p)
 
         # We're back to being busy, and come back when we're done
         self.out_enable[port_id] = False
