@@ -77,8 +77,21 @@ class FlowDistribution:
     def get_flows(self, n=1):
         return np.random.choice(self.sizes, size = n, p = self.probs)
 
+
+def weights_to_cdf(weights):
+    w_sum = sum(w for w, s in simple_weights)
+    c = 0
+    cdf = []
+    for w, s in weights:
+        c += w
+        cdf.append((c / w_sum, s))
+    return cdf
+
+
 websearch_cdf = [(1,1)]
-simple_cdf = [(0.049, 10e3), (0.99, 1e6), (1, 1e9)]
+simple_weights = [(4.9, 10e3), (95, 1e6), (.1, 1e9)]
+simple_cdf = weights_to_cdf(simple_weights)
+
 xpand_cdf = [(1, 10e3)]
 rotor_cdf = [(1, 10e6)]
 cache_cdf = [(1, 1e9)]
