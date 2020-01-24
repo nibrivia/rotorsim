@@ -410,7 +410,7 @@ class ToRSwitch:
         R.call_in(delay = self.packet_ttime, fn = self._enable_out, port_id = port_id)
 
     def _recv(self, p):
-        assert p.intended_dest == self.id
+        assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
         # You have arrived :)
         if p.dst_id == self.id:
             if p.is_last:

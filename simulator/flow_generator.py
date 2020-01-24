@@ -26,9 +26,11 @@ class Packet:
         self.flow_id = flow_id
         self.is_last = is_last
 
+        self.intended_dest = None
+
     def __str__(self):
-        return "%3d[%s->%s]#%d" % (
-                self.flow_id, self.src_id, self.dst_id, self.seq_num)
+        return "%3d[%s->%s]#%d >%s" % (
+                self.flow_id, self.src_id, self.dst_id, self.seq_num, self.intended_dest)
 
 class Flow:
     def __init__(self, arrival, flow_id, size, src, dst):
