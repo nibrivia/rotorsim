@@ -42,8 +42,8 @@ class ToRSwitch:
         if slot_duration is not None:
             self.packet_ttime   = self.slot_duration / packets_per_slot
 
-        #self.recv = Delay(self.packet_ttime)(self._recv)
-        self.recv = self._recv
+        self.recv = Delay(self.packet_ttime)(self._recv)
+        #self.recv = self._recv
 
         # ... about IO
         self.verbose = verbose
