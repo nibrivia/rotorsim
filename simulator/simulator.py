@@ -4,7 +4,7 @@ from event import R
 from logger import LOG, init_log
 from helpers import *
 #from tcp_flow import TCPFlow, BYTES_PER_PACKET
-from flow_generator import generate_flows, FLOWS
+from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE
 import sys
 import click
 import math
@@ -200,24 +200,6 @@ def main(
     print("Starting simulator...")
     # Start the simulator
     net.run(flow_gen = flow_gen, time_limit = time_limit)
-
-    n_completed = len([f for f in FLOWS if f.remaining_packets == 0])
-    print("%s/%s=%d%% flows completed" % (n_completed, len(FLOWS), 100*n_completed/len(FLOWS)))
-
-    # csv header
-    fields = [
-        'id',
-        'arrival',
-        'size_bytes',
-        'src',
-        'dst'
-    ]
-    with open(base_fn+"-flows.csv", 'w') as csv_file:
-        # write csv header
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerow(fields)
-        # write flows
-        csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in FLOWS)
 
     if LOG is not None:
         LOG.close()
