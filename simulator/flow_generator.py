@@ -40,8 +40,6 @@ class Flow:
         self.src     = src
         self.dst     = dst
 
-        self.started = False
-
         self.remaining_packets = math.ceil(size/(BYTES_PER_PACKET*8))
         self.size_packets      = self.remaining_packets
         self.n_sent = 0
@@ -66,17 +64,6 @@ class Flow:
     def pop(self, n = 1):
         assert self.remaining_packets >= n, \
                 "Flow %d does not have %d packets to send" % (self.id, n)
-
-        if False and not self.started:
-            if self.tag == "xpand":
-                print("\033[0;31m", end = "")
-            if self.tag == "rotor":
-                print("\033[0;32m", end = "")
-            if self.tag == "cache":
-                print("\033[0;33m", end = "")
-            print("flow %d start (%s)\033[00m" % (self.id, self.tag))
-            self.start = R.time
-            self.started = True
 
         p = Packet(self.src, self.dst, self.n_sent,
                 self.tag, self.id, self.remaining_packets == 1)
@@ -194,15 +181,20 @@ def generate_flows(
         arrivals[i] = t/1e6
 
     # pairs
+    print("pairs")
     pairs_idx = np.random.choice(len(tor_pairs), size = n_flows)
     pairs = tor_pairs[pairs_idx]
 
     # sizes
+    print("sizes")
     sizes = workload.get_flows(n = n_flows)
 
     # start, id, size, src, dst
+    print("zip")
     flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs))
+    print("Flow gen...", end = "")
     flows = [Flow(*f) for f in flows]
+    print("done")
 
     # write flows out to csv in increasing arrival order
     with open(results_file, 'w') as csv_file:
@@ -211,8 +203,5 @@ def generate_flows(
         csv_writer.writerow(fields)
         # write flows
         csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in flows)
-
-    global FLOWS
-    FLOWS = flows
 
     return flows

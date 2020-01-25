@@ -376,7 +376,7 @@ class ToRSwitch:
         self.out_queues[port_id] = (self.slot_id, q)
         dst.rx_rotor(q)
 
-    @Delay(0)
+    @Delay(0, priority = 100) #do last
     def rx_rotor(self, lumps):
         t = R.time
         for flow, dst, n in lumps:
