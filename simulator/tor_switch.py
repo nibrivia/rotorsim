@@ -318,29 +318,24 @@ class ToRSwitch:
             return None
 
         # We're starting from scratch, this should be empty
-        assert q.size == 0
+        q = []
         remaining = self.packets_per_slot
 
         rotor_id = port_id # TODO translate this
         dst, _ = self.ports[rotor_id]
 
-        if self.buffers_ind[dst.id].size > self.packets_per_slot:
-            print(self.buffer_str())
-
         # Old indirect traffic goes first
         indirect_packets = self.buffers_ind[dst.id].empty()
-        q.recv_many(indirect_packets)
+        q = indirect_packets
+        remaining -= sum(n for _, _, n in indirect_packets)
 
         assert self.buffers_ind[dst.id].size == 0
-        assert q.size <= self.packets_per_slot, self.buffer_str()
-        remaining -= q.size
+        assert remaining >= 0, "%s remaining, q: %s" % (remaining, q)
 
         # Direct traffic
         for f in self.flows_rotor[dst.id]:
             n_packets = min(remaining, f.remaining_packets)
-            for _ in range(n_packets):
-                p = f.pop_lump()
-                q.recv(p)
+            p = f.pop_lump(n_packets)
             remaining -= n_packets
 
         self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
@@ -348,6 +343,7 @@ class ToRSwitch:
         # New indirect traffic
         # TODO should actually load balance
         delta = 1
+        aggregate = dict()
         while delta > 0 and remaining > 0:
             delta = 0
             for dst_id, tor in enumerate(self.tors):
@@ -360,31 +356,37 @@ class ToRSwitch:
                     if tor.capacity[dst_id] <= 0:
                         continue
 
-                    p = f.pop_lump()
-                    q.recv(p)
+                    cur_n = aggregate.get(f.id, 0)
+                    if cur_n == f.remaining_packets:
+                        self.flows_rotor[dst_id].pop(0)
+                        continue
+
+                    aggregate[f.id] = cur_n+1
                     remaining -= 1
                     delta += 1
                     tor.capacity[dst_id] -= 1
 
-                    if f.remaining_packets == 0:
+                    if cur_n == f.remaining_packets:
                         self.flows_rotor[dst_id].pop(0)
 
+        for fid, n in aggregate.items():
+            lump = self.flows[fid].pop_lump(n)
+            q.append(lump)
 
         self.out_queues[port_id] = (self.slot_id, q)
-        dst.rx_rotor(q.empty())
-        
-        return None
+        dst.rx_rotor(q)
 
     @Delay(0)
     def rx_rotor(self, lumps):
         t = R.time
         for flow, dst, n in lumps:
+            t += n*self.packet_ttime
+
             if self.id == dst:
-                t += n*self.packet_ttime
                 self.flows[flow].rx(n=n, t=t)
             else:
                 self.buffers_ind[dst].recv((flow, dst, n))
-                self.capacity[dst] -= n
+                #self.capacity[dst] -= n already done above?
 
     def next_queue_xpand(self, port_id):
         # Priority queue
@@ -461,16 +463,6 @@ class ToRSwitch:
         # You have arrived :)
         if p.dst_id == self.id:
             self.flows[p.flow_id].rx()
-            if p.is_last:
-                if self.verbose:
-                    if p.tag == "xpand":
-                        print("\033[0;31m", end = "")
-                    if p.tag == "rotor":
-                        print("\033[0;32m", end = "")
-                    print("flow %s done  (%s)\033[00m" % (p.flow_id, p.tag))
-                self.logger.log_flow_done(p.flow_id)
-            # accept packet into the receive buffer
-            #self.buffers_rcv[flow_src.id].recv(p)
             return
 
         # Time-sensitive stuff
