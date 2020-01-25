@@ -48,7 +48,7 @@ params = dict(
         n_tor      = [257],
         workload   = ["chen"],
         n_cache    = [0, 16],
-        load       = [.1, .2, .3, .4, .5, .6, .7, .8],
+        load       = [.1, .4, .5, .6, .7, .8],
         )
 
 run_experiments(params)
