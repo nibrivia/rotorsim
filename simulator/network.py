@@ -172,8 +172,8 @@ class RotorNet:
         """Run the simulation for n_cycles cycles"""
         self.flow_gen = flow_gen
         wait, flow = next(flow_gen)
-        print(wait, flow)
-        R.call_in(wait, self.open_connection, flow)
+        # make sure this isn't the first thing we do
+        R.call_in(wait, self.open_connection, flow, priority=101)
 
         # Register first events
         for s_id, s in enumerate(self.switches):

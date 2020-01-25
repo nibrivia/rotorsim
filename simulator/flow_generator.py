@@ -167,7 +167,7 @@ def generate_flows(
     flow_id = -1
     while True:
         flow_id += 1
-        wait = np.random.poisson(lam=iflow_wait*1e6, size=1)/1e6
+        wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
 
         # pairs
         #print("pairs")
