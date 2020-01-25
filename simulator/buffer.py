@@ -1,20 +1,19 @@
 import collections 
 
-from logger import Log
+from logger import LOG
 from event import R
 from packet import Packet
 
 class Buffer():
     def __init__(self, parent = None, name = "",
             src = None, dst = None,
-            logger = None, verbose = False):
+            verbose = False):
         self.packets = collections.deque()
         self.parent  = parent
         self.name    = name
         self.src, self.dst = (src, dst)
         self.count = 0
 
-        self.logger = logger
         self.verbose = verbose
 
         # Cached, this is used a lot
@@ -54,33 +53,4 @@ class Buffer():
 
     def __str__(self):
         return "%s.%s;%d" % (str(self.parent), self.name, self.size)
-
-
-DEMAND_NODE = Buffer(None, None, None, None, verbose = False)
-
-if __name__ == "__main__":
-    l = Log()
-    sn = Buffer("1.1->2", None, True)
-    hn = Buffer("3.1->2", None, True)
-    rn = Buffer("2.1->2", None, True)
-
-    sn.add_n(3)
-    print((sn.packets, hn.packets, rn.packets))
-
-    sn.send_to(hn, 2, 1)
-    print((sn.packets, hn.packets, rn.packets))
-    hn.send_to(rn, 1, 1)
-    print((sn.packets, hn.packets, rn.packets))
-
-    sn.send_to(hn, 1, 1)
-    print((sn.packets, hn.packets, rn.packets))
-    hn.send_to(rn, 1, 1)
-    print((sn.packets, hn.packets, rn.packets))
-
-    sn.add_n(3)
-    print((sn.packets, hn.packets, rn.packets))
-    sn.send_to(hn, 3, 1)
-    print((sn.packets, hn.packets, rn.packets))
-    hn.send_to(rn, 3, 1)
-    print((sn.packets, hn.packets, rn.packets))
 

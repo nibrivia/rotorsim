@@ -1,7 +1,7 @@
 from network import RotorNet
 import csv
 from event import R
-from logger import Log
+from logger import LOG, init_log
 from helpers import *
 #from tcp_flow import TCPFlow, BYTES_PER_PACKET
 from flow_generator import generate_flows, FLOWS
@@ -141,8 +141,7 @@ def main(
         logger = None
     else:
         base_fn = "{n_tor}-{n_switches}:{n_cache}-{load}-{time_limit}ms".format(**locals())
-        logger = Log(fn = base_fn + ".csv")
-        logger.add_timer(R)
+        init_log(fn = base_fn + ".csv")
 
     BYTES_PER_PACKET=1500
     packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
@@ -159,7 +158,6 @@ def main(
                    reconfiguration_time = reconfiguration_time/1000,
                    slice_duration       = slice_duration, # R.time will be in ms
                    jitter               = jitter,
-                   logger  = logger,
                    verbose = verbose,
                    do_pause = not no_pause)
 
@@ -221,8 +219,8 @@ def main(
         # write flows
         csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in FLOWS)
 
-    if not no_log:
-        logger.close()
+    if LOG is not None:
+        LOG.close()
 
     # dump status for all flows
     if verbose and False:

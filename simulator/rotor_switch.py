@@ -1,4 +1,5 @@
 from helpers import *
+from logger import LOG
 from functools import partial
 from event import R, Delay
 
@@ -9,7 +10,7 @@ class Empty:
 class RotorSwitch:
     def __init__(self,
             id, n_ports,
-            verbose, logger = None):
+            verbose):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
@@ -24,7 +25,6 @@ class RotorSwitch:
 
         # About IO
         self.verbose = verbose
-        self.logger  = logger
 
         self._disable()
 
@@ -137,8 +137,8 @@ class RotorSwitch:
                 print("@%.3f (%2d)    %d  ->%d %s\033[00m"
                         % (R.time, self.id, tor.id, dst.id, p))
                 assert p.intended_dest == dst.id
-            if self.logger is not None:
-                self.logger.log(src = tor, dst = dst, rotor = self, packet = packet)
+            if LOG is not None:
+                LOG.log(src = tor, dst = dst, rotor = self, packet = packet)
 
             self.dests[tor.id].recv(packet)
 

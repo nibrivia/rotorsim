@@ -1,17 +1,18 @@
+from event import R
+
 class Log:
     def __init__(self, fn = "out.csv"):
-        self.fn = fn
-        self.file = open(fn, "w")
         self.cache = [] # Use array to avoid n^2 string append
 
+    def set_fn(self, fn = "out.csv"):
+        self.fn = fn
+
         # Initialize the .csv
-        print("time_ms,flow_id", file = self.file)
+        self.file = open(fn, "w")
+        print("flow_id,start,end,size", file = self.file)
 
-    def add_timer(self, timer):
-        self.timer = timer
-
-    def log_flow_done(self, flow_id):
-        msg = "%f,%d\n" % (self.timer.time, flow_id)
+    def log_flow_done(self, flow):
+        msg = "%d,%.6f,%.6f,%d\n" % (flow.id, flow.arrival, flow.end, flow.size)
         self.cache.append(msg)
         if len(self.cache) > 100:
             self._flush()
@@ -36,3 +37,8 @@ class Log:
         self._flush()
         self.file.close()
 
+LOG = Log()
+
+def init_log(fn):
+    global LOG
+    LOG.set_fn(fn)

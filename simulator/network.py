@@ -1,5 +1,6 @@
 import random
 import sys
+from logger import LOG
 from math import ceil, floor
 from helpers import *
 from tor_switch import ToRSwitch
@@ -16,7 +17,6 @@ class RotorNet:
                  slice_duration = 1, 
                  reconfiguration_time = 0, 
                  jitter = 0,
-                 logger = None,
                  verbose = True, 
                  do_pause = True):
 
@@ -56,8 +56,7 @@ class RotorNet:
         self.switches = [RotorSwitch(
                             id = i,
                             n_ports  = n_tor,
-                            verbose = verbose,
-                            logger  = logger)
+                            verbose = verbose)
                 for i in range(self.n_switches)]
 
         self.tors = [ToRSwitch(
@@ -69,7 +68,6 @@ class RotorNet:
                             packets_per_slot = packets_per_slot,
                             slot_duration = slice_duration,
                             clock_jitter  = jitter,
-                            logger  = logger,
                             verbose = verbose)
                 for i in range(n_tor)]
 

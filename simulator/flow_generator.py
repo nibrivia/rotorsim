@@ -10,6 +10,7 @@ from workloads.uniform import log_uniform_distribution, log_uniform_size
 
 from collections import defaultdict
 from helpers import *
+from logger import LOG
 
 
 # HELPERS ========================================================
@@ -84,7 +85,7 @@ class Flow:
                 self.end = t
             if self.tag == "rotor" and False:
                 print(self, "done")
-            #logger.log_flow_done(p.flow_id)
+            LOG.log_flow_done(self)
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
