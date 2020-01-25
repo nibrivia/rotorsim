@@ -4,6 +4,7 @@ from helpers import *
 from event import Delay, R
 from functools import lru_cache
 from collections import deque
+from flow_generator import FLOWS
 
 class ToRSwitch:
     def __init__(self, name,
@@ -146,10 +147,7 @@ class ToRSwitch:
     def set_tor_refs(self, tors):
         self.tors = tors
 
-    def start(self, flows):
-
-        self.flows = flows
-
+    def start(self):
         # Rotor
         #######
 
@@ -370,7 +368,7 @@ class ToRSwitch:
                         self.flows_rotor[dst_id].pop(0)
 
         for fid, n in aggregate.items():
-            lump = self.flows[fid].pop_lump(n)
+            lump = FLOWS[fid].pop_lump(n)
             q.append(lump)
 
         self.out_queues[port_id] = (self.slot_id, q)
@@ -383,7 +381,7 @@ class ToRSwitch:
             t += n*self.packet_ttime
 
             if self.id == dst:
-                self.flows[flow].rx(n=n, t=t)
+                FLOWS[flow].rx(n=n, t=t)
             else:
                 self.buffers_ind[dst].recv((flow, dst, n))
                 #self.capacity[dst] -= n already done above?
@@ -462,7 +460,7 @@ class ToRSwitch:
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
         # You have arrived :)
         if p.dst_id == self.id:
-            self.flows[p.flow_id].rx()
+            FLOWS[p.flow_id].rx()
             return
 
         # Time-sensitive stuff

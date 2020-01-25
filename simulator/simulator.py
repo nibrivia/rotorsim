@@ -1,9 +1,10 @@
 from network import RotorNet
+import csv
 from event import R
 from logger import Log
 from helpers import *
 #from tcp_flow import TCPFlow, BYTES_PER_PACKET
-from flow_generator import generate_flows
+from flow_generator import generate_flows, FLOWS
 import sys
 import click
 import math
@@ -175,7 +176,7 @@ def main(
     print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
     max_slots = n_cycles*net.n_slots
-    flows = generate_flows(
+    flow_gen = generate_flows(
             load = load,
             bandwidth  = bandwidth,
             num_tors   = n_tor,
@@ -200,10 +201,25 @@ def main(
 
     print("Starting simulator...")
     # Start the simulator
-    net.run(flows = flows, time_limit = time_limit)
+    net.run(flow_gen = flow_gen, time_limit = time_limit)
 
-    n_completed = len([f for f in flows if f.remaining_packets == 0])
-    print("%s/%s=%d%% flows completed" % (n_completed, len(flows), 100*n_completed/len(flows)))
+    n_completed = len([f for f in FLOWS if f.remaining_packets == 0])
+    print("%s/%s=%d%% flows completed" % (n_completed, len(FLOWS), 100*n_completed/len(FLOWS)))
+
+    # csv header
+    fields = [
+        'id',
+        'arrival',
+        'size_bytes',
+        'src',
+        'dst'
+    ]
+    with open(base_fn+"-flows.csv", 'w') as csv_file:
+        # write csv header
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(fields)
+        # write flows
+        csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in FLOWS)
 
     if not no_log:
         logger.close()

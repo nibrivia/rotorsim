@@ -168,9 +168,12 @@ class RotorNet:
             self.matchings.append(slot_matching)
 
 
-    def run(self, time_limit, flows):
+    def run(self, time_limit, flow_gen):
         """Run the simulation for n_cycles cycles"""
-        self.flows = flows
+        self.flow_gen = flow_gen
+        wait, flow = next(flow_gen)
+        print(wait, flow)
+        R.call_in(wait, self.open_connection, flow)
 
         # Register first events
         for s_id, s in enumerate(self.switches):
@@ -179,11 +182,7 @@ class RotorNet:
             else:
                 s.start(slice_duration = float("Inf"))
         for t in self.tors:
-            t.start(flows = flows)
-
-        # Flows
-        for f in flows:
-            R.call_in(f.arrival, self.open_connection, f)
+            t.start()
 
         # Start events
         R.limit = time_limit
@@ -192,6 +191,9 @@ class RotorNet:
     def open_connection(self, flow):
         # override src and dst to tor objects
         self.tors[flow.src].recv_flow(flow)
+
+        wait, flow = next(self.flow_gen)
+        R.call_in(wait, self.open_connection, flow)
 
         # begin sending
         #tcpflow.send()

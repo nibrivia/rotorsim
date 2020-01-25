@@ -1,6 +1,5 @@
 import numpy as np
 import math
-import csv
 from itertools import product
 import collections
 import numpy as np
@@ -132,6 +131,7 @@ WORKLOAD_FNS = defaultdict(
 
 
 # MAIN ===========================================================
+FLOWS = []
 
 def generate_flows(
     load, bandwidth,
@@ -141,14 +141,6 @@ def generate_flows(
     workload_name,
     results_file='flows.csv',
 ):
-    # csv header
-    fields = [
-        'id',
-        'arrival',
-        'size_bytes',
-        'src',
-        'dst'
-    ]
 
     # get workload generator
     workload = WORKLOAD_FNS[workload_name]
@@ -171,37 +163,27 @@ def generate_flows(
     print("net load %.3fGb / %.3fGb = %.2f%%" % (offered_load/1e9, capacity/1e9, 100*offered_load/capacity))
     print("iflow all %.3fus" % (iflow_wait*1000))
     # np.poisson returns int, so in ns, then convert back to ms
-    waits = np.random.poisson(lam=iflow_wait*1e6, size=n_flows)
 
-    # Convert waits into times
-    t = 0
-    arrivals = [0 for _ in waits]
-    for i, w in enumerate(waits):
-        t += w
-        arrivals[i] = t/1e6
+    flow_id = -1
+    while True:
+        flow_id += 1
+        wait = np.random.poisson(lam=iflow_wait*1e6, size=1)/1e6
 
-    # pairs
-    print("pairs")
-    pairs_idx = np.random.choice(len(tor_pairs), size = n_flows)
-    pairs = tor_pairs[pairs_idx]
+        # pairs
+        #print("pairs")
+        pair_id = np.random.choice(len(tor_pairs), size = 1)[0]
+        pair = tor_pairs[pair_id]
 
-    # sizes
-    print("sizes")
-    sizes = workload.get_flows(n = n_flows)
+        # sizes
+        #print("sizes")
+        size = workload.get_flows(n = 1)[0]
 
-    # start, id, size, src, dst
-    print("zip")
-    flows = zip(arrivals, [i for i in range(n_flows)], sizes, *zip(*pairs))
-    print("Flow gen...", end = "")
-    flows = [Flow(*f) for f in flows]
-    print("done")
+        # start, id, size, src, dst
+        #print("Flow gen...", end = "")
+        flow = Flow(R.time + wait, flow_id, size, pair[0], pair[1])
 
-    # write flows out to csv in increasing arrival order
-    with open(results_file, 'w') as csv_file:
-        # write csv header
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerow(fields)
-        # write flows
-        csv_writer.writerows((f.id, f.arrival, f.size, f.src, f.dst) for f in flows)
+        # write flows out to csv in increasing arrival order
 
-    return flows
+        global FLOWS
+        FLOWS.append(flow)
+        yield (wait, flow)
