@@ -66,10 +66,7 @@ class ToRSwitch:
         # rotor
         self.capacities  = [0    for _ in range(self.n_tor)] # Capacities of destination
         self.capacity    = [self.packets_per_slot for _ in range(self.n_tor)]
-        self.out_queues  = [(-1, Buffer(parent = self, src = self.id, dst = None,
-                                   name = "rot_port[%s]" % rotor_id,
-                                   verbose = verbose))
-                            for rotor_id in self.rotor_ports]
+        self.out_queue_t = [-1 for rotor_id in self.rotor_ports]
 
         # xpander
         self.connections = dict() # Destination ToRs
@@ -314,7 +311,7 @@ class ToRSwitch:
 
     def next_queue_rotor(self, port_id):
         # Check if we've computed this before
-        queue_t, q = self.out_queues[port_id]
+        queue_t  = self.out_queue_t[port_id]
         if queue_t == self.slot_id:
             return None
 
@@ -334,49 +331,53 @@ class ToRSwitch:
         assert remaining >= 0, "%s remaining, q: %s" % (remaining, q)
 
         # Direct traffic
+        to_pop = 0
         for f in self.flows_rotor[dst.id]:
-            n_packets = min(remaining, f.remaining_packets)
-            p = f.pop_lump(n_packets)
-            q.append(p)
-            remaining -= n_packets
+            if remaining < f.remaining_packets:
+                p = f.pop_lump(remaining)
+                q.append(p)
+                remaining = 0
+                break
+            else:
+                p = f.pop_lump(f.remaining_packets)
+                q.append(p)
+                to_pop += 1
 
-        self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
+        for _ in range(to_pop):
+            self.flows_rotor[dst.id].pop(0)
+        #self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
 
         # New indirect traffic
         # TODO should actually load balance
         delta = 1
         aggregate = dict()
-        while delta > 0 and remaining > 0:
+        while remaining > 0 and delta > 0:
             delta = 0
             for dst_id, tor in enumerate(self.tors):
+                if tor.capacity[dst_id] <= 0:
+                    continue
+                if len(self.flows_rotor[dst_id]) == 0:
+                    continue
+
+                f = self.flows_rotor[dst_id][0]
+
+                cur_n = aggregate.get(f.id, 0)
+                aggregate[f.id] = cur_n+1
+                remaining -= 1
+                delta += 1
+                tor.capacity[dst_id] -= 1
+                self.capacity[dst_id] += 1
+
+                if cur_n+1 == f.remaining_packets:
+                    self.flows_rotor[dst_id].pop(0)
                 if remaining == 0:
                     break
-
-                if len(self.flows_rotor[dst_id]) > 0:
-                    f = self.flows_rotor[dst_id][0]
-
-                    if tor.capacity[dst_id] <= 0:
-                        continue
-
-                    cur_n = aggregate.get(f.id, 0)
-                    if cur_n == f.remaining_packets:
-                        self.flows_rotor[dst_id].pop(0)
-                        continue
-
-                    aggregate[f.id] = cur_n+1
-                    remaining -= 1
-                    delta += 1
-                    tor.capacity[dst_id] -= 1
-                    self.capacity[dst_id] += 1
-
-                    if cur_n == f.remaining_packets:
-                        self.flows_rotor[dst_id].pop(0)
 
         for fid, n in aggregate.items():
             lump = FLOWS[fid].pop_lump(n)
             q.append(lump)
 
-        self.out_queues[port_id] = (self.slot_id, q)
+        self.out_queue_t[port_id] = self.slot_id
         dst.rx_rotor(q)
 
     @Delay(0, priority = 100) #do last
