@@ -3,6 +3,8 @@ title: "3nets"
 author: "Olivia Brode-Roger"
 date: "1/18/2020"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -60,72 +62,95 @@ fct_cdf %>%
 ```
 
 ```{r many-experiments, }
-flow_fns <- list.files(path = "../data/", pattern = "129.*flows.csv")
+flow_fns <- list.files(path = "../data/", pattern = "257.*2000ms.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
-           base_fn    = strsplit(flow_fns, "-flows") %>% map_chr(1),
-           split = strsplit(filename, "-"),
-           n_tor      = map_chr(split, 1),
+           base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),
+           split = strsplit(base_fn, "-"),
+           n_tor      = as.integer(map_chr(split, 1)),
            n_switches = strsplit(map_chr(split, 2), ":"),
-           n_cache    = map_chr(n_switches, 2),
-           n_switches = map_chr(n_switches, 1),
-           load       = map_chr(split, 3),
-           duration   = map_chr(split, 4)) %>% 
+           n_cache    = as.integer(map_chr(n_switches, 2)),
+           n_switches = as.integer(map_chr(n_switches, 1)),
+           load       = as.double(map_chr(split, 3)),
+           duration   = as.integer(map_chr(split, 4))) %>% 
     filter(n_cache %in% c(0, 16)) %>% 
-    select(-split)
+    filter(load %in% c(.1, .4, .8)) %>% 
+    select(-split, -base_fn)
 
-arrivals <- experiments %>% 
-    mutate(arrivals = map(paste0("../data/", base_fn, ".csv"), read_csv)) %>% 
-    select(exp_id, arrivals) %>% 
-    unnest(arrivals) %>% 
-    rename(end = time_ms)
+if (FALSE) {
+  arrivals <- experiments %>% 
+      mutate(arrivals = map(paste0("../data/", base_fn, ".csv"), read_csv)) %>% 
+      select(exp_id, arrivals) %>% 
+      unnest(arrivals) %>% 
+      rename(end = time_ms)
+  
+  flows <- experiments %>% 
+      mutate(flows = map(paste0("../data/", filename), col_types = "ddd--", read_csv)) %>% 
+      select(exp_id, flows) %>% 
+      unnest(flows) %>% 
+      rename(flow_id = id,
+             start   = arrival) %>% 
+      left_join(arrivals, by = c("flow_id", "exp_id"))
+  
+  fcts <- flows %>% 
+      filter(!is.na(end),
+             exp_id %in% c(1, 2,  3,  4,  5 , 6,  7, 35, 36, 37, 38, 39, 40, 41)) %>% 
+      mutate(fct = end-start) %>% 
+      group_by(exp_id, size_bytes) %>% 
+          arrange(fct) %>% 
+          mutate(cdf = seq_along(fct)/length(fct)) %>% 
+          ungroup() %>% 
+      left_join(experiments %>% select(n_cache, load, exp_id), by = c("exp_id"))
+}
 
 flows <- experiments %>% 
-    mutate(flows = map(paste0("../data/", filename), col_types = "ddd--", read_csv)) %>% 
-    select(exp_id, flows) %>% 
-    unnest(flows) %>% 
-    rename(flow_id = id,
-           start   = arrival) %>% 
-    left_join(arrivals, by = c("flow_id", "exp_id"))
+  mutate(arrivals = map(paste0("../data/", filename), read_csv, col_types = "-ddi")) %>% 
+  select(exp_id, arrivals)
 
+flows <- flows %>% 
+  unnest(arrivals)
+  
 fcts <- flows %>% 
-    filter(!is.na(end),
-           exp_id %in% c(1, 2,  3,  4,  5 , 6,  7, 35, 36, 37, 38, 39, 40, 41)) %>% 
-    mutate(fct = end-start) %>% 
-    group_by(exp_id, size_bytes) %>% 
-        arrange(fct) %>% 
-        mutate(cdf = seq_along(fct)/length(fct)) %>% 
-        ungroup() %>% 
-    left_join(experiments %>% select(n_cache, load, exp_id), by = c("exp_id"))
+  mutate(fct = end - start) %>% 
+  group_by(exp_id, size) %>% 
+    arrange(fct, .by_group = TRUE) %>% 
+    mutate(cdf = seq_along(fct)/length(fct)) %>% 
+    ungroup()
+    
+  
+
 
 fcts %>%
-    sample_n(1000000) %>%
-    ggplot(aes(x = size_bytes/1e6,
-               y = fct,
-               group = paste(exp_id, size_bytes),
-               color = n_cache)) +
-    geom_violin(draw_quantiles = c(.1, .5, .9), scale = "width") +
-    geom_abline(slope = 1, intercept = -1) + # because log scale...
-    scale_x_log10(breaks = c(.01, .1, 1, 10, 100, 1000, 10e3),
-                  labels = c("10Kb", "100Kb", "1Mb", "10Mb", "100Mb", "1Gb", "10Gb")) +
-    scale_y_log10(breaks = c(.001, .01, .1, 1, 10, 100, 1000),
-                  labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")) +
-    theme_ipsum_rc() +
-    facet_wrap(~load) +
-    labs(title = "Flow completion times",
-         x = "Flow size",
-         y = "Flow completion time",
-         caption = "github.com/nibrivia/rotorsim")
+  sample_n(10000000) %>%
+  left_join(experiments, by = "exp_id") %>% 
+  ggplot(aes(x = size/1e6,
+             y = fct,
+             group = paste(exp_id, size),
+             color = as_factor(n_cache))) +
+  geom_violin(draw_quantiles = c(.1, .5, .9), scale = "width") +
+  geom_abline(slope = 1, intercept = -1) + # because log scale...
+  scale_x_log10(breaks = c(.01, .1, 1, 10, 100, 1000, 10e3),
+                labels = c("10Kb", "100Kb", "1Mb", "10Mb", "100Mb", "1Gb", "10Gb")) +
+  scale_y_log10(breaks = c(.001, .01, .1, 1, 10, 100, 1000),
+                labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")) +
+  theme_ipsum_rc() +
+  facet_wrap(~load) +
+  labs(title = "Flow completion times",
+       subtitle = "257 ToRs, 2000ms. 33 switches: 1 expander, and {0, 16} cache switches",
+       x = "Flow size",
+       y = "Flow completion time",
+       caption = "github.com/nibrivia/rotorsim")
 
 
 fcts %>% 
-    filter(size_bytes > 1e6) %>% 
-    filter(size_bytes > 1e6 & load != .6) %>% 
-    #sample_n(100000) %>% 
+  filter(size > 1e6) %>% 
+    #sample_n(1000000) %>% 
+    left_join(experiments, by = "exp_id") %>% 
     mutate(load = paste0(as.numeric(load)*100, "%")) %>% 
     ggplot(aes(x = fct,
                y = cdf,
-               color = n_cache)) +
+               color = as.factor(n_cache),
+               group = exp_id)) +
     geom_line() +
     #geom_point(size = .2) +
     scale_y_continuous(labels = percent) +
@@ -133,7 +158,7 @@ fcts %>%
                   #labels = c("1us", "10us", "100us", "1ms", "10ms", "100ms", "1s")
                   ) +
     theme_ipsum_rc() +
-    facet_wrap(~load, scales = "free_x") +
+    facet_grid(size~load, scales = "free_x") +
     labs(title = "CDF of flow completion times by load and flow size",
          subtitle = "129 ToRs, 1000ms. 33 switches: 1 expander, and {0, 16} cache switches",
          color = "# cache switches",
