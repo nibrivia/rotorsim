@@ -10,6 +10,7 @@ from workloads.uniform import log_uniform_distribution, log_uniform_size
 
 from collections import defaultdict
 from helpers import *
+from logger import LOG
 
 
 # HELPERS ========================================================
@@ -43,6 +44,7 @@ class Flow:
         self.size_packets      = self.remaining_packets
         self.n_sent = 0
         self.n_recv = 0
+
 
         if size < 1e6:
             self.tag = "xpand"
@@ -82,15 +84,20 @@ class Flow:
                 self.end = R.time
             else:
                 self.end = t
+
             if self.tag == "rotor" and False:
                 print(self, "done")
-            #logger.log_flow_done(p.flow_id)
+
+            LOG.log_flow_done(self)
+            global FLOWS, N_DONE
+            N_DONE[0] += 1
+            del FLOWS[self.id]
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
 
     def __str__(self):
-        return "%s %3d[%s->%s]\033[00m" % (self.tag, self.id, self.src, self.dst)
+        return "%s %4d[%3d->%3d]\033[00m" % (self.tag, self.id, self.src, self.dst)
 
 class FlowDistribution:
     def __init__(self, cdf):
@@ -114,7 +121,10 @@ def weights_to_cdf(weights):
 
 
 websearch_cdf = [(1,1)]
-simple_weights = [(4.9, 10e3), (95, 1e6), (.1, 1e9)]
+simple_weights = [
+        #( 4.9, 10e3),
+        (95.0,  1e6),
+        ( 0.1,  1e9)]
 simple_cdf = weights_to_cdf(simple_weights)
 
 xpand_cdf = [(1, 10e3)]
@@ -131,7 +141,9 @@ WORKLOAD_FNS = defaultdict(
 
 
 # MAIN ===========================================================
-FLOWS = []
+FLOWS = dict()
+N_FLOWS = [0]
+N_DONE  = [0]
 
 def generate_flows(
     load, bandwidth,
@@ -167,7 +179,7 @@ def generate_flows(
     flow_id = -1
     while True:
         flow_id += 1
-        wait = np.random.poisson(lam=iflow_wait*1e6, size=1)/1e6
+        wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
 
         # pairs
         #print("pairs")
@@ -184,6 +196,7 @@ def generate_flows(
 
         # write flows out to csv in increasing arrival order
 
-        global FLOWS
-        FLOWS.append(flow)
+        global FLOWS, N_FLOWS
+        FLOWS[flow_id] = flow
+        N_FLOWS[0] += 1
         yield (wait, flow)

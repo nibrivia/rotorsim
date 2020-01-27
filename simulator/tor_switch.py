@@ -1,5 +1,6 @@
 import sys
 from buffer import *
+from logger import LOG
 from helpers import *
 from event import Delay, R
 from functools import lru_cache
@@ -10,7 +11,7 @@ class ToRSwitch:
     def __init__(self, name,
             n_tor, n_xpand, n_rotor, n_cache,
             packets_per_slot, clock_jitter,
-            logger, verbose,
+            verbose,
             slot_duration = None, slice_duration = None
             ):
         assert slot_duration is     None or slice_duration is     None
@@ -48,7 +49,6 @@ class ToRSwitch:
 
         # ... about IO
         self.verbose = verbose
-        self.logger  = logger
 
         # Demand
         self.flows_cache = []
@@ -57,7 +57,7 @@ class ToRSwitch:
         self.buffers_ind = [Buffer(parent = self,
                                    src = self.id, dst = dst,
                                    name = "ind[%s]" % dst,
-                                   logger = logger, verbose = verbose)
+                                   verbose = verbose)
                                 for dst in range(n_tor)] # holds indirected packets (rotor)
 
         # TODO cache
@@ -68,7 +68,7 @@ class ToRSwitch:
         self.capacity    = [self.packets_per_slot for _ in range(self.n_tor)]
         self.out_queues  = [(-1, Buffer(parent = self, src = self.id, dst = None,
                                    name = "rot_port[%s]" % rotor_id,
-                                   logger = logger, verbose = verbose))
+                                   verbose = verbose))
                             for rotor_id in self.rotor_ports]
 
         # xpander
@@ -78,7 +78,7 @@ class ToRSwitch:
         self.buffers_fst = {port_id: Buffer(parent = self,
                                    src = self.id, dst = None,
                                    name = "fst[%s]" % port_id,
-                                   logger = logger, verbose = verbose)
+                                   verbose = verbose)
                                 for port_id in self.xpand_ports} # holds indirected packets (xpand)
 
 
@@ -295,17 +295,20 @@ class ToRSwitch:
 
                 fct = f.remaining_packets * self.packet_ttime
                 self.active_flow[port_id] = f
+                lump = f.pop_lump(f.size_packets)
 
-                R.call_in(fct, self.cache_flow_done, port_id = port_id)
+                R.call_in(fct, self.cache_flow_done, port_id = port_id, lump = lump)
 
                 return None # Still not simulating packet level
         #print("@%.3f no matchings available %s" % (R.time, self))
 
-    def cache_flow_done(self, port_id):
+    def cache_flow_done(self, port_id, lump):
         #print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
         self.vprint("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
 
-        self.logger.log_flow_done(self.active_flow[port_id].id)
+        flow_id, dst, n = lump
+        FLOWS[flow_id].rx(n)
+
         self.active_flow[port_id] = None
         self.switches[port_id].release_matching(self)
 
@@ -334,6 +337,7 @@ class ToRSwitch:
         for f in self.flows_rotor[dst.id]:
             n_packets = min(remaining, f.remaining_packets)
             p = f.pop_lump(n_packets)
+            q.append(p)
             remaining -= n_packets
 
         self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
@@ -363,6 +367,7 @@ class ToRSwitch:
                     remaining -= 1
                     delta += 1
                     tor.capacity[dst_id] -= 1
+                    self.capacity[dst_id] += 1
 
                     if cur_n == f.remaining_packets:
                         self.flows_rotor[dst_id].pop(0)
@@ -384,7 +389,6 @@ class ToRSwitch:
                 FLOWS[flow].rx(n=n, t=t)
             else:
                 self.buffers_ind[dst].recv((flow, dst, n))
-                #self.capacity[dst] -= n already done above?
 
     def next_queue_xpand(self, port_id):
         # Priority queue
@@ -435,8 +439,8 @@ class ToRSwitch:
             self.capacity[p.dst_id] += 1
             #self.capacities[port_id][p.dst_id] -= 1
 
-        if self.logger is not None:
-            self.logger.log(src = self, dst = dst_tor,
+        if LOG is not None:
+            LOG.log(src = self, dst = dst_tor,
                     rotor = self.switches[port_id], packet = p)
 
         if self.verbose:
