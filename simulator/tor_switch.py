@@ -54,11 +54,8 @@ class ToRSwitch:
         self.flows_cache = []
         self.flows_rotor = [[] for dst in range(n_tor)]
         self.flows_xpand = {port_id: [] for port_id in self.xpand_ports}
-        self.buffers_ind = [Buffer(parent = self,
-                                   src = self.id, dst = dst,
-                                   name = "ind[%s]" % dst,
-                                   verbose = verbose)
-                                for dst in range(n_tor)] # holds indirected packets (rotor)
+        self.lumps_ind   = [[] for dst in range(n_tor)] # holds indirected packets (rotor)
+        self.lumps_ind_n = [0 for dst in range(n_tor)] # holds indirected packets (rotor)
 
         # TODO cache
         self.active_flow = {port_id: None for port_id in self.cache_ports}
@@ -315,19 +312,17 @@ class ToRSwitch:
         if queue_t == self.slot_id:
             return None
 
-        # We're starting from scratch, this should be empty
-        q = []
-        remaining = self.packets_per_slot
-
+        # Get connection info
         rotor_id = port_id # TODO translate this
         dst, _ = self.ports[rotor_id]
 
         # Old indirect traffic goes first
-        indirect_packets = self.buffers_ind[dst.id].empty()
-        q = indirect_packets
-        remaining -= sum(n for _, _, n in indirect_packets)
+        q = self.lumps_ind[dst.id]
+        remaining = self.packets_per_slot - self.lumps_ind_n[dst.id]
+        self.lumps_ind[dst.id]   = []
+        self.lumps_ind_n[dst.id] = 0
 
-        assert self.buffers_ind[dst.id].size == 0
+        #assert self.buffers_ind[dst.id].size == 0
         assert remaining >= 0, "%s remaining, q: %s" % (remaining, q)
 
         # Direct traffic
@@ -383,13 +378,15 @@ class ToRSwitch:
     @Delay(0, priority = 100) #do last
     def rx_rotor(self, lumps):
         t = R.time
-        for flow, dst, n in lumps:
+        for l in lumps:
+            flow, dst, n = l
             t += n*self.packet_ttime
 
             if self.id == dst:
                 FLOWS[flow].rx(n=n, t=t)
             else:
-                self.buffers_ind[dst].recv((flow, dst, n))
+                self.lumps_ind[dst].append(l)
+                self.lumps_ind_n[dst] += n
 
     def next_queue_xpand(self, port_id):
         # Priority queue
