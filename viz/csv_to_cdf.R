@@ -21,7 +21,7 @@ gen_cdf_csv <- function(flows_fn) {
 }
 
 
-csvs <- list.files(pattern = ".csv")
+csvs <- list.files(pattern = "ms.csv")
 for (fn in csvs) {
     cdf <- gen_cdf_csv("../data/257-33:0-0.1-1000ms.csv")
     write_csv(cdf, path = paste0("cdfs/cdf-", fn))
