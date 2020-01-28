@@ -168,10 +168,11 @@ def generate_flows(
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
+    n_pairs = (num_tors*(num_tors-1))
     n_links = num_tors*num_switches
     capacity  = n_links*bandwidth*1e6*time_limit/1e3 # Gb
     n_flows_o = int(capacity/workload.size*load)
-    n_flows   = round(n_flows_o/n_links)*n_links
+    n_flows   = round(n_flows_o/n_pairs)*n_pairs
     print("diff: %d" % (n_flows_o-n_flows))
     iflow_wait = time_limit/n_flows
 
@@ -185,28 +186,34 @@ def generate_flows(
     # np.poisson returns int, so in ns, then convert back to ms
 
     if arrive_at_start:
-        flows_per_link = n_flows/n_links
-        rotor_per_link = round(flows_per_link * workload.probs[0])
-        cache_per_link = round(flows_per_link * workload.probs[1])
+        flows_per_pair = n_flows/n_pairs
+        rotor_per_pair = math.ceil(flows_per_pair * workload.probs[0])
+        cache_per_pair = math.floor(flows_per_pair * workload.probs[1])
 
-        print(rotor_per_link, cache_per_link)
-        assert cache_per_link + rotor_per_link == flows_per_link
+        print(flows_per_pair, rotor_per_pair, cache_per_pair)
+        assert cache_per_pair + rotor_per_pair == flows_per_pair
 
 
         flow_id = 0
         for src in range(num_tors):
             for dst in range(num_tors):
-                f = Flow(0, flow_id, rotor_per_link*workload.sizes[0], src, dst)
-                f.tag = "rotor"
-                FLOWS[flow_id] = f
-                yield (0, f)
-                flow_id += 1
+                if dst == src:
+                    continue
 
-                f = Flow(0, flow_id, cache_per_link*workload.sizes[1], src, dst)
-                f.tag = "cache"
-                FLOWS[flow_id] = f
-                yield (0, f)
-                flow_id += 1
+                if rotor_per_pair > 0:
+                    f = Flow(0, flow_id, rotor_per_pair*workload.sizes[0], src, dst)
+                    f.tag = "rotor"
+                    FLOWS[flow_id] = f
+                    yield (0, f)
+                    flow_id += 1
+
+                if cache_per_pair > 0:
+                    f = Flow(0, flow_id, cache_per_pair*workload.sizes[1], src, dst)
+                    f.tag = "cache"
+                    FLOWS[flow_id] = f
+                    yield (0, f)
+                    flow_id += 1
+        return
 
 
     else:

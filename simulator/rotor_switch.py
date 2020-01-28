@@ -32,7 +32,9 @@ class RotorSwitch:
         self.matchings_by_slot = matchings_by_slot
         self.n_rotor = n_rotor
 
-    def start(self, slice_duration, is_rotor = True):
+    def start(self, slice_duration, reconf_time = None, is_rotor = True):
+        self.reconf_time = 0 # TODO
+
         self._enable()
         self.install_matchings(self.matchings_by_slot[0])
 
@@ -101,6 +103,8 @@ class RotorSwitch:
 
         # Re-call ourselves
         self.new_slice()
+        R.call_in(self.slice_duration, self._disable)
+        R.call_in(self.slice_duration + self.reconf_time, self._disable)
 
 
 
@@ -114,7 +118,6 @@ class RotorSwitch:
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time, high priority so that reconf 0 has no down time
-        self._enable()
 
     def connect_tors(self, tors):
         assert not self.enabled
@@ -144,7 +147,7 @@ class RotorSwitch:
 
         else:
             # Could assert false, but just drop
-            print("%s: Dropping packets from tor %s" % (self, tor))
+            assert False, "%s: Dropping packets from tor %s" % (self, tor)
 
     def __str__(self):
         return "Rot %s" % self.id

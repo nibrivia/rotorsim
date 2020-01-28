@@ -43,7 +43,7 @@ def run_experiments(p_space):
             executor.submit(run_experiment, **params)
 
 params = dict(
-        time_limit = [1000],
+        time_limit = [10000],
         n_switches = [32],
         n_tor      = [129],
         workload   = ["chen"],

@@ -16,7 +16,7 @@ class RotorNet:
                  n_cache    = None,
                  n_xpand    = None,
                  slice_duration = 1, 
-                 reconfiguration_time = 0, 
+                 reconfiguration_time = .1, 
                  jitter = 0,
                  verbose = True, 
                  do_pause = True):
@@ -49,10 +49,11 @@ class RotorNet:
         self.generate_matchings()
         self.n_slots = ceil(len(self.matchings) / self.n_rotor)
 
-        # TODO switch for Opera
+        # Timings
         self.slice_duration = slice_duration
         self.slot_duration  = slice_duration#*self.n_rotor
         self.cycle_duration = self.slot_duration * self.n_slots
+        self.reconf_time    = reconfiguration_time
 
         # Internal variables
         self.switches = [RotorSwitch(
@@ -178,7 +179,8 @@ class RotorNet:
         # Register first events
         for s_id, s in enumerate(self.switches):
             if s_id < self.n_rotor:
-                s.start(slice_duration = self.slice_duration)
+                s.start(slice_duration = self.slice_duration,
+                        reconf_time    = self.reconf_time)
             else:
                 s.start(slice_duration = float("Inf"))
         for t in self.tors:
