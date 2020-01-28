@@ -59,12 +59,12 @@ def load_flows(slot_duration):
 @click.option(
         "--n_xpand",
         type=int,
-        default=None
+        default=0
 )
 @click.option(
         "--slice_duration",
         type=float,
-        default=90,
+        default=100,
         help='in us'
 )
 @click.option(
