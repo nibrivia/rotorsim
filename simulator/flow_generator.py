@@ -197,11 +197,13 @@ def generate_flows(
         for src in range(num_tors):
             for dst in range(num_tors):
                 f = Flow(0, flow_id, rotor_per_link*workload.sizes[0], src, dst)
+                f.tag = "rotor"
                 FLOWS[flow_id] = f
                 yield (0, f)
                 flow_id += 1
 
                 f = Flow(0, flow_id, cache_per_link*workload.sizes[1], src, dst)
+                f.tag = "cache"
                 FLOWS[flow_id] = f
                 yield (0, f)
                 flow_id += 1
