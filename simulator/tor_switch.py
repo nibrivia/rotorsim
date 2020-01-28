@@ -12,7 +12,8 @@ class ToRSwitch:
             n_tor, n_xpand, n_rotor, n_cache,
             packets_per_slot, clock_jitter,
             verbose,
-            slot_duration = None, slice_duration = None
+            slot_duration = None, slice_duration = None,
+            reconfiguration_time = None
             ):
         assert slot_duration is     None or slice_duration is     None
         assert slot_duration is not None or slice_duration is not None
@@ -487,21 +488,23 @@ class ToRSwitch:
 
     def recv_flow(self, flow):
         # Add the flow, and then attempt to send
-        if flow.size < 1e6:
+        if flow.tag == "xpand":
             path, _ = self.route[flow.dst]
             n_tor   = path[0]
             port_id = self.tor_to_port[n_tor]
 
             self.flows_xpand[port_id].append(flow)
             self._send(port_id)
+            return
 
-        elif flow.size < 100e6:
+        if flow.tag == "rotor":
             self.flows_rotor[flow.dst].append(flow)
             self.capacity[flow.dst] -= flow.remaining_packets
             for port_id in self.rotor_ports:
                 self._send(port_id)
+            return
 
-        else:
+        if flow.tag == "cache":
             if self.n_cache == 0:
                 self.flows_rotor[flow.dst].append(flow)
                 self.capacity[flow.dst] -= flow.remaining_packets
