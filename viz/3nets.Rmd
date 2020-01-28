@@ -104,11 +104,35 @@ if (FALSE) {
 }
 
 flows <- experiments %>% 
-  mutate(arrivals = map(paste0("../simulator/", filename), read_csv, col_types = "-ddi")) %>% 
-  select(exp_id, arrivals)
-
-flows <- flows %>% 
+  mutate(arrivals = map(paste0("../simulator/", filename), read_csv, col_types = "iddd")) %>% 
+  select(exp_id, arrivals) %>% 
   unnest(arrivals)
+
+
+arrive_at_start <- TRUE
+if (arrive_at_start) {
+  flows %>%
+    filter(flow_id > 16512) %>%
+    group_by(exp_id) %>%
+      summarize(fct = mean(end),
+                fct_hi = quantile(end, .9)) %>%
+      ungroup() %>% 
+    left_join(experiments) %>%
+    
+    ggplot(aes(x = load,
+               y = fct_hi,
+               color = as_factor(n_cache),
+               shape = as_factor(n_cache))) +
+    #geom_smooth(method = "lm",
+    #            size = .2) +
+    geom_line() +
+    geom_point(size = 5) +
+    theme_ipsum_rc() +
+    labs(title = "90-percentile drainage time per rotor-pair (ish)",
+         subtitle = "129 ToRs for 1s, 32 switches: 0 expander",
+         color = "# cache sw",
+         shape = "# cache sw")
+}
   
 fcts <- flows %>% 
   mutate(fct = end - start) %>% 

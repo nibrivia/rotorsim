@@ -323,7 +323,7 @@ class ToRSwitch:
         self.lumps_ind_n[dst.id] = 0
 
         #assert self.buffers_ind[dst.id].size == 0
-        assert remaining >= 0, "%s remaining, q: %s" % (remaining, q)
+        assert remaining >= 0, "@%.3f %s: %s remaining, q: %s" % (R.time, self, remaining, q)
 
         # Direct traffic
         to_pop = 0
@@ -504,6 +504,7 @@ class ToRSwitch:
         else:
             if self.n_cache == 0:
                 self.flows_rotor[flow.dst].append(flow)
+                self.capacity[flow.dst] -= flow.remaining_packets
                 for port_id in self.rotor_ports:
                     self._send(port_id)
 
