@@ -62,7 +62,7 @@ fct_cdf %>%
 ```
 
 ```{r many-experiments, }
-flow_fns <- list.files(path = "../simulator/", pattern = "drain.*1000ms.csv")
+flow_fns <- list.files(path = "../simulator/", pattern = "drain.*10000ms.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
            base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1) %>% strsplit("drain-") %>% map_chr(2),
@@ -104,36 +104,59 @@ if (FALSE) {
 }
 
 flows <- experiments %>% 
-  mutate(arrivals = map(paste0("../simulator/", filename), read_csv, col_types = "iddd")) %>% 
+  mutate(arrivals = map(paste0("../simulator/", filename), read_csv, col_types = "iiidddd")) %>% 
   select(exp_id, arrivals) %>% 
-  unnest(arrivals)
+  unnest(arrivals) %>% 
+  mutate(size_gb = size/1e9)
 
 
 arrive_at_start <- TRUE
 if (arrive_at_start) {
-  flows %>%
-    filter(flow_id > 16512) %>%
+  end_times <- flows %>%
+    #filter(flow_id > 16512) %>%
+    group_by(exp_id, src, dst) %>% 
+      summarize(end = max(end),
+                size_gb = sum(size_gb)) %>% 
     group_by(exp_id) %>%
-      summarize(fct = mean(end),
-                fct_hi = quantile(end, .9)) %>%
+      summarize(gbits_sent = sum(size_gb),
+                mean = mean(end),
+                `90%-ile` = quantile(end, .9)) %>%
       ungroup() %>% 
+    reshape2::melt(measure.vars = c("mean", "90%-ile"),
+                   variable.name = "type",
+                   value.name    = "fct") %>% 
     left_join(experiments) %>%
+    mutate(real_load = gbits_sent/(n_tor*n_switches*10*duration/1000))
     
-    ggplot(aes(x = load,
-               y = fct_hi,
+  end_times %>% 
+    ggplot(aes(x = real_load,
+               y = fct/1000,
+               linetype = type,
                color = as_factor(n_cache),
                shape = as_factor(n_cache))) +
     #geom_smooth(method = "lm",
     #            size = .2) +
+    geom_abline(slope = end_times$duration[1]/1000) +
     geom_line() +
-    geom_point(size = 5) +
+    #annotate("blank", x = c(0,1), y = c(0,10)) +
+    geom_point(size = 4) +
+    scale_x_percent() +
     theme_ipsum_rc() +
-    labs(title = "90-percentile drainage time per rotor-pair (ish)",
-         subtitle = "129 ToRs for 1s, 32 switches: 0 expander",
+    theme(legend.position = c(.9, .4),
+          legend.background = element_rect(fill = alpha("white", .7),
+                                           size = 0)) +
+    labs(title = "90%-ile drainage time per rotor-pair",
+         subtitle = "129 ToRs for 10s, 32 switches, 0 expander",
          color = "# cache sw",
-         shape = "# cache sw")
+         shape = "# cache sw",
+         linetype = NULL,
+         x = "Actual load",
+         y = "Demand completion time",
+         caption = "https://github.com/nibrivia/rotorsim")
 }
-  
+```
+
+```{r}
 fcts <- flows %>% 
   mutate(fct = end - start) %>% 
   group_by(exp_id, size) %>% 
