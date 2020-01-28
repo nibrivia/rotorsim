@@ -201,10 +201,9 @@ def main(
         if verbose and not no_pause:
             R.call_in(time, print_demand, net.tors, priority=99)
             R.call_in(time, pause, priority=100)
-    for time in range(time_limit*10):
-        R.call_in(time,
-                print, "\033[1;91m%dms of %dms \033[00m" % (time, time_limit),
-                priority = -100)
+
+    #print time
+    R.call_in(0, print_time, time_limit)
 
     print("Starting simulator...")
     # Start the simulator
@@ -219,6 +218,12 @@ def main(
             f.dump_status()
 
     print("done")
+
+
+def print_time(time_limit):
+    print("\033[1;91m%dms of %dms \033[00m" % (R.time, time_limit))
+    R.call_in(1, print_time, time_limit)
+
 
 if __name__ == "__main__":
 
