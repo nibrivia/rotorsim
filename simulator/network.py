@@ -12,6 +12,7 @@ class RotorNet:
                  n_tor,
                  packets_per_slot,
                  n_switches,
+                 arrive_at_start,
                  n_cache    = None,
                  n_xpand    = None,
                  slice_duration = 1, 
@@ -22,6 +23,7 @@ class RotorNet:
 
         # Network config
         self.n_tor   = n_tor
+        self.arrive_at_start = arrive_at_start
 
         self.n_switches = n_switches
 
@@ -184,14 +186,19 @@ class RotorNet:
 
         # Start events
         R.limit = time_limit
+        if self.arrive_at_start:
+            R.limit = time_limit * 5
         R.run_next()
 
     def open_connection(self, flow):
         # override src and dst to tor objects
         self.tors[flow.src].recv_flow(flow)
 
-        wait, flow = next(self.flow_gen)
-        R.call_in(wait, self.open_connection, flow)
+        try:
+            wait, flow = next(self.flow_gen)
+            R.call_in(wait, self.open_connection, flow)
+        except:
+            pass
 
         # begin sending
         #tcpflow.send()

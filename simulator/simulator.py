@@ -118,6 +118,10 @@ def load_flows(slot_duration):
         "--no-pause",
         is_flag=True
 )
+@click.option(
+        "--arrive-at-start",
+        is_flag=True
+)
 def main(
         load,
         n_tor,
@@ -125,6 +129,7 @@ def main(
         n_xpand,
         n_cache,
         bandwidth,
+        arrive_at_start,
         latency,
         time_limit,
         workload,
@@ -154,6 +159,7 @@ def main(
                    n_cache = n_cache,
                    n_xpand = n_xpand,
                    n_tor   = n_tor,
+                   arrive_at_start = arrive_at_start,
                    packets_per_slot     = packets_per_slot,
                    reconfiguration_time = reconfiguration_time/1000,
                    slice_duration       = slice_duration, # R.time will be in ms
@@ -180,6 +186,7 @@ def main(
             num_tors   = n_tor,
             num_switches = n_switches,
             time_limit = time_limit,
+            arrive_at_start = arrive_at_start,
             workload_name   = workload,
             results_file = base_fn + "-flows.csv")
 
@@ -187,12 +194,12 @@ def main(
 
     # set up printing
     time = 0
-    while time < time_limit:
+    while time < time_limit*10:
         time += slice_duration
         if verbose and not no_pause:
             R.call_in(time, print_demand, net.tors, priority=99)
             R.call_in(time, pause, priority=100)
-    for time in range(time_limit):
+    for time in range(time_limit*10):
         R.call_in(time,
                 print, "\033[1;91m%dms of %dms \033[00m" % (time, time_limit),
                 priority = -100)

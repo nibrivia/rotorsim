@@ -23,6 +23,7 @@ class Registry:
 
     def stop(self):
         self.running = False
+        print("@%.3f simulation stopped" % R.time)
 
     def run_next(self):
         """This function will only return when we're done with all events.

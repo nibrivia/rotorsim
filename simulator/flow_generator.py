@@ -76,7 +76,7 @@ class Flow:
 
     def rx(self, n=1, t = None):
         self.n_recv += n
-        assert self.n_recv <= self.n_sent, self
+        assert self.n_recv <= self.n_sent, "%s recv/sent/size %d/%d/%d" % (self, self.n_recv, self.n_sent, self.size_packets)
         assert self.n_recv <= self.size_packets
 
         if self.n_recv == self.size_packets:
@@ -92,6 +92,9 @@ class Flow:
             global FLOWS, N_DONE
             N_DONE[0] += 1
             del FLOWS[self.id]
+
+            if len(FLOWS) == 0:
+                R.stop()
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
@@ -141,6 +144,7 @@ WORKLOAD_FNS = defaultdict(
 
 
 # MAIN ===========================================================
+global FLOWS, N_FLOWS, N_DONE
 FLOWS = dict()
 N_FLOWS = [0]
 N_DONE  = [0]
@@ -151,6 +155,7 @@ def generate_flows(
     num_tors,
     num_switches,
     workload_name,
+    arrive_at_start = False,
     results_file='flows.csv',
 ):
 
@@ -176,27 +181,61 @@ def generate_flows(
     print("iflow all %.3fus" % (iflow_wait*1000))
     # np.poisson returns int, so in ns, then convert back to ms
 
-    flow_id = -1
-    while True:
-        flow_id += 1
-        wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
+    if arrive_at_start:
+        pair_size_n = dict()
+        for _ in range(n_flows):
+            pair = np.random.choice(len(tor_pairs), size = 1)[0]
+            size = workload.get_flows(n = 1)[0]
 
-        # pairs
-        #print("pairs")
-        pair_id = np.random.choice(len(tor_pairs), size = 1)[0]
-        pair = tor_pairs[pair_id]
+            n = pair_size_n.get((pair, size), 0)
+            pair_size_n[(pair, size)] = n+1
 
-        # sizes
-        #print("sizes")
-        size = workload.get_flows(n = 1)[0]
+        flow_id = 0
+        for (pair_id, size), n in pair_size_n.items():
+            src, dst = tor_pairs[pair_id]
 
-        # start, id, size, src, dst
-        #print("Flow gen...", end = "")
-        flow = Flow(R.time + wait, flow_id, size, pair[0], pair[1])
+            # Create flow and over-ride tag
+            f = Flow(0, flow_id, size*n, src, dst)
+            if size < 1e6:
+                f.tag = "xpand"
+            elif size < 1e9:
+                f.tag = "rotor"
+            else:
+                f.tag = "cache"
 
-        # write flows out to csv in increasing arrival order
 
-        global FLOWS, N_FLOWS
-        FLOWS[flow_id] = flow
-        N_FLOWS[0] += 1
-        yield (wait, flow)
+            global FLOWS, N_FLOWS
+            FLOWS[flow_id] = f
+            N_FLOWS[0] += 1
+            flow_id += 1
+            yield (0, f)
+
+
+
+
+
+
+    else:
+        flow_id = -1
+        while True:
+            flow_id += 1
+            wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
+
+            # pairs
+            #print("pairs")
+            pair_id = np.random.choice(len(tor_pairs), size = 1)[0]
+            pair = tor_pairs[pair_id]
+
+            # sizes
+            #print("sizes")
+            size = workload.get_flows(n = 1)[0]
+
+            # start, id, size, src, dst
+            #print("Flow gen...", end = "")
+            flow = Flow(R.time + wait, flow_id, size, pair[0], pair[1])
+
+            # write flows out to csv in increasing arrival order
+
+            FLOWS[flow_id] = flow
+            N_FLOWS[0] += 1
+            yield (wait, flow)
