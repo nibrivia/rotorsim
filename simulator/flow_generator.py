@@ -187,10 +187,10 @@ def generate_flows(
 
     if arrive_at_start:
         flows_per_pair = n_flows/n_pairs
-        rotor_per_pair = math.ceil(flows_per_pair * workload.probs[0])
-        cache_per_pair = math.floor(flows_per_pair * workload.probs[1])
+        rotor_per_pair = flows_per_pair * workload.probs[0]
+        cache_per_pair = flows_per_pair * workload.probs[1]
 
-        print(flows_per_pair, rotor_per_pair, cache_per_pair)
+        print(n_flows, flows_per_pair, rotor_per_pair, cache_per_pair)
         assert cache_per_pair + rotor_per_pair == flows_per_pair
 
 
@@ -200,6 +200,7 @@ def generate_flows(
                 if dst == src:
                     continue
 
+                rotor_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[0])
                 if rotor_per_pair > 0:
                     f = Flow(0, flow_id, rotor_per_pair*workload.sizes[0], src, dst)
                     f.tag = "rotor"
@@ -207,6 +208,7 @@ def generate_flows(
                     yield (0, f)
                     flow_id += 1
 
+                cache_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[1])
                 if cache_per_pair > 0:
                     f = Flow(0, flow_id, cache_per_pair*workload.sizes[1], src, dst)
                     f.tag = "cache"
