@@ -62,10 +62,10 @@ fct_cdf %>%
 ```
 
 ```{r many-experiments, }
-flow_fns <- list.files(path = "../data/", pattern = "257.*2000ms.csv")
+flow_fns <- list.files(path = "../simulator/", pattern = "drain.*1000ms.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
-           base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),
+           base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1) %>% strsplit("drain-") %>% map_chr(2),
            split = strsplit(base_fn, "-"),
            n_tor      = as.integer(map_chr(split, 1)),
            n_switches = strsplit(map_chr(split, 2), ":"),
@@ -74,7 +74,7 @@ experiments <- tibble(filename = flow_fns) %>%
            load       = as.double(map_chr(split, 3)),
            duration   = as.integer(map_chr(split, 4))) %>% 
     filter(n_cache %in% c(0, 16)) %>% 
-    filter(load %in% c(.1, .4, .8)) %>% 
+    #filter(load %in% c(.1, .4, .8)) %>% 
     select(-split, -base_fn)
 
 if (FALSE) {
@@ -104,7 +104,7 @@ if (FALSE) {
 }
 
 flows <- experiments %>% 
-  mutate(arrivals = map(paste0("../data/", filename), read_csv, col_types = "-ddi")) %>% 
+  mutate(arrivals = map(paste0("../simulator/", filename), read_csv, col_types = "-ddi")) %>% 
   select(exp_id, arrivals)
 
 flows <- flows %>% 

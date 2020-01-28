@@ -4,7 +4,7 @@ from itertools import count
 import random
 
 class Registry:
-    def __init__(self, limit = 1000):
+    def __init__(self, limit = float("Inf")):
         # Start allows to start doing some prep before time = 0
         self.time = 0
         self.queue = []

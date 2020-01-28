@@ -168,8 +168,11 @@ def generate_flows(
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
-    capacity  = num_tors*num_switches*bandwidth*1e6*time_limit/1e3 # Gb
-    n_flows   = int(capacity/workload.size*load)
+    n_links = num_tors*num_switches
+    capacity  = n_links*bandwidth*1e6*time_limit/1e3 # Gb
+    n_flows_o = int(capacity/workload.size*load)
+    n_flows   = round(n_flows_o/n_links)*n_links
+    print("diff: %d" % (n_flows_o-n_flows))
     iflow_wait = time_limit/n_flows
 
     # arrivals
@@ -182,37 +185,21 @@ def generate_flows(
     # np.poisson returns int, so in ns, then convert back to ms
 
     if arrive_at_start:
-        pair_size_n = dict()
-        for _ in range(n_flows):
-            pair = np.random.choice(len(tor_pairs), size = 1)[0]
-            size = workload.get_flows(n = 1)[0]
+        flows_per_link = n_flows/n_links
+        rotor_per_link = round(flows_per_link * workload.probs[0])
+        cache_per_link = round(flows_per_link * workload.probs[1])
 
-            n = pair_size_n.get((pair, size), 0)
-            pair_size_n[(pair, size)] = n+1
+        print(rotor_per_link, cache_per_link)
+        assert cache_per_link + rotor_per_link == flows_per_link
+
 
         flow_id = 0
-        for (pair_id, size), n in pair_size_n.items():
-            src, dst = tor_pairs[pair_id]
-
-            # Create flow and over-ride tag
-            f = Flow(0, flow_id, size*n, src, dst)
-            if size < 1e6:
-                f.tag = "xpand"
-            elif size < 1e9:
-                f.tag = "rotor"
-            else:
-                f.tag = "cache"
-
-
-            global FLOWS, N_FLOWS
-            FLOWS[flow_id] = f
-            N_FLOWS[0] += 1
-            flow_id += 1
-            yield (0, f)
-
-
-
-
+        for src in range(num_tors):
+            for dst in range(num_tors):
+                yield (0, Flow(0, flow_id, rotor_per_link*workload.sizes[0], src, dst))
+                flow_id += 1
+                yield (0, Flow(0, flow_id, cache_per_link*workload.sizes[1], src, dst))
+                flow_id += 1
 
 
     else:

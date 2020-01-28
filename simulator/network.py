@@ -185,9 +185,8 @@ class RotorNet:
             t.start()
 
         # Start events
-        R.limit = time_limit
-        if self.arrive_at_start:
-            R.limit = time_limit * 5
+        if not self.arrive_at_start:
+            R.limit = time_limit
         R.run_next()
 
     def open_connection(self, flow):

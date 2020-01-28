@@ -25,7 +25,7 @@ def len_param_space(param_space):
 
 # Runs a single experiment
 def run_experiment(**kwargs):
-    cmd = "python3 simulator.py " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
+    cmd = "python3 simulator.py --arrive-at-start " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
     print(cmd)
     subprocess.run(cmd.split(), stdout=subprocess.DEVNULL)
     print(cmd, "done")
@@ -38,17 +38,18 @@ def run_experiments(p_space):
     n_experiments = len_param_space(param_space)
     print(n_experiments, "experiments to run")
 
-    with concurrent.futures.ProcessPoolExecutor() as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = 15) as executor:
         for params in gen_params(param_space):
             executor.submit(run_experiment, **params)
 
 params = dict(
-        time_limit = [2000],
-        n_switches = [33],
-        n_tor      = [257],
+        time_limit = [1000],
+        n_switches = [32],
+        n_tor      = [129],
         workload   = ["chen"],
+        n_xpand    = [0],
+        load       = [.8, .7, .6, .5, .4, .3, .2, .1],
         n_cache    = [0, 16],
-        load       = [.1, .4, .5, .6, .7, .8],
         )
 
 run_experiments(params)
