@@ -41,6 +41,7 @@ class ToRSwitch:
         self.slice_duration = slice_duration
         self.clock_jitter   = clock_jitter
         self.reconf_time    = reconfiguration_time
+        self.reconf_cache   = 15 # TODO as argument
         if slice_duration is not None:
             self.packet_ttime   = self.slice_duration / packets_per_slot
         if slot_duration is not None:
@@ -289,7 +290,7 @@ class ToRSwitch:
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
 
-                fct = f.remaining_packets * self.packet_ttime
+                fct = f.remaining_packets * self.packet_ttime + self.reconf_cache
                 self.active_flow[port_id] = f
                 lump = f.pop_lump(f.size_packets)
 
