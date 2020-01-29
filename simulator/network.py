@@ -70,6 +70,7 @@ class RotorNet:
                             n_cache = self.n_cache,
                             packets_per_slot = packets_per_slot,
                             slot_duration = slice_duration,
+                            reconfiguration_time = self.reconf_time,
                             clock_jitter  = jitter,
                             verbose = verbose)
                 for i in range(n_tor)]
@@ -101,6 +102,8 @@ class RotorNet:
                 rotor_matchings = self.matchings[matching_i]
                 slot_matchings.append(rotor_matchings)
             self.matchings_by_slot_rotor.append(slot_matchings)
+
+
 
 
         # Distribute to rotors

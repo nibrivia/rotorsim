@@ -13,7 +13,7 @@ class ToRSwitch:
             packets_per_slot, clock_jitter,
             verbose,
             slot_duration = None, slice_duration = None,
-            reconfiguration_time = None
+            reconfiguration_time = 0
             ):
         assert slot_duration is     None or slice_duration is     None
         assert slot_duration is not None or slice_duration is not None
@@ -40,6 +40,7 @@ class ToRSwitch:
         self.slot_duration  = slot_duration
         self.slice_duration = slice_duration
         self.clock_jitter   = clock_jitter
+        self.reconf_time    = reconfiguration_time
         if slice_duration is not None:
             self.packet_ttime   = self.slice_duration / packets_per_slot
         if slot_duration is not None:
@@ -159,9 +160,9 @@ class ToRSwitch:
         # Set a countdown for the next slot, just like normal
         if self.slot_duration is not None:
             self.slot_id = 0
-            self.new_slice = Delay(self.slot_duration, priority = -1000)(self.new_slice)
+            self.new_slice = Delay(self.slot_duration  + self.reconf_time, priority = 1000)(self.new_slice)
         if self.slice_duration is not None:
-            self.new_slice = Delay(self.slice_duration, priority = -1000)(self.new_slice)
+            self.new_slice = Delay(self.slice_duration + self.reconf_time, priority = 1000)(self.new_slice)
         self.new_slice()
         self.make_route()
 
@@ -179,12 +180,12 @@ class ToRSwitch:
     @property
     def slice_t(self):
         assert self.slice_duration is not None
-        return int(R.time/self.slice_duration)
+        return round(R.time/(self.slice_duration+self.reconf_time))
 
     @property
     def slot_t(self):
         assert self.slot_duration is not None
-        return round(R.time/self.slot_duration)
+        return round(R.time/(self.slot_duration+self.reconf_time))
 
     def new_slice(self):
         # Switch up relevant matching
@@ -208,7 +209,7 @@ class ToRSwitch:
         # Set a countdown for the next slot
         self.new_slice() # is a delay() object
 
-    @Delay(0, priority = -1000)
+    @Delay(0, priority = 10)
     def connect_to(self, port_id, tor):
         """This gets called for every rotor and starts the process for that one"""
         # Set the connection
@@ -262,7 +263,6 @@ class ToRSwitch:
     ####################
 
     def next_queue(self, port_id):
-        # Kinda hacky, but ok
         port_type = self.port_type(port_id)
         if port_type == "rotor":
             return self.next_queue_rotor(port_id)
@@ -295,10 +295,8 @@ class ToRSwitch:
                 R.call_in(fct, self.cache_flow_done, port_id = port_id, lump = lump)
 
                 return None # Still not simulating packet level
-        #print("@%.3f no matchings available %s" % (R.time, self))
 
     def cache_flow_done(self, port_id, lump):
-        #print("@%.3f %s done" % (R.time, self.active_flow[port_id]))
         self.vprint("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
 
         flow_id, dst, n = lump
@@ -315,7 +313,7 @@ class ToRSwitch:
 
         # Get connection info
         rotor_id = port_id # TODO translate this
-        dst, _ = self.ports[rotor_id]
+        dst, dst_q = self.ports[rotor_id]
 
         # Old indirect traffic goes first
         q = self.lumps_ind[dst.id]
@@ -374,7 +372,7 @@ class ToRSwitch:
             q.append(lump)
 
         self.out_queue_t[port_id] = self.slot_id
-        dst.rx_rotor(q)
+        dst_q.recv((dst.id, port_id, self.slot_t, q))
 
     @Delay(0, priority = 100) #do last
     def rx_rotor(self, lumps):

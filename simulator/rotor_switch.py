@@ -32,25 +32,25 @@ class RotorSwitch:
         self.matchings_by_slot = matchings_by_slot
         self.n_rotor = n_rotor
 
-    def start(self, slice_duration, reconf_time = None, is_rotor = True):
-        self.reconf_time = 0 # TODO
+    def start(self, slice_duration, reconf_time = 0, is_rotor = True):
+        self.reconf_time = reconf_time # TODO
 
-        self._enable()
+        self._disable()
         self.install_matchings(self.matchings_by_slot[0])
 
         # Create a recursive call
         if slice_duration is not None and slice_duration > 0:
-            self.new_slice = Delay(slice_duration, priority = -1000)(self._new_slice)
+            self.new_slice = Delay(slice_duration + reconf_time, priority = 2)(self._new_slice)
             self.is_rotor = is_rotor
             self.slice_duration = slice_duration
         else:
             self.new_slice = lambda: None
 
+        R.call_in(slice_duration, priority = 1, fn = self._disable)
         self._new_slice()
 
     # Returns True/False if the connection can be established
     def request_matching(self, tor, dst_id):
-        #print("%s: %s requesting matching to %s" % (self, tor, dst_id))
         # You should know better than that
         assert self.available_up[tor.id]
 
@@ -83,7 +83,7 @@ class RotorSwitch:
 
     @property
     def slot_t(self):
-        return round(R.time / self.slice_duration)
+        return round(R.time / (self.slice_duration+self.reconf_time))
 
     def _new_slice(self):
         n_slots = len(self.matchings_by_slot)
@@ -91,8 +91,8 @@ class RotorSwitch:
         # Skip if it's not our turn
         if not self.is_rotor and self.slice_t % self.n_rotor != self.id:
             assert False
-            self.new_slice() # This passes through, it has a delay on it
-            return
+            #self.new_slice() # This passes through, it has a delay on it
+            #return
 
         slot_id = self.slot_t % n_slots
         if self.verbose:
@@ -102,9 +102,9 @@ class RotorSwitch:
         self.install_matchings(current_matchings)
 
         # Re-call ourselves
-        self.new_slice()
+        self._enable()
         R.call_in(self.slice_duration, self._disable)
-        R.call_in(self.slice_duration + self.reconf_time, self._disable)
+        self.new_slice()
 
 
 
@@ -114,7 +114,7 @@ class RotorSwitch:
         self.enabled = True
 
     def install_matchings(self, matchings):
-        self._disable()
+        assert not self.enabled, "@%.3f" % R.time
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time, high priority so that reconf 0 has no down time
@@ -133,21 +133,33 @@ class RotorSwitch:
             tor.connect_queue(port_id = self.id, switch = self, queue = handle)
 
     def recv(self, tor, packet):
-        if self.enabled:
-            dst = self.dests[tor.id]
-            if self.verbose:
-                p = packet
-                print("@%.3f (%2d)    %d  ->%d %s\033[00m"
-                        % (R.time, self.id, tor.id, dst.id, p))
-                assert p.intended_dest == dst.id
-            if LOG is not None:
-                LOG.log(src = tor, dst = dst, rotor = self, packet = packet)
+        if not self.enabled:
+            assert False,\
+                    "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
 
-            self.dests[tor.id].recv(packet)
+        dst = self.dests[tor.id]
+        if self.is_rotor:
+            intended_dst, port_id, slot_t, lump = packet
+            assert intended_dst == dst.id, \
+                    "%.3f %s %d:%d->(%d) actual %d. Tor slot %d Rot slot %d\n%s" % (
+                        R.time,
+                        self,
+                        tor.id, port_id,
+                        intended_dst, dst.id,
+                        slot_t, self.slot_t,
+                        self.matchings_by_slot[self.slot_t][tor.id][1].id)
+            dst.rx_rotor(lump)
+            return
 
-        else:
-            # Could assert false, but just drop
-            assert False, "%s: Dropping packets from tor %s" % (self, tor)
+        if self.verbose or True:
+            p = packet
+            print("@%s %.3f (%2d)    %d  ->%d %s\033[00m"
+                    % (self.enabled, R.time, self.id, tor.id, dst.id, p))
+            assert p.intended_dest == dst.id
+        if LOG is not None:
+            LOG.log(src = tor, dst = dst, rotor = self, packet = packet)
+
+        self.dests[tor.id].recv(packet)
 
     def __str__(self):
         return "Rot %s" % self.id

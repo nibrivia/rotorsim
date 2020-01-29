@@ -70,7 +70,7 @@ def load_flows(slot_duration):
 @click.option(
         "--reconfiguration_time",
         type=float,
-        default=0,
+        default=10,
         help='in us, disabled if 0'
 )
 @click.option(
