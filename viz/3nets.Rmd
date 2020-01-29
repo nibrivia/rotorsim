@@ -105,7 +105,7 @@ if (FALSE) {
 }
 
 flows <- experiments %>% 
-  mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "iiidddd")) %>% 
+  mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "iciidddd")) %>% 
   select(exp_id, arrivals) %>% 
   unnest(arrivals) %>% 
   mutate(size_gb = size/1e9)
@@ -132,23 +132,23 @@ if (arrive_at_start) {
     left_join(experiments) %>%
     mutate(real_load = gbits_sent/(n_tor*n_switches*10*duration/1000))
     
-  stat_type <- "max"
+  stat_type <- "99%-ile"
   end_times %>% 
     filter(type == stat_type) %>% 
     ggplot(aes(x = real_load,
                y = fct/1000,
-               linetype = type,
                color = as_factor(n_cache),
                shape = as_factor(n_cache))) +
     #geom_smooth(method = "lm",
     #            size = .2) +
     geom_abline(slope = end_times$duration[1]/1000) +
     geom_line() +
+    #geom_label(aes(label = load), nudge_x = .02) +
     #annotate("blank", x = c(0,1), y = c(0,10)) +
     geom_point(size = 4) +
     scale_x_percent() +
     theme_ipsum_rc() +
-    theme(legend.position = c(.9, .4),
+    theme(legend.position = c(.1, .8),
           legend.background = element_rect(fill = alpha("white", .7),
                                            size = 0)) +
     labs(title = paste(stat_type, "drainage time per rotor-pair"),
