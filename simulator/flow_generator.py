@@ -14,6 +14,7 @@ FLOWS = dict()
 N_FLOWS = [0]
 N_DONE  = [0]
 
+import csv
 from collections import defaultdict
 from helpers import *
 from flow import *
@@ -34,6 +35,12 @@ class FlowDistribution:
     def get_flows(self, n=1):
         return np.random.choice(self.sizes, size = n, p = self.probs)
 
+def dist_from_file(filename):
+    with open(filename) as f:
+        reader = csv.reader(f)
+        next(reader) # skip header
+        cdf    = [(float(prob), int(size)*8) for size, prob in reader]
+    return FlowDistribution(cdf)
 
 def weights_to_cdf(weights):
     w_sum = sum(w for w, s in simple_weights)
@@ -56,6 +63,7 @@ rotor_cdf = [(1, 10e6)]
 cache_cdf = [(1, 1e9)]
 WORKLOAD_FNS = defaultdict(
         #websearch   = FlowDistribution(websearch_cdf),
+        datamining  = dist_from_file("workloads/datamining.csv"),
         chen        = FlowDistribution(simple_cdf),
         xpand       = FlowDistribution(xpand_cdf),
         rotor       = FlowDistribution(rotor_cdf),
