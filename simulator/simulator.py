@@ -209,13 +209,13 @@ def main(
     # Start the simulator
     net.run(flow_gen = flow_gen, time_limit = time_limit)
 
+    for f in FLOWS.values():
+        LOG.log_flow_done(f)
+
     if LOG is not None:
         LOG.close()
 
     # dump status for all flows
-    if verbose and False:
-        for f in flows:
-            f.dump_status()
 
     print("done")
 

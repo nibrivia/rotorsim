@@ -45,6 +45,7 @@ class Flow:
         self.n_sent = 0
         self.n_recv = 0
 
+        self.end = float("nan")
 
         if size < 1e6:
             self.tag = "xpand"
