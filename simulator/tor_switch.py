@@ -144,6 +144,7 @@ class ToRSwitch:
         self.tors = tors
 
     def start(self):
+        """Call once at setup"""
         # Rotor
         #######
 
@@ -306,6 +307,7 @@ class ToRSwitch:
         self.switches[port_id].release_matching(self)
 
     def next_queue_rotor(self, port_id):
+        """Sends over a lump"""
         # Check if we've computed this before
         queue_t  = self.out_queue_t[port_id]
         if queue_t == self.slot_id:
@@ -388,7 +390,7 @@ class ToRSwitch:
                 self.lumps_ind_n[dst] += n
 
     def next_queue_xpand(self, port_id):
-        # Priority queue
+        """Gets the next queue for xpander"""
 
         # If there are already packets waiting
         if self.buffers_fst[port_id].size > 0:
@@ -418,6 +420,7 @@ class ToRSwitch:
 
     # Useful only for pretty prints: what comes first, packets second
     def _send(self, port_id):
+        """Called for every port, attempts to send"""
         # If we're still transmitting, stop
         if not self.out_enable[port_id]:
             return
@@ -485,6 +488,7 @@ class ToRSwitch:
 
 
     def recv_flow(self, flow):
+        """Receives a new flow to serve"""
         # Add the flow, and then attempt to send
         if flow.tag == "xpand":
             path, _ = self.route[flow.dst]
@@ -515,14 +519,6 @@ class ToRSwitch:
                 for port_id in self.cache_ports:
                     self._send(port_id)
 
-
-
-
-    #TODO remove
-    @Delay(0)
-    def add_demand_to(self, dst, packets):
-        for p in packets:
-            self._recv(p)
 
     # Printing stuffs
     ################
