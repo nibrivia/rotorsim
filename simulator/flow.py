@@ -1,6 +1,7 @@
 import math
 from logger import LOG
 from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS
+from event import R
 
 class Packet:
     def __init__(self, src_id, dst_id, seq_num, tag, flow_id, is_last):
