@@ -177,7 +177,7 @@ class RotorNet:
         self.flow_gen = flow_gen
         wait, flow = next(flow_gen)
         # make sure this isn't the first thing we do
-        R.call_in(wait, self.open_connection, flow, priority=101)
+        R.call_in(wait, self.open_connection, flow, priority=-1)
 
         # Register first events
         for s_id, s in enumerate(self.switches):
@@ -195,17 +195,13 @@ class RotorNet:
         R.run_next()
 
     def open_connection(self, flow):
-        # override src and dst to tor objects
         self.tors[flow.src].recv_flow(flow)
 
         try:
             wait, flow = next(self.flow_gen)
-            R.call_in(wait, self.open_connection, flow)
+            R.call_in(wait, priority = -1, fn = self.open_connection, flow = flow)
         except:
             pass
-
-        # begin sending
-        #tcpflow.send()
 
     def print_demand(self):
         if self.verbose:

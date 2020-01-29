@@ -51,7 +51,6 @@ class RotorSwitch:
 
     # Returns True/False if the connection can be established
     def request_matching(self, tor, dst_id):
-        # You should know better than that
         assert self.available_up[tor.id]
 
         # Make sure the connection can be established
@@ -66,9 +65,7 @@ class RotorSwitch:
 
         return True
 
-
     def release_matching(self, tor):
-        #print("%s releasing matching from %s" % (self, tor))
         self.available_up[tor.id] = True
         dst = self.dests[tor.id]
         self.available_dn[dst.id] = True
