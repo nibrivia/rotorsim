@@ -15,7 +15,7 @@ from logger import LOG
 
 # HELPERS ========================================================
 
-BYTES_PER_PACKET = 1500
+BYTES_PER_PACKET = 10000
 
 class Packet:
     def __init__(self, src_id, dst_id, seq_num, tag, flow_id, is_last):
@@ -169,12 +169,10 @@ def generate_flows(
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
-    n_pairs = (num_tors*(num_tors-1))
-    n_links = num_tors*num_switches
-    capacity  = n_links*bandwidth*1e6*time_limit/1e3 # Gb
-    n_flows_o = int(capacity/workload.size*load)
-    n_flows   = round(n_flows_o/n_pairs)*n_pairs
-    print("diff: %d" % (n_flows_o-n_flows))
+    n_pairs  = (num_tors*(num_tors-1))
+    n_links  = num_tors*num_switches
+    capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
+    n_flows  = int(capacity/workload.size*load)
     iflow_wait = time_limit/n_flows
 
     # arrivals
