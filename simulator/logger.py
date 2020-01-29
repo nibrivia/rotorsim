@@ -9,10 +9,10 @@ class Log:
 
         # Initialize the .csv
         self.file = open(fn, "w")
-        print("flow_id,src,dst,start,end,size,fct", file = self.file)
+        print("flow_id,tag,src,dst,start,end,size,fct", file = self.file)
 
     def log_flow_done(self, flow):
-        msg = "%d,%d,%d,%.3f,%.3f,%d,%.3f\n" % (flow.id, flow.src, flow.dst, flow.arrival, flow.end, flow.size, flow.end - flow.arrival)
+        msg = "%d,%s,%d,%d,%.3f,%.3f,%d,%.3f\n" % (flow.id, flow.tag, flow.src, flow.dst, flow.arrival, flow.end, flow.size, flow.end - flow.arrival)
         self.cache.append(msg)
         if len(self.cache) > 100:
             self._flush()
