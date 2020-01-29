@@ -4,7 +4,7 @@ from event import R
 from logger import LOG, init_log
 from helpers import *
 #from tcp_flow import TCPFlow, BYTES_PER_PACKET
-from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE
+from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PACKET
 import sys
 import click
 import math
@@ -150,7 +150,6 @@ def main(
             base_fn = "drain-" + base_fn
         init_log(fn = base_fn + ".csv")
 
-    BYTES_PER_PACKET=1500
     packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
 
     print("Setting up network...")
