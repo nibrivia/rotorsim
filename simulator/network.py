@@ -185,7 +185,8 @@ class RotorNet:
                 s.start(slice_duration = self.slice_duration,
                         reconf_time    = self.reconf_time)
             else:
-                s.start(slice_duration = float("Inf"))
+                s.start(slice_duration = float("Inf"),
+                        is_rotor = False)
         for t in self.tors:
             t.start()
 
@@ -199,7 +200,8 @@ class RotorNet:
 
         try:
             wait, flow = next(self.flow_gen)
-            R.call_in(wait, priority = -1, fn = self.open_connection, flow = flow)
+            R.call_in(wait, priority = -1,
+                    fn = self.open_connection, flow = flow)
         except:
             pass
 

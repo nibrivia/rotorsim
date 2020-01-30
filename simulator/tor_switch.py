@@ -492,33 +492,29 @@ class ToRSwitch:
         """Receives a new flow to serve"""
         # Add the flow, and then attempt to send
         if flow.tag == "xpand":
+            if self.n_xpand == 0:
+                self.flows_rotor[flow.dst].append(flow)
+                self.capacity[flow.dst] -= flow.remaining_packets
+                return
+
             path, _ = self.route[flow.dst]
             n_tor   = path[0]
             port_id = self.tor_to_port[n_tor]
 
             self.flows_xpand[port_id].append(flow)
-            self._send(port_id)
             return
 
         if flow.tag == "rotor":
             self.flows_rotor[flow.dst].append(flow)
             self.capacity[flow.dst] -= flow.remaining_packets
-            for port_id in self.rotor_ports:
-                self._send(port_id)
             return
 
         if flow.tag == "cache":
             if self.n_cache == 0:
                 self.flows_rotor[flow.dst].append(flow)
                 self.capacity[flow.dst] -= flow.remaining_packets
-                for port_id in self.rotor_ports:
-                    self._send(port_id)
-
             else:
                 self.flows_cache.append(flow)
-                # TODO attempt to create a new cache connection
-                for port_id in self.cache_ports:
-                    self._send(port_id)
 
 
     # Printing stuffs

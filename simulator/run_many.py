@@ -44,12 +44,12 @@ def run_experiments(p_space):
 
 params = dict(
         time_limit = [1000],
-        n_switches = [32],
-        n_tor      = [129],
-        workload   = ["chen"],
+        n_switches = [108],
+        n_tor      = [648],
+        workload   = ["datamining"],
         n_xpand    = [0],
-        load       = [.8, .7, .6, .5, .4, .3, .2, .1],
-        n_cache    = [0, 16],
+        load       = [.01, .10, .25, .30, .40],
+        n_cache    = [0],
         )
 
 run_experiments(params)

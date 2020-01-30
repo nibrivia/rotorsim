@@ -115,6 +115,7 @@ arrive_at_start <- TRUE
 if (arrive_at_start) {
   end_times <- flows %>%
     #filter(flow_id > 16512) %>%
+    
     group_by(exp_id, src, dst) %>% 
       summarize(end = max(end),
                 size_gb = sum(size_gb)) %>% 
@@ -144,7 +145,7 @@ if (arrive_at_start) {
     geom_abline(slope = end_times$duration[1]/1000) +
     geom_line() +
     #geom_label(aes(label = load), nudge_x = .02) +
-    #annotate("blank", x = c(0,1), y = c(0,10)) +
+    annotate("blank", x = c(0.8), y = c(2.5)) +
     geom_point(size = 4) +
     scale_x_percent() +
     theme_ipsum_rc() +

@@ -87,9 +87,8 @@ class RotorSwitch:
 
         # Skip if it's not our turn
         if not self.is_rotor and self.slice_t % self.n_rotor != self.id:
-            assert False
-            #self.new_slice() # This passes through, it has a delay on it
-            #return
+            self._enable()
+            return
 
         slot_id = self.slot_t % n_slots
         if self.verbose:
@@ -102,7 +101,6 @@ class RotorSwitch:
         self._enable()
         R.call_in(self.slice_duration, self._disable)
         self.new_slice()
-
 
 
     def _disable(self):
@@ -134,7 +132,10 @@ class RotorSwitch:
             assert False,\
                     "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
 
+        # Get destination
         dst = self.dests[tor.id]
+
+        # Some checking for rotors
         if self.is_rotor:
             intended_dst, port_id, slot_t, lump = packet
             assert intended_dst == dst.id, \
@@ -148,14 +149,14 @@ class RotorSwitch:
             dst.rx_rotor(lump)
             return
 
-        if self.verbose or True:
+        # Print
+        if self.verbose:
             p = packet
             print("@%s %.3f (%2d)    %d  ->%d %s\033[00m"
                     % (self.enabled, R.time, self.id, tor.id, dst.id, p))
             assert p.intended_dest == dst.id
-        if LOG is not None:
-            LOG.log(src = tor, dst = dst, rotor = self, packet = packet)
 
+        # Send non-rotor packet
         self.dests[tor.id].recv(packet)
 
     def __str__(self):
