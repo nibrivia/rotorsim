@@ -523,6 +523,8 @@ class ToRSwitch:
                 return self.recv_flow(flow, add_to = add_to)
 
             self.flows_cache.append(flow)
+            for cache_port in self.cache_ports:
+                self._send(cache_port)
 
 
     # Printing stuffs
