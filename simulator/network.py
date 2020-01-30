@@ -117,6 +117,7 @@ class RotorNet:
 
         # EXPANDER
         ##########
+        xpand_matchings = {}
         for i, xpand_id in enumerate(self.xpand_ports):
             # Install one matching per switch, never changes
             xpand = self.switches[xpand_id]
@@ -134,14 +135,13 @@ class RotorNet:
                         break
                 if found:
                     print("found one!")
+            matching = [(self.tors[src], self.tors[dst]) for src, dst in enumerate(tor_ids)]
+            xpand_matchings[xpand_id] = matching
+            xpand.add_matchings([matching], 1)
 
-            xpand_matchings = [self.matchings[i]]
-            xpand.add_matchings(xpand_matchings, 1)
+
         for tor in self.tors:
-            all_xpand_matchings = zip(self.xpand_ports,
-                    (self.matchings[i] for i, _ in enumerate(self.xpand_ports)))
-            tor_xpand_matchings = {xpand_id: [d for s, d in m if s == tor][0]
-                    for xpand_id, m in all_xpand_matchings}
+            tor_xpand_matchings = {xpand_id: m[tor.id][1] for xpand_id, m in xpand_matchings.items()}
             tor.add_xpand_matchings(tor_xpand_matchings)
 
 
