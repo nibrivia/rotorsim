@@ -10,10 +10,13 @@ class Empty:
 class RotorSwitch:
     def __init__(self,
             id, n_ports,
+            tag,
             verbose):
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]
+        self.tag   = tag
+        self.is_rotor = tag == "rotor"
         # dests[1] is the destination of a packet arriving in on port 1
 
         # for cache
@@ -32,7 +35,7 @@ class RotorSwitch:
         self.matchings_by_slot = matchings_by_slot
         self.n_rotor = n_rotor
 
-    def start(self, slice_duration, reconf_time = 0, is_rotor = True):
+    def start(self, slice_duration, reconf_time = 0):
         self.reconf_time = reconf_time # TODO
 
         self._disable()
@@ -41,7 +44,6 @@ class RotorSwitch:
         # Create a recursive call
         if slice_duration is not None and slice_duration > 0:
             self.new_slice = Delay(slice_duration + reconf_time, priority = 2)(self._new_slice)
-            self.is_rotor = is_rotor
             self.slice_duration = slice_duration
         else:
             self.new_slice = lambda: None

@@ -59,6 +59,7 @@ class RotorNet:
         self.switches = [RotorSwitch(
                             id = i,
                             n_ports  = n_tor,
+                            tag = self.port_type(i),
                             verbose = verbose)
                 for i in range(self.n_switches)]
 
@@ -89,7 +90,6 @@ class RotorNet:
         self.matchings = [[(self.tors[src], self.tors[dst]) for src, dst in m]
                 for m in self.matchings]
 
-
         # This is what we'll distribute
         self.matchings_by_slot_rotor = []
         for slot in range(self.n_slots):
@@ -103,9 +103,6 @@ class RotorNet:
                 slot_matchings.append(rotor_matchings)
             self.matchings_by_slot_rotor.append(slot_matchings)
 
-
-
-
         # Distribute to rotors
         for rotor_id in self.rotor_ports:
             rotor = self.switches[rotor_id]
@@ -113,6 +110,7 @@ class RotorNet:
                     self.matchings_by_slot_rotor[slot][rotor_id]
                             for slot in range(self.n_slots)]
             rotor.add_matchings(rotor_matchings_by_slot, self.n_rotor)
+
         # Distribute to ToRs
         for tor in self.tors:
             tor.add_rotor_matchings(self.matchings_by_slot_rotor)
@@ -122,6 +120,21 @@ class RotorNet:
         for i, xpand_id in enumerate(self.xpand_ports):
             # Install one matching per switch, never changes
             xpand = self.switches[xpand_id]
+            found = False
+            while not found:
+                tor_ids = [i for i in range(n_tor)]
+                random.shuffle(tor_ids)
+                rand_matching = [(i, j) for i, j in enumerate(tor_ids)]
+
+                found = True
+                for src, dst in rand_matching:
+                    if src == dst:
+                        found = False
+                        print("try again")
+                        break
+                if found:
+                    print("found one!")
+
             xpand_matchings = [self.matchings[i]]
             xpand.add_matchings(xpand_matchings, 1)
         for tor in self.tors:
@@ -144,6 +157,13 @@ class RotorNet:
         self.verbose  = verbose
         self.do_pause = do_pause
 
+    def port_type(self, port_id):
+        if port_id < self.n_rotor:
+            return "rotor"
+        if port_id < self.n_rotor + self.n_xpand:
+            return "xpand"
+        else:
+            return "cache"
     @property
     def rotor_ports(self):
         for port_id in range(self.n_rotor):
@@ -185,8 +205,7 @@ class RotorNet:
                 s.start(slice_duration = self.slice_duration,
                         reconf_time    = self.reconf_time)
             else:
-                s.start(slice_duration = float("Inf"),
-                        is_rotor = False)
+                s.start(slice_duration = float("Inf"))
         for t in self.tors:
             t.start()
 
