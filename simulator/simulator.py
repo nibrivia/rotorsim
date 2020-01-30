@@ -221,6 +221,7 @@ def main(
 
 def print_time(time_limit):
     print("\x1b[2K\r\033[1;91m%dms of %dms \033[00m %d" % (R.time, time_limit, len(FLOWS)), end = "")
+    #print("%dms of %dms \033[00m %d" % (R.time, time_limit, len(FLOWS)), end = "")
     R.call_in(1, print_time, time_limit)
 
 

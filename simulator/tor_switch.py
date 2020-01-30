@@ -321,11 +321,13 @@ class ToRSwitch:
         # Old indirect traffic goes first
         q = self.lumps_ind[dst.id]
         remaining = self.packets_per_slot - self.lumps_ind_n[dst.id]
+        self.capacity[dst.id] += self.lumps_ind_n[dst.id]
         self.lumps_ind[dst.id]   = []
         self.lumps_ind_n[dst.id] = 0
 
         #assert self.buffers_ind[dst.id].size == 0
-        assert remaining >= 0, "@%.3f %s: %s remaining, q: %s" % (R.time, self, remaining, q)
+        assert remaining >= 0, "@%.3f %s:%d->%s: %s remaining, q: %s (capacity %s)" % (
+                R.time, self, port_id, dst, remaining, q, str(self.capacity))
 
         # Direct traffic
         to_pop = 0
@@ -350,23 +352,23 @@ class ToRSwitch:
         aggregate = dict()
         while remaining > 0 and delta > 0:
             delta = 0
-            for dst_id, tor in enumerate(self.tors):
-                if dst.capacity[dst_id] <= 0:
+            for flow_dst_id, tor in enumerate(self.tors):
+                if dst.capacity[flow_dst_id] <= 0:
                     continue
-                if len(self.flows_rotor[dst_id]) == 0:
+                if len(self.flows_rotor[flow_dst_id]) == 0:
                     continue
 
-                f = self.flows_rotor[dst_id][0]
+                f = self.flows_rotor[flow_dst_id][0]
 
                 cur_n = aggregate.get(f.id, 0)
                 aggregate[f.id] = cur_n+1
                 remaining -= 1
                 delta += 1
-                dst.capacity[dst_id] -= 1
-                self.capacity[dst_id] += 1
+                dst.capacity[flow_dst_id] -= 1
+                self.capacity[flow_dst_id] += 1
 
                 if cur_n+1 == f.remaining_packets:
-                    self.flows_rotor[dst_id].pop(0)
+                    self.flows_rotor[flow_dst_id].pop(0)
                 if remaining == 0:
                     break
 

@@ -143,7 +143,6 @@ def generate_flows(
 
     else:
         flow_id = -1
-
         for _ in range(n_flows):
             flow_id += 1
             if arrive_at_start:
