@@ -67,6 +67,7 @@ class ToRSwitch:
         self.capacities  = [0    for _ in range(self.n_tor)] # Capacities of destination
         self.capacity    = [self.packets_per_slot for _ in range(self.n_tor)]
         self.out_queue_t = [-1 for rotor_id in self.rotor_ports]
+        self.n_flows = 0
 
         # xpander
         self.connections = dict() # Destination ToRs
@@ -342,6 +343,7 @@ class ToRSwitch:
                 q.append(p)
                 to_pop += 1
 
+        self.n_flows -= to_pop
         for _ in range(to_pop):
             self.flows_rotor[dst.id].pop(0)
         #self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
@@ -350,7 +352,7 @@ class ToRSwitch:
         # TODO should actually load balance
         delta = 1
         aggregate = dict()
-        while remaining > 0 and delta > 0:
+        while remaining > 0 and delta > 0 and self.n_flows > 0:
             delta = 0
             for flow_dst_id, tor in enumerate(self.tors):
                 if dst.capacity[flow_dst_id] <= 0:
@@ -369,6 +371,7 @@ class ToRSwitch:
 
                 if cur_n+1 == f.remaining_packets:
                     self.flows_rotor[flow_dst_id].pop(0)
+                    self.n_flows -= 1
                 if remaining == 0:
                     break
 
@@ -490,14 +493,16 @@ class ToRSwitch:
             return
 
 
-    def recv_flow(self, flow):
+    def recv_flow(self, flow, add_to = None):
         """Receives a new flow to serve"""
         # Add the flow, and then attempt to send
-        if flow.tag == "xpand":
+        if add_to is None:
+            add_to = flow.tag
+
+        if add_to == "xpand":
             if self.n_xpand == 0:
-                self.flows_rotor[flow.dst].append(flow)
-                self.capacity[flow.dst] -= flow.remaining_packets
-                return
+                add_to= "rotor"
+                return self.recv_flow(flow, add_to = add_to)
 
             path, _ = self.route[flow.dst]
             n_tor   = path[0]
@@ -506,17 +511,18 @@ class ToRSwitch:
             self.flows_xpand[port_id].append(flow)
             return
 
-        if flow.tag == "rotor":
+        if add_to == "rotor":
             self.flows_rotor[flow.dst].append(flow)
             self.capacity[flow.dst] -= flow.remaining_packets
+            self.n_flows += 1
             return
 
-        if flow.tag == "cache":
+        if add_to == "cache":
             if self.n_cache == 0:
-                self.flows_rotor[flow.dst].append(flow)
-                self.capacity[flow.dst] -= flow.remaining_packets
-            else:
-                self.flows_cache.append(flow)
+                add_to= "rotor"
+                return self.recv_flow(flow, add_to = add_to)
+
+            self.flows_cache.append(flow)
 
 
     # Printing stuffs
