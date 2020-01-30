@@ -351,7 +351,7 @@ class ToRSwitch:
         while remaining > 0 and delta > 0:
             delta = 0
             for dst_id, tor in enumerate(self.tors):
-                if tor.capacity[dst_id] <= 0:
+                if dst.capacity[dst_id] <= 0:
                     continue
                 if len(self.flows_rotor[dst_id]) == 0:
                     continue
@@ -362,7 +362,7 @@ class ToRSwitch:
                 aggregate[f.id] = cur_n+1
                 remaining -= 1
                 delta += 1
-                tor.capacity[dst_id] -= 1
+                dst.capacity[dst_id] -= 1
                 self.capacity[dst_id] += 1
 
                 if cur_n+1 == f.remaining_packets:

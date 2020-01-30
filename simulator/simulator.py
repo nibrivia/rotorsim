@@ -150,7 +150,7 @@ def main(
             base_fn = "drain-" + base_fn
         init_log(fn = base_fn + ".csv")
 
-    packets_per_slot = int(bandwidth*slice_duration/BYTES_PER_PACKET/8) # (Mb/s)*us/8 works out to (B/s)*s
+    packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
 
     print("Setting up network...")
 

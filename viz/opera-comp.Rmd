@@ -13,10 +13,10 @@ library(tidyverse)
 
 ```{r data, }
 dir <- "../simulator/"
-flow_fns <- list.files(path = dir, pattern = "^648-108:0-.*-1000ms.csv")
+flow_fns <- list.files(path = dir, pattern = "^108-.*30000ms.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
-           base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),
+           base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),# %>% strsplit("drain-") %>% map_chr(2) ,
            split = strsplit(base_fn, "-"),
            n_tor      = as.integer(map_chr(split, 1)),
            n_switches = strsplit(map_chr(split, 2), ":"),
@@ -37,15 +37,17 @@ flows <- experiments %>%
 
 exp <- experiments[1, ]
 lower_limit <- tibble(size_b = 10^(seq(2, 9, length.out = 100)),
-                      delay   = (size_b*8/10e9+500e-9)*1e6)
-flows %>%
+                      delay   = (size_b*8/10e9+500e-9*5)*1e6)
+fcts <- flows %>%
     filter(!is.na(fct)) %>% 
   #filter(load == .01) %>% 
-    group_by(exp_id, load, size, tag) %>% 
+    group_by(exp_id, load, size) %>% 
         summarize(fct99 = quantile(fct, .99),
                   fct   = mean(fct)) %>% 
-        ungroup() %>% 
-    
+        ungroup()
+
+fcts %>% 
+    #filter(load == .01) %>% 
     ggplot(aes(x = size/8,
                y = fct*1e3,
                color = as_factor(load*100))) +
@@ -55,7 +57,7 @@ flows %>%
               inherit.aes = F) +
     geom_vline( xintercept = 15e6, color = "red", linetype = "dashed") +
     scale_x_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
-    scale_y_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
+    scale_y_log10(breaks = 10^((-5:5)*2), label = label_math(format = log10)) +
     theme_ipsum_rc() +
     theme(legend.position = c(.9, .3)) +
     labs(title = "Flow completion times by size",
