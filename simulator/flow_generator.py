@@ -108,7 +108,7 @@ def generate_flows(
     print("iflow all %.3fus" % (iflow_wait*1000))
     # np.poisson returns int, so in ns, then convert back to ms
 
-    if arrive_at_start and workload == "chen":
+    if arrive_at_start and workload_name == "chen":
         flows_per_pair = n_flows/n_pairs
         rotor_per_pair = flows_per_pair * workload.probs[0]
         cache_per_pair = flows_per_pair * workload.probs[1]
