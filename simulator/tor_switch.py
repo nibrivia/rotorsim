@@ -129,7 +129,7 @@ class ToRSwitch:
     def add_xpand_matchings(self, xpand_matchings):
         assert len(xpand_matchings) == self.n_xpand
 
-        if False: # TODO check with > 1 expander
+        if self.id == 0: # TODO check with > 1 expander
             print(xpand_matchings)
             print()
             print(self, "->")
@@ -238,7 +238,7 @@ class ToRSwitch:
 
     # By having a delay 0 here, this means that every ToR will have gone
     # through its start, which will then mean that we can call link_state
-    @Delay(0, priority = 100)
+    @Delay(0, priority = -10)
     def make_route(self, slice_id = None):
         # Routing table
         self.route = [(None, self.n_tor*1000) for _ in range(self.n_tor)]
@@ -260,6 +260,9 @@ class ToRSwitch:
                     # update the cost and add back to the queue
                     self.route[con_id] = (path + [con_id], cost+1)
                     queue.append(con_tor)
+        if self.id == 0:
+            for dst, (route, cost) in enumerate(self.route):
+                print(self, dst, route, cost)
 
 
     # SENDING ALGORITHMS
@@ -509,6 +512,7 @@ class ToRSwitch:
             port_id = self.tor_to_port[n_tor]
 
             self.flows_xpand[port_id].append(flow)
+            self._send(port_id)
             return
 
         if add_to == "rotor":

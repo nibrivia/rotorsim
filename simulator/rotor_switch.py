@@ -154,8 +154,8 @@ class RotorSwitch:
         # Print
         if self.verbose:
             p = packet
-            print("@%s %.3f (%2d)    %d  ->%d %s\033[00m"
-                    % (self.enabled, R.time, self.id, tor.id, dst.id, p))
+            print("@%.3f (%2d)    %d  ->%d %s\033[00m"
+                    % (R.time, self.id, tor.id, dst.id, p))
             assert p.intended_dest == dst.id
 
         # Send non-rotor packet
