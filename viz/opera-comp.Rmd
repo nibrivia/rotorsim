@@ -45,7 +45,8 @@ fcts <- flows %>%
         summarize(fct99 = quantile(fct, .99),
                   fct   = mean(fct)) %>% 
         ungroup() %>% 
-  mutate(fct = ifelse(load == .01, fct, fct99))
+  mutate(fct = ifelse(load == .01, fct, fct99),
+         load_name = paste0(100*load, "% load, ", ifelse(load == 0.01, "avg", "99%-ile")))
 
 opera_colors <- 
   tribble(
@@ -58,38 +59,38 @@ opera_colors <-
   )
 
 fcts %>% 
-  left_join(opera_colors) %>% 
+  #left_join(opera_colors) %>% 
   mutate(load = as_factor(load*100)) %>% 
   
   #sample_n(10000) %>% 
-    #filter(load == .01) %>% 
-    ggplot(aes(x = size/8,
-               y = fct*1e3,
-               color = color,
-               shape = shape,
-               group = exp_id)) +
-    geom_line() +
-    geom_point(size = 2) +
-    geom_line(data = lower_limit, aes(x=size_b, y = delay), linetype = "dashed",
-              inherit.aes = F) +
-    geom_vline( xintercept = 15e6, color = "red", linetype = "dashed") +
-    scale_x_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
-    scale_y_log10(breaks = 10^((-5:5)*2), label = label_math(format = log10)) +
-    theme_ipsum_rc() +
-  scale_color_identity() +
-  scale_shape_identity() +
+  #filter(load == .01) %>% 
+  ggplot(aes(x = size/8,
+             y = fct*1e3,
+             color = load_name,
+             shape = load_name,
+             group = exp_id)) +
+  geom_line(show.legend = F) +
+  geom_point(size = 2) +
+  geom_line(data = lower_limit, aes(x=size_b, y = delay), linetype = "dashed",
+            inherit.aes = F) +
+  geom_vline( xintercept = 15e6, color = "red", linetype = "dashed") +
+  scale_x_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
+  scale_y_log10(breaks = 10^((-5:5)*2), label = label_math(format = log10)) +
+  theme_ipsum_rc() +
+  scale_color_manual(values = opera_colors$color) +
+  scale_shape_manual(values = opera_colors$shape) +
   
-    theme(legend.position = c(.9, .3)) +
-    labs(title = "Flow completion times by size",
-         subtitle = paste0(exp$n_tor, " tors ",
-                           "for ", experiments$duration, "ms. ",
-                           exp$n_switches, " switches: ",
-                           exp$n_cache, " cache, ",
-                           exp$n_xpand, " xpand. "
-                           ),
-         color = "% load", shape = "% load",
-         x = "Flow size (bytes)",
-         y = "Flow completion time (μs)",
-         caption = "github.com/nibrivia/rotorsim")
+  theme(legend.position = c(.85, .3)) +
+  labs(title = "Datamining flow completion times",
+       subtitle = paste0(exp$n_tor, " tors ",
+                         "for ", experiments$duration, "ms. ",
+                         exp$n_switches, " switches: ",
+                         exp$n_cache, " cache, ",
+                         exp$n_xpand, " xpand. "
+       ),
+       color = NULL, shape = NULL,
+       x = "Flow size (bytes)",
+       y = "Flow completion time (μs)",
+       caption = "github.com/nibrivia/rotorsim")
 
 ```
