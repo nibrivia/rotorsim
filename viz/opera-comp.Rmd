@@ -1,0 +1,73 @@
+---
+title: "opera comparison"
+author: "Olivia Brode-Roger"
+date: "1/29/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+```{r data, }
+dir <- "../simulator/"
+flow_fns <- list.files(path = dir, pattern = "^648-108:0-.*-1000ms.csv")
+experiments <- tibble(filename = flow_fns) %>%
+    mutate(exp_id     = seq_along(filename),
+           base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),
+           split = strsplit(base_fn, "-"),
+           n_tor      = as.integer(map_chr(split, 1)),
+           n_switches = strsplit(map_chr(split, 2), ":"),
+           n_xpand    = 0,
+           n_cache    = as.integer(map_chr(n_switches, 2)),
+           n_switches = as.integer(map_chr(n_switches, 1)),
+           load       = as.double(map_chr(split, 3)),
+           duration   = as.integer(map_chr(split, 4))) %>% 
+    filter(n_cache %in% c(0, 16)) %>% 
+    #filter(load %in% c(.1, .4, .8)) %>% 
+    select(-split, -base_fn)
+
+flows <- experiments %>% 
+  mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "iciidddd")) %>% 
+  unnest(arrivals) %>% 
+  mutate(size_gb = size/1e9)
+
+
+exp <- experiments[1, ]
+lower_limit <- tibble(size_b = 10^(seq(2, 9, length.out = 100)),
+                      delay   = (size_b*8/10e9+500e-9)*1e6)
+flows %>%
+    filter(!is.na(fct)) %>% 
+  #filter(load == .01) %>% 
+    group_by(exp_id, load, size, tag) %>% 
+        summarize(fct99 = quantile(fct, .99),
+                  fct   = mean(fct)) %>% 
+        ungroup() %>% 
+    
+    ggplot(aes(x = size/8,
+               y = fct*1e3,
+               color = as_factor(load*100))) +
+    geom_line() +
+    geom_point(size = 2) +
+    geom_line(data = lower_limit, aes(x=size_b, y = delay), linetype = "dashed",
+              inherit.aes = F) +
+    geom_vline( xintercept = 15e6, color = "red", linetype = "dashed") +
+    scale_x_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
+    scale_y_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
+    theme_ipsum_rc() +
+    theme(legend.position = c(.9, .3)) +
+    labs(title = "Flow completion times by size",
+         subtitle = paste0(exp$n_tor, " tors ",
+                           "for ", experiments$duration, "ms. ",
+                           exp$n_switches, " switches: ",
+                           exp$n_cache, " cache, ",
+                           exp$n_xpand, " xpand. "
+                           ),
+         color = "% load",
+         x = "Flow size (bytes)",
+         y = "Flow completion time (μs)",
+         caption = "github.com/nibrivia/rotorsim")
+
+```
