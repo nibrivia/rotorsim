@@ -39,15 +39,18 @@ opera_cmp_plot <- function(dir, flow_fns) {
   
   
   exp <- experiments[1, ]
+  exp$duration <- max(flows$end, na.rm = TRUE)
   lower_limit <- tibble(size_b = 10^(seq(2, 9, length.out = 100)),
-                        delay   = (size_b*8/10e9+500e-9*5)*1e6)
+                        delay   = (size_b*8/10e9+500e-9)*1e6)
   fcts <- flows %>%
     filter(!is.na(fct)) %>% 
     #filter(load == .01) %>% 
-    group_by(exp_id, load, size, tag, n_cache) %>% 
+    group_by(exp_id, size, tag) %>% 
       summarize(fct99 = quantile(fct, .99),
-                fct   = mean(fct)) %>% 
+                fct   = mean(fct),
+                n     = n()) %>% 
       ungroup() %>% 
+    left_join(experiments, by = "exp_id") %>% 
     mutate(fct = ifelse(load <= .01, fct, fct99),
            load_name = paste0(100*load, "% load, ", ifelse(load == 0.01, "avg", "99%-ile")))
   
@@ -86,7 +89,7 @@ opera_cmp_plot <- function(dir, flow_fns) {
     theme(legend.position = c(.85, .3)) +
     labs(title = "Datamining flow completion times",
          subtitle = paste0(exp$n_tor, " tors ",
-                           "for ", experiments$duration, "ms. ",
+                           "for ", exp$duration, "ms. ",
                            exp$n_switches, " switches: ",
                            exp$n_cache, " cache, ",
                            exp$n_xpand, " xpand. "
@@ -98,10 +101,11 @@ opera_cmp_plot <- function(dir, flow_fns) {
 }
 
 dir <- "../simulator/"
-flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.*-10000ms.csv")
+flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.25-10000ms.csv")
+opera_cmp_plot(dir, flow_fns)
 ```
 
-```
+```{r}
 mt_old <- file.mtime(paste0(dir, flow_fns))
 while(TRUE) {
   mt_new <- file.mtime(paste0(dir, flow_fns))
@@ -110,6 +114,6 @@ while(TRUE) {
     print(p)
     mt_old <- mt_new
   }
-  Sys.sleep(3)
+  Sys.sleep(5)
 }
 ```

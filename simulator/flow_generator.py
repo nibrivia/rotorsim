@@ -86,6 +86,8 @@ def generate_flows(
 
     # get workload generator
     workload = WORKLOAD_FNS[workload_name]
+    if workload_name == "datamining" and num_tors == 108:
+        num_switches = 6
 
     # construct tor pairs
     tors = set(range(num_tors))

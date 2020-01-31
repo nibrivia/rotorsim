@@ -60,19 +60,22 @@ class Flow:
         assert self.remaining_packets >= n, \
                 "Flow %d does not have %d packets to send" % (self.id, n)
 
-        p_size = min(self.bits_left, self.bits_per_packet)/8
+        p_size = self.bits_per_packet/8
+        if self.tag == "xpand" and self.remaining_packets == 1:
+            p_size = self.bits_left/8
+
         p = Packet(self.src, self.dst, self.n_sent,
                 self.tag, self.id, self.remaining_packets == 1,
                 size = p_size)
 
         self.remaining_packets -= 1
+        self.bits_left -= n*self.bits_per_packet
         self.n_sent += 1
 
         return p
 
     def rx(self, n=1, t = None):
         self.n_recv += n
-        self.bits_left -= n*self.bits_per_packet
         assert self.n_recv <= self.n_sent, "%s recv/sent/size %d/%d/%d" % (self, self.n_recv, self.n_sent, self.size_packets)
         assert self.n_recv <= self.size_packets
 
