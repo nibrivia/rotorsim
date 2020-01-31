@@ -129,13 +129,6 @@ class ToRSwitch:
     def add_xpand_matchings(self, xpand_matchings):
         assert len(xpand_matchings) == self.n_xpand
 
-        if self.id == 0: # TODO check with > 1 expander
-            print(xpand_matchings)
-            print()
-            print(self, "->")
-            for port_id, m in xpand_matchings.items():
-                print("      -> ", m)
-            print("--\n")
         self.xpand_matchings = xpand_matchings
 
         for port_id, dst_tor in xpand_matchings.items():
@@ -260,9 +253,6 @@ class ToRSwitch:
                     # update the cost and add back to the queue
                     self.route[con_id] = (path + [con_id], cost+1)
                     queue.append(con_tor)
-        if self.id == 0:
-            for dst, (route, cost) in enumerate(self.route):
-                print(self, dst, route, cost)
 
 
     # SENDING ALGORITHMS

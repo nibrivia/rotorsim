@@ -7,25 +7,27 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-library(tidyverse)
-```
 
 ```{r data, }
+require(tidyverse)
+require(scales)
+require(hrbrthemes)
+
 dir <- "../simulator/"
-flow_fns <- list.files(path = dir, pattern = "*-10000ms.csv")
+flow_fns <- list.files(path = dir, pattern = "^108.*datamining.*-1000ms.csv")
 experiments <- tibble(filename = flow_fns) %>%
     mutate(exp_id     = seq_along(filename),
            base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),# %>% strsplit("drain-") %>% map_chr(2) ,
            split = strsplit(base_fn, "-"),
            n_tor      = as.integer(map_chr(split, 1)),
            n_switches = strsplit(map_chr(split, 2), ":"),
-           n_xpand    = 0,
-           n_cache    = as.integer(map_chr(n_switches, 2)),
+           n_xpand    = as.integer(map_chr(n_switches, 2) %>% strsplit(., ",") %>% map(2)),
+           n_cache    = as.integer(map_chr(n_switches, 2) %>% strsplit(., ",") %>% map(1)),
            n_switches = as.integer(map_chr(n_switches, 1)),
-           load       = as.double(map_chr(split, 3)),
-           duration   = as.integer(map_chr(split, 4))) %>% 
-    filter(n_cache %in% c(0, 16)) %>% 
+           workload   = map_chr(split, 3),
+           load       = as.double(map_chr(split, 4)),
+           duration   = as.integer(map_chr(split, 5))) %>% 
+    #filter(n_cache %in% c(0)) %>% 
     #filter(load %in% c(.1, .4, .8)) %>% 
     select(-split, -base_fn)
 
@@ -39,12 +41,12 @@ exp <- experiments[1, ]
 lower_limit <- tibble(size_b = 10^(seq(2, 9, length.out = 100)),
                       delay   = (size_b*8/10e9+500e-9*5)*1e6)
 fcts <- flows %>%
-    filter(!is.na(fct)) %>% 
+  filter(!is.na(fct)) %>% 
   #filter(load == .01) %>% 
-    group_by(exp_id, load, size) %>% 
-        summarize(fct99 = quantile(fct, .99),
-                  fct   = mean(fct)) %>% 
-        ungroup() %>% 
+  group_by(exp_id, load, size, tag, n_cache) %>% 
+    summarize(fct99 = quantile(fct, .99),
+              fct   = mean(fct)) %>% 
+    ungroup() %>% 
   mutate(fct = ifelse(load == .01, fct, fct99),
          load_name = paste0(100*load, "% load, ", ifelse(load == 0.01, "avg", "99%-ile")))
 
@@ -67,18 +69,19 @@ fcts %>%
   ggplot(aes(x = size/8,
              y = fct*1e3,
              color = load_name,
-             shape = load_name,
+             linetype = as_factor(n_cache),
+             #shape = load_name,
              group = exp_id)) +
-  geom_line(show.legend = F) +
-  geom_point(size = 2) +
+  geom_line(show.legend = T) +
+  geom_point(size = 2, aes(color = tag)) +
   geom_line(data = lower_limit, aes(x=size_b, y = delay), linetype = "dashed",
             inherit.aes = F) +
   geom_vline( xintercept = 15e6, color = "red", linetype = "dashed") +
   scale_x_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
   scale_y_log10(breaks = 10^((-5:5)*2), label = label_math(format = log10)) +
   theme_ipsum_rc() +
-  scale_color_manual(values = opera_colors$color) +
-  scale_shape_manual(values = opera_colors$shape) +
+  #scale_color_manual(values = opera_colors$color) +
+  #scale_shape_manual(values = opera_colors$shape) +
   
   theme(legend.position = c(.85, .3)) +
   labs(title = "Datamining flow completion times",

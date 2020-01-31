@@ -33,7 +33,7 @@ class Flow:
 
         self.end = float("nan")
 
-        if size < 15e6:
+        if size < 15e6*8:
             self.tag = "xpand"
         elif size < 1e9:
             self.tag = "rotor"

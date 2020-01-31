@@ -131,10 +131,7 @@ class RotorNet:
                 for src, dst in rand_matching:
                     if src == dst:
                         found = False
-                        print("try again")
                         break
-                if found:
-                    print("found one!")
             matching = [(self.tors[src], self.tors[dst]) for src, dst in enumerate(tor_ids)]
             xpand_matchings[xpand_id] = matching
             xpand.add_matchings([matching], 1)
