@@ -6,6 +6,7 @@ from helpers import *
 from tor_switch import ToRSwitch
 from rotor_switch import RotorSwitch
 from event import Registry, Delay, stop_simulation, R
+from xpand_108 import xpand1
 
 class RotorNet:
     def __init__(self,
@@ -117,24 +118,17 @@ class RotorNet:
 
         # EXPANDER
         ##########
-        xpand_matchings = {}
-        for i, xpand_id in enumerate(self.xpand_ports):
+        xpand_matchings = dict()
+        for i, port_id in enumerate(self.xpand_ports):
             # Install one matching per switch, never changes
-            xpand = self.switches[xpand_id]
-            found = False
-            while not found:
-                tor_ids = [i for i in range(n_tor)]
-                random.shuffle(tor_ids)
-                rand_matching = [(i, j) for i, j in enumerate(tor_ids)]
+            m = xpand1[i]
+            xpand_matchings[port_id] = [(src-1, dst-1) for src, dst in m]
+            xpand_matchings[port_id].extend([(dst-1, src-1) for src, dst in m])
+            xpand_matchings[port_id] = [x for x in sorted(xpand_matchings[port_id])]
+            xpand_matchings[port_id] = [(self.tors[s], self.tors[d]) for s, d in xpand_matchings[port_id]]
 
-                found = True
-                for src, dst in rand_matching:
-                    if src == dst:
-                        found = False
-                        break
-            matching = [(self.tors[src], self.tors[dst]) for src, dst in enumerate(tor_ids)]
-            xpand_matchings[xpand_id] = matching
-            xpand.add_matchings([matching], 1)
+
+            self.switches[port_id].add_matchings([xpand_matchings[port_id]], 1)
 
 
         for tor in self.tors:
