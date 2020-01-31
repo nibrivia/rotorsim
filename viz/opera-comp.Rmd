@@ -76,7 +76,8 @@ opera_cmp_plot <- function(dir, flow_fns) {
                shape = load_name,
                group = exp_id)) +
     geom_line(show.legend = T) +
-    geom_point(size = 2) +
+    #geom_text(aes(label = n), nudge_y=.5, angle = 45) +
+    geom_point() +
     geom_line(data = lower_limit, aes(x=size_b, y = delay), linetype = "dashed",
               inherit.aes = F) +
     geom_vline( xintercept = 15e6, color = "red", linetype = "dashed") +
@@ -101,7 +102,7 @@ opera_cmp_plot <- function(dir, flow_fns) {
 }
 
 dir <- "../simulator/"
-flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.25-10000ms.csv")
+flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.*-10000ms.csv")
 opera_cmp_plot(dir, flow_fns)
 ```
 
