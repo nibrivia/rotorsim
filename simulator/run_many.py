@@ -52,11 +52,11 @@ params_drain = dict(
         n_cache    = [0, 16],
         )
 params_opera = dict(
-        time_limit = [20000],
-        n_switches = [8, 9, 10],
+        time_limit = [10000],
+        n_switches = [13],
         n_tor      = [108],
         workload   = ["datamining"],
-        n_xpand    = [2, 3, 4],
+        n_xpand    = [7],
         load       = [.01, .1, .25, .3, .4],
         n_cache    = [0],
         )

@@ -146,6 +146,7 @@ def main(
         logger = None
     else:
         base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
+        print(base_fn)
         if arrive_at_start:
             base_fn = "drain-" + base_fn
         init_log(fn = base_fn + ".csv")

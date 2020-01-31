@@ -6,7 +6,7 @@ from helpers import *
 from event import Delay, R
 from functools import lru_cache
 from collections import deque
-from flow_generator import FLOWS
+from flow_generator import FLOWS, BYTES_PER_PACKET
 
 class ToRSwitch:
     def __init__(self, name,
@@ -48,7 +48,7 @@ class ToRSwitch:
         if slot_duration is not None:
             self.packet_ttime   = self.slot_duration / packets_per_slot
 
-        self.recv = Delay(self.packet_ttime)(self._recv)
+        self.recv = Delay(0.0005)(self._recv)
         #self.recv = self._recv
 
         # ... about IO
@@ -413,6 +413,10 @@ class ToRSwitch:
     # Actual packets moving
     ########################
 
+    @lru_cache(maxsize=None)
+    def packet_lag(self, p):
+        return self.packet_ttime / BYTES_PER_PACKET * p
+
     def _enable_out(self, port_id):
         self.out_enable[port_id] = True
         # We're done transmitting, try again
@@ -458,7 +462,8 @@ class ToRSwitch:
 
         # We're back to being busy, and come back when we're done
         self.out_enable[port_id] = False
-        R.call_in(delay = self.packet_ttime, fn = self._enable_out, port_id = port_id)
+        packet_ttime = self.packet_lag(p.size)
+        R.call_in(delay = packet_ttime, fn = self._enable_out, port_id = port_id)
 
     def _recv(self, p):
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
@@ -486,6 +491,9 @@ class ToRSwitch:
             self._send(port_id)
             return
 
+    def recv(self, p):
+        packet_ttime = self.packet_lag(p.size) 
+        R.call_in(packet_ttime, fn = self._recv, p=p)
 
     def recv_flow(self, flow, add_to = None):
         """Receives a new flow to serve"""

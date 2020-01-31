@@ -4,13 +4,15 @@ from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS
 from event import R
 
 class Packet:
-    def __init__(self, src_id, dst_id, seq_num, tag, flow_id, is_last):
+    def __init__(self, src_id, dst_id, seq_num, tag, flow_id, is_last,
+            size = BYTES_PER_PACKET):
         self.src_id  = src_id
         self.dst_id  = dst_id
         self.seq_num = seq_num
         self.tag     = tag
         self.flow_id = flow_id
         self.is_last = is_last
+        self.size    = size
 
         self.intended_dest = None
 
@@ -26,13 +28,6 @@ class Flow:
         self.src     = src
         self.dst     = dst
 
-        self.remaining_packets = math.ceil(size/(BYTES_PER_PACKET*8))
-        self.size_packets      = self.remaining_packets
-        self.n_sent = 0
-        self.n_recv = 0
-
-        self.end = float("nan")
-
         if size < 15e6*8:
             self.tag = "xpand"
         elif size < 1e9:
@@ -40,7 +35,19 @@ class Flow:
         else:
             self.tag = "cache"
 
+        self.bits_per_packet = BYTES_PER_PACKET*8
+
+        self.bits_left         = size
+        self.remaining_packets = math.ceil(size/self.bits_per_packet)
+        self.size_packets      = self.remaining_packets
+        self.n_sent = 0
+        self.n_recv = 0
+
+        self.end = float("nan")
+
+
     def pop_lump(self, n=1):
+        assert self.tag != "xpand"
         assert self.remaining_packets >= n, \
                 "Flow %d does not have %d packets to send" % (self.id, n)
 
@@ -53,8 +60,10 @@ class Flow:
         assert self.remaining_packets >= n, \
                 "Flow %d does not have %d packets to send" % (self.id, n)
 
+        p_size = min(self.bits_left, self.bits_per_packet)/8
         p = Packet(self.src, self.dst, self.n_sent,
-                self.tag, self.id, self.remaining_packets == 1)
+                self.tag, self.id, self.remaining_packets == 1,
+                size = p_size)
 
         self.remaining_packets -= 1
         self.n_sent += 1
@@ -63,6 +72,7 @@ class Flow:
 
     def rx(self, n=1, t = None):
         self.n_recv += n
+        self.bits_left -= n*self.bits_per_packet
         assert self.n_recv <= self.n_sent, "%s recv/sent/size %d/%d/%d" % (self, self.n_recv, self.n_sent, self.size_packets)
         assert self.n_recv <= self.size_packets
 
