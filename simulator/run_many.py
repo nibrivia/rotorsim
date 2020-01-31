@@ -52,13 +52,13 @@ params_drain = dict(
         n_cache    = [0, 16],
         )
 params_opera = dict(
-        time_limit = [1000, 10000],
+        time_limit = [20000],
         n_switches = [8],
         n_tor      = [108],
         workload   = ["datamining"],
         n_xpand    = [2],
         load       = [.01, .1, .25, .3, .4],
-        n_cache    = [0, 1],
+        n_cache    = [0, 1, 2],
         )
 
 run_experiments(params_opera)
