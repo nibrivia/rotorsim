@@ -1,4 +1,5 @@
 import sys
+import heapq
 from buffer import *
 from logger import LOG
 from helpers import *
@@ -398,11 +399,11 @@ class ToRSwitch:
         # If we have flows waiting
         flows = self.flows_xpand[port_id]
         if len(flows) > 0:
-            f = flows[0]
+            _, _, f = flows[0]
 
             # Remove if we're done
             if f.remaining_packets == 1:
-                self.flows_xpand[port_id].pop(0)
+                heapq.heappop(self.flows_xpand[port_id])
 
             return f
 
@@ -501,7 +502,7 @@ class ToRSwitch:
             n_tor   = path[0]
             port_id = self.tor_to_port[n_tor]
 
-            self.flows_xpand[port_id].append(flow)
+            heapq.heappush(self.flows_xpand[port_id], (flow.remaining_packets, flow.id, flow))
             self._send(port_id)
             return
 
