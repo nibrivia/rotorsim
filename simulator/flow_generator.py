@@ -82,6 +82,7 @@ def generate_flows(
     workload_name,
     arrive_at_start = False,
     results_file='flows.csv',
+    skewed = False,
 ):
 
     # get workload generator
@@ -90,7 +91,12 @@ def generate_flows(
         num_switches = 6
 
     # construct tor pairs
-    tors = set(range(num_tors))
+    n_active = num_tors
+    if skewed:
+        n_active = round(num_tors * load)
+        load     = 1
+
+    tors = set(range(n_active))
     tor_pairs = np.array(list(set(product(tors, tors)) - { (i, i) for i in tors }))
 
     # Find interflow arrival rate

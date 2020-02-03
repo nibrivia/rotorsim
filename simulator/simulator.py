@@ -119,6 +119,10 @@ def load_flows(slot_duration):
         is_flag=True
 )
 @click.option(
+        "--skewed",
+        is_flag=True
+)
+@click.option(
         "--arrive-at-start",
         is_flag=True
 )
@@ -139,7 +143,8 @@ def main(
         log,
         verbose,
         no_log,
-        no_pause
+        no_pause,
+        skewed
     ):
 
     if no_log:
@@ -190,6 +195,7 @@ def main(
             time_limit = time_limit,
             arrive_at_start = arrive_at_start,
             workload_name   = workload,
+            skewed = skewed,
             results_file = base_fn + "-flows.csv")
 
     # open connection for each flow at the time it should arrive
