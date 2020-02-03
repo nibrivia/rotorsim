@@ -119,16 +119,34 @@ class RotorNet:
         # EXPANDER
         ##########
         xpand_matchings = dict()
-        for i, port_id in enumerate(self.xpand_ports):
-            # Install one matching per switch, never changes
-            m = xpand1[i]
-            xpand_matchings[port_id] = [(src-1, dst-1) for src, dst in m]
-            xpand_matchings[port_id].extend([(dst-1, src-1) for src, dst in m])
-            xpand_matchings[port_id] = [x for x in sorted(xpand_matchings[port_id])]
-            xpand_matchings[port_id] = [(self.tors[s], self.tors[d]) for s, d in xpand_matchings[port_id]]
+        if True:
+            for i, xpand_id in enumerate(self.xpand_ports):
+                found = False
+                while not found:
+                    tor_ids = [i for i in range(n_tor)]
+                    random.shuffle(tor_ids)
+                    rand_matching = [(i, j) for i, j in enumerate(tor_ids)]
+
+                    found = True
+                    for src, dst in rand_matching:
+                        if src == dst:
+                            found = False
+                            break
+
+                matching = [(self.tors[src], self.tors[dst]) for src, dst in enumerate(tor_ids)]
+                xpand_matchings[xpand_id] = matching
+                self.switches[xpand_id].add_matchings([matching], 1)
+        else:
+            for i, port_id in enumerate(self.xpand_ports):
+                # Install one matching per switch, never changes
+                m = xpand1[i]
+                xpand_matchings[port_id] = [(src-1, dst-1) for src, dst in m]
+                xpand_matchings[port_id].extend([(dst-1, src-1) for src, dst in m])
+                xpand_matchings[port_id] = [x for x in sorted(xpand_matchings[port_id])]
+                xpand_matchings[port_id] = [(self.tors[s], self.tors[d]) for s, d in xpand_matchings[port_id]]
 
 
-            self.switches[port_id].add_matchings([xpand_matchings[port_id]], 1)
+                self.switches[port_id].add_matchings([xpand_matchings[port_id]], 1)
 
 
         for tor in self.tors:
