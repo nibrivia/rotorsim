@@ -33,13 +33,12 @@ opera_cmp_plot <- function(dir, flow_fns) {
       select(-split, -base_fn)
   
   flows_nest <- experiments %>% 
-    mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "--i-d-dd")) %>% 
+    mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "--iid-dd")) %>% 
     mutate(arrivals = map2(arrivals, exp_id, ~ .x %>% mutate(exp_id = .y)))
   
-  flows <- rbind_list(flows_nest$arrivals)
-  
-    mutate(size_gb = size/1e9)
-  
+  flows <- bind_rows(flows_nest$arrivals)
+  rm(flows_nest)
+  gc()
   
   exp <- experiments[1, ]
   exp$duration <- max(flows$end, na.rm = TRUE)
@@ -48,7 +47,7 @@ opera_cmp_plot <- function(dir, flow_fns) {
   fcts <- flows %>%
     filter(!is.na(fct)) %>% 
     #filter(load == .01) %>% 
-    group_by(exp_id, size, tag) %>% 
+    group_by(exp_id, size) %>% 
       summarize(fct99 = quantile(fct, .99),
                 fct   = mean(fct),
                 n     = n()) %>% 
@@ -56,6 +55,8 @@ opera_cmp_plot <- function(dir, flow_fns) {
     left_join(experiments, by = "exp_id") %>% 
     mutate(fct = ifelse(load <= .01, fct, fct99),
            load_name = paste0(100*load, "% load, ", ifelse(load == 0.01, "avg", "99%-ile")))
+  
+
   
   opera_colors <- 
     tribble(
@@ -104,8 +105,69 @@ opera_cmp_plot <- function(dir, flow_fns) {
          caption = "github.com/nibrivia/rotorsim")
 }
 
+tput_plot <- function(dir, flow_fns) {
+    experiments <- tibble(filename = flow_fns) %>%
+      mutate(exp_id     = seq_along(filename),
+             base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),# %>% strsplit("drain-") %>% map_chr(2) ,
+             split = strsplit(base_fn, "-"),
+             n_tor      = as.integer(map_chr(split, 1)),
+             n_switches = strsplit(map_chr(split, 2), ":"),
+             n_xpand    = as.integer(map_chr(n_switches, 2) %>% strsplit(., ",") %>% map(2)),
+             n_cache    = as.integer(map_chr(n_switches, 2) %>% strsplit(., ",") %>% map(1)),
+             n_switches = as.integer(map_chr(n_switches, 1)),
+             workload   = map_chr(split, 3),
+             load       = as.double(map_chr(split, 4)),
+             duration   = as.integer(map_chr(split, 5))) %>% 
+      #filter(n_cache %in% c(0)) %>% 
+      #filter(load %in% c(.1, .4, .8)) %>% 
+      select(-split, -base_fn)
+  
+  flows_nest <- experiments %>% 
+    mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "--iid-dd")) %>% 
+    mutate(arrivals = map2(arrivals, exp_id, ~ .x %>% mutate(exp_id = .y)))
+  
+  flows <- bind_rows(flows_nest$arrivals)
+  rm(flows_nest)
+  gc()
+  
+  tputs <- flows %>%
+    group_by(exp_id, src) %>%
+      summarize(gbits_sent = sum(size)/1e9,
+                max_time   = max(start+fct)) %>%
+    group_by(exp_id) %>%
+      summarize(max_time  = max(max_time),
+                mean_sent = mean(gbits_sent)*1e9/(max_time*1e3)) %>%
+    left_join(experiments, by = "exp_id")
+    
+  exp <- experiments[1, ]
+  exp$duration <- max(tputs$max_time, na.rm = TRUE)
+  tputs %>%
+    ggplot(aes(x = load,
+               y = mean_sent,
+               color = n_cache > 0)) +
+    geom_point() +
+    geom_line() +
+    
+    scale_x_percent() +
+    
+    theme_ipsum_rc() +
+    theme(legend.position = c(.85, .85)) +
+    labs(title = "Datamining flow completion times",
+         subtitle = paste0(exp$n_tor, " tors ",
+                           "for ", exp$duration, "ms. ",
+                           exp$n_switches, " switches: ",
+                           exp$n_cache, " cache, ",
+                           exp$n_xpand, " xpand. "
+         ),
+         color = "Cachenet",
+         x = "Load",
+         y = "Mean tput by tor",
+         caption = "github.com/nibrivia/rotorsim")
+}
+
 dir <- "../simulator/"
 flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.*-10000ms.csv")
+#opera_cmp_plot(dir, flow_fns)
 
 dir <- "../data/"
 flow_fns <- c(
@@ -124,7 +186,8 @@ flow_fns <- c(
 "257-37:16,5-chen-0.25-1000ms.csv",
 "257-37:16,5-chen-0.125-1000ms.csv"
 )
-opera_cmp_plot(dir, flow_fns)
+p <- tput_plot(dir, flow_fns)
+print(p)
 ```
 
 ```{r}
