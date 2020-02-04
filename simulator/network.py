@@ -29,13 +29,13 @@ class RotorNet:
         self.n_switches = n_switches
 
         if n_xpand is not None:
-            assert n_xpand < n_switches
+            assert n_xpand <= n_switches
             self.n_xpand = n_xpand
         else:
             self.n_xpand = 1 #round(min(5, n_switches/3))
 
         if n_cache is not None:
-            assert n_cache + self.n_xpand < n_switches
+            assert n_cache + self.n_xpand <= n_switches
             assert n_cache < n_switches
             self.n_cache = n_cache
         else:
@@ -48,7 +48,10 @@ class RotorNet:
 
         # Matchings need to be done early to get constants
         self.generate_matchings()
-        self.n_slots = ceil(len(self.matchings) / self.n_rotor)
+        if self.n_rotor > 0:
+            self.n_slots = ceil(len(self.matchings) / self.n_rotor)
+        else:
+            self.n_slots = 1
 
         # Timings
         self.slice_duration = slice_duration
