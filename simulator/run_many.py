@@ -75,11 +75,12 @@ params_xpand = dict(
         n_tor      = [257],
         workload   = ["chen"],
         n_xpand    = [37],
-        load       = [i/20 for i in range(1, 20)],
-        #n_cache    = [0, 16],
+        skewed     = [" "],
+        load       = [i/10 for i in range(1, 10)],
+        n_cache    = [0],
         )
 
-run_experiments(params_cache)
+run_experiments(params_xpand)
 
 
 print("done")
