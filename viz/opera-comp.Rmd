@@ -32,9 +32,12 @@ opera_cmp_plot <- function(dir, flow_fns) {
       #filter(load %in% c(.1, .4, .8)) %>% 
       select(-split, -base_fn)
   
-  flows <- experiments %>% 
-    mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "iciidddd")) %>% 
-    unnest(arrivals) %>% 
+  flows_nest <- experiments %>% 
+    mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "--i-d-dd")) %>% 
+    mutate(arrivals = map2(arrivals, exp_id, ~ .x %>% mutate(exp_id = .y)))
+  
+  flows <- rbind_list(flows_nest$arrivals)
+  
     mutate(size_gb = size/1e9)
   
   
@@ -103,6 +106,24 @@ opera_cmp_plot <- function(dir, flow_fns) {
 
 dir <- "../simulator/"
 flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.*-10000ms.csv")
+
+dir <- "../data/"
+flow_fns <- c(
+"257-37:0,5-chen-0.875-1000ms.csv",
+"257-37:0,5-chen-0.75-1000ms.csv",
+"257-37:0,5-chen-0.625-1000ms.csv",
+"257-37:0,5-chen-0.5-1000ms.csv",
+"257-37:0,5-chen-0.375-1000ms.csv",
+"257-37:0,5-chen-0.25-1000ms.csv",
+"257-37:0,5-chen-0.125-1000ms.csv",
+"257-37:16,5-chen-0.875-1000ms.csv",
+"257-37:16,5-chen-0.75-1000ms.csv",
+"257-37:16,5-chen-0.625-1000ms.csv",
+"257-37:16,5-chen-0.5-1000ms.csv",
+"257-37:16,5-chen-0.375-1000ms.csv",
+"257-37:16,5-chen-0.25-1000ms.csv",
+"257-37:16,5-chen-0.125-1000ms.csv"
+)
 opera_cmp_plot(dir, flow_fns)
 ```
 
