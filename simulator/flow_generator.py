@@ -53,7 +53,7 @@ def weights_to_cdf(weights):
 
 
 simple_weights = [
-        #( 4.9, 10e3),
+        ( 4.9, 10e3),
         (95.0,  1e6),
         ( 0.1,  1e9)]
 simple_cdf = weights_to_cdf(simple_weights)
