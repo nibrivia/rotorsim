@@ -28,7 +28,8 @@ class Flow:
         self.src     = src
         self.dst     = dst
 
-        if size < 15e6*8:
+        #if size < 15e6*8:
+        if size < 1e6:
             self.tag = "xpand"
         elif size < 1e9:
             self.tag = "rotor"
