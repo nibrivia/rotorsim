@@ -84,8 +84,8 @@ opera_cmp_plot <- function(dir, flow_fns) {
     scale_x_log10(breaks = 10^(-10:10), label = label_math(format = log10)) +
     scale_y_log10(breaks = 10^((-5:5)*2), label = label_math(format = log10)) +
     theme_ipsum_rc() +
-    scale_color_manual(values = opera_colors$color) +
-    scale_shape_manual(values = opera_colors$shape) +
+    #scale_color_manual(values = opera_colors$color) +
+    #scale_shape_manual(values = opera_colors$shape) +
     
     theme(legend.position = c(.85, .3)) +
     labs(title = "Datamining flow completion times",
