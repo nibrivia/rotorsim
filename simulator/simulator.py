@@ -174,7 +174,10 @@ def main(
                    verbose = verbose,
                    do_pause = not no_pause)
 
-    n_cycles = math.ceil(time_limit/(net.n_rotor*net.n_slots*slice_duration))
+    if net.n_rotor > 0:
+        n_cycles = math.ceil(time_limit/(net.n_rotor*net.n_slots*slice_duration))
+    else:
+        n_cycles = 1
     #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             #(n_tor, n_rotor, packets_per_slot, n_cycles))
     slot_duration = slice_duration*net.n_rotor
