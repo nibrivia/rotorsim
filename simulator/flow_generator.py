@@ -101,8 +101,8 @@ def generate_flows(
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
-    n_pairs  = (num_tors*(num_tors-1))
-    n_links  = num_tors*num_switches
+    n_pairs  = len(tor_pairs)
+    n_links  = n_active*num_switches
     capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
     n_flows  = int(capacity/workload.size*load)
     iflow_wait = time_limit/n_flows
@@ -151,7 +151,7 @@ def generate_flows(
 
     else:
         flow_id = -1
-        for _ in range(n_flows):
+        for _ in range(2*n_flows):
             flow_id += 1
             if arrive_at_start:
                 wait = 0
@@ -159,19 +159,14 @@ def generate_flows(
                 wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
 
             # pairs
-            #print("pairs")
             pair_id = np.random.choice(len(tor_pairs), size = 1)[0]
-            pair = tor_pairs[pair_id]
+            src, dst = tor_pairs[pair_id]
 
             # sizes
-            #print("sizes")
             size = workload.get_flows(n = 1)[0]
 
             # start, id, size, src, dst
-            #print("Flow gen...", end = "")
-            flow = Flow(R.time + wait, flow_id, size, pair[0], pair[1])
-
-            # write flows out to csv in increasing arrival order
+            flow = Flow(R.time + wait, flow_id, size, src, dst)
 
             FLOWS[flow_id] = flow
             N_FLOWS[0] += 1
