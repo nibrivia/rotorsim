@@ -106,7 +106,7 @@ opera_cmp_plot <- function(dir, flow_fns) {
 }
 
 tput_plot <- function(dir, flow_fns) {
-    experiments <- tibble(filename = flow_fns) %>%
+    experiments <<- tibble(filename = flow_fns) %>%
       mutate(exp_id     = seq_along(filename),
              base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1),# %>% strsplit("drain-") %>% map_chr(2) ,
              split = strsplit(base_fn, "-"),
@@ -126,11 +126,11 @@ tput_plot <- function(dir, flow_fns) {
     mutate(arrivals = map(paste0(dir, filename), read_csv, col_types = "--iid-dd")) %>% 
     mutate(arrivals = map2(arrivals, exp_id, ~ .x %>% mutate(exp_id = .y)))
   
-  flows <- bind_rows(flows_nest$arrivals)
+  flows <<- bind_rows(flows_nest$arrivals)
   rm(flows_nest)
   gc()
   
-  tputs <- flows %>%
+  tputs <<- flows %>%
     group_by(exp_id, src) %>%
       summarize(gbits_sent = sum(size)/1e9,
                 max_time   = max(start+fct)) %>%
@@ -139,20 +139,21 @@ tput_plot <- function(dir, flow_fns) {
                 mean_sent = mean(gbits_sent)*1e9/(max_time*1e3)) %>%
     left_join(experiments, by = "exp_id")
     
-  exp <- experiments[1, ]
-  exp$duration <- max(tputs$max_time, na.rm = TRUE)
+  exp <<- experiments[1, ]
+  exp$duration <- min(tputs$max_time, na.rm = TRUE)
   tputs %>%
     ggplot(aes(x = load,
                y = mean_sent,
                color = n_cache > 0)) +
     geom_point() +
     geom_line() +
+    geom_text(aes(label = max_time), hjust = "inward") +
     
     scale_x_percent() +
     
     theme_ipsum_rc() +
     theme(legend.position = c(.85, .85)) +
-    labs(title = "Datamining flow completion times",
+    labs(title = "ToR Throughput of skewed workload by load",
          subtitle = paste0(exp$n_tor, " tors ",
                            "for ", exp$duration, "ms. ",
                            exp$n_switches, " switches: ",
@@ -161,7 +162,7 @@ tput_plot <- function(dir, flow_fns) {
          ),
          color = "Cachenet",
          x = "Load",
-         y = "Mean tput by tor",
+         y = "Mean ToR tput",
          caption = "github.com/nibrivia/rotorsim")
 }
 
@@ -186,8 +187,7 @@ flow_fns <- c(
 "257-37:16,5-chen-0.25-1000ms.csv",
 "257-37:16,5-chen-0.125-1000ms.csv"
 )
-p <- tput_plot(dir, flow_fns)
-print(p)
+tput_plot(dir, flow_fns)
 ```
 
 ```{r}
