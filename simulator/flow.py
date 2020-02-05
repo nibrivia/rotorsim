@@ -53,6 +53,7 @@ class Flow:
                 "Flow %d does not have %d packets to send" % (self.id, n)
 
         self.remaining_packets -= n
+        self.bits_left -= n*self.bits_per_packet
         self.n_sent += n
 
         return (self.id, self.dst, n)
@@ -70,7 +71,8 @@ class Flow:
                 size = p_size)
 
         self.remaining_packets -= 1
-        self.bits_left -= n*self.bits_per_packet
+        assert self.bits_left > 0
+        self.bits_left -= p_size*8
         self.n_sent += 1
 
         return p

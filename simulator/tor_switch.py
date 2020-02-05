@@ -1,5 +1,4 @@
-import sys
-import heapq
+import sys, math, heapq
 from buffer import *
 from logger import LOG
 from helpers import *
@@ -285,11 +284,20 @@ class ToRSwitch:
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
 
-                fct = f.remaining_packets * self.packet_ttime + self.reconf_cache
-                self.active_flow[port_id] = f
-                lump = f.pop_lump(f.size_packets)
+                fct = f.remaining_packets * self.packet_ttime
+                n_packets = f.size_packets
 
-                R.call_in(fct, self.cache_flow_done, port_id = port_id, lump = lump)
+                time_left = R.limit - R.time - self.reconf_cache
+                if fct > time_left:
+                    n_packets = math.floor(time_left/fct * n_packets)
+                    if n_packets < 0:
+                        return
+                    fct = n_packets * self.packet_ttime
+
+                self.active_flow[port_id] = f
+                lump = f.pop_lump(n_packets)
+
+                R.call_in(self.reconf_cache + fct, self.cache_flow_done, port_id = port_id, lump = lump)
 
                 return None # Still not simulating packet level
 
