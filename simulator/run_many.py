@@ -60,27 +60,23 @@ params_opera = dict(
         load       = [.01, .1, .25, .3, .4],
         n_cache    = [0],
         )
+
 params_cache = dict(
-        time_limit = [1000],
-        n_switches = [37],
-        n_tor      = [257],
+        time_limit = [10000],
+        n_switches = [21],
+        n_tor      = [129],
         workload   = ["chen"],
         n_xpand    = [5],
-        load       = [i/20 for i in range(1, 20)],
-        n_cache    = [0, 16],
-        )
-params_xpand = dict(
-        time_limit = [1000],
-        n_switches = [37],
-        n_tor      = [257],
-        workload   = ["chen"],
-        n_xpand    = [37],
         skewed     = [" "],
-        load       = [i/10 for i in range(1, 10)],
+        load       = [i/8 for i in range(8, 0, -1)],
+        n_cache    = [0, 8],
+        )
+params_xpand = dict(**params_cache,
+        n_xpand    = [37],
         n_cache    = [0],
         )
 
-run_experiments(params_xpand)
+run_experiments(params_cache)
 
 
 print("done")
