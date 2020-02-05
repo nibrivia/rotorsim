@@ -511,8 +511,7 @@ class ToRSwitch:
 
         if add_to == "xpand":
             if self.n_xpand == 0:
-                add_to= "rotor"
-                return self.recv_flow(flow, add_to = add_to)
+                return self.recv_flow(flow, add_to = "rotor")
 
             path, _ = self.route[flow.dst]
             n_tor   = path[0]
@@ -523,6 +522,8 @@ class ToRSwitch:
             return
 
         if add_to == "rotor":
+            if self.n_rotor == 0:
+                return self.recv_flow(flow, add_to = "xpand")
             self.flows_rotor[flow.dst].append(flow)
             self.capacity[flow.dst] -= flow.remaining_packets
             self.n_flows += 1
@@ -530,8 +531,7 @@ class ToRSwitch:
 
         if add_to == "cache":
             if self.n_cache == 0:
-                add_to= "rotor"
-                return self.recv_flow(flow, add_to = add_to)
+                return self.recv_flow(flow, add_to = "rotor")
 
             self.flows_cache.append(flow)
             for cache_port in self.cache_ports:
