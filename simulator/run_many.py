@@ -71,10 +71,10 @@ params_cache = dict(
         load       = [i/8 for i in range(8, 0, -1)],
         n_cache    = [0, 8],
         )
-params_xpand = dict(**params_cache,
-        n_xpand    = [37],
-        n_cache    = [0],
-        )
+params_xpand = {**params_cache,
+        'n_xpand'    : [37],
+        'n_cache'    : [0],
+        }
 
 run_experiments(params_cache)
 
