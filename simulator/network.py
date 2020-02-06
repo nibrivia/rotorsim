@@ -227,7 +227,8 @@ class RotorNet:
         R.run_next()
 
     def open_connection(self, flow):
-        self.tors[flow.src].recv_flow(flow)
+        if flow is not None:
+            self.tors[flow.src].recv_flow(flow)
 
         try:
             wait, flow = next(self.flow_gen)

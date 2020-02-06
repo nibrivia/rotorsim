@@ -225,7 +225,8 @@ def main(
         LOG.close()
 
     for s in net.switches:
-        print(s.tag, s.n_packets)
+        pass
+        #print(s.tag, s.n_packets)
 
     # dump status for all flows
 

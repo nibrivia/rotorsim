@@ -81,6 +81,7 @@ def generate_flows(
     num_switches,
     workload_name,
     arrive_at_start = False,
+    results_file='flows.csv',
     skewed = False,
 ):
 
@@ -146,9 +147,14 @@ def generate_flows(
                     yield (0, f)
                     flow_id += 1
         return
+
     else:
         flow_id = -1
         for _ in range(n_flows):
+            # Stop backlogging if we're doing skewed -> less memory
+            if skewed and len(FLOWS) > n_links * 10: # Each link has 10 flows waiting on average
+                yield (.1, None)
+
             flow_id += 1
             if arrive_at_start:
                 wait = 0

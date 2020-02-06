@@ -105,7 +105,7 @@ opera_cmp_plot <- function(dir, flow_fns) {
          caption = "github.com/nibrivia/rotorsim")
 }
 
-tput_plot <- function(dir, flow_fns) {
+tput_plot <- function(experiments) {
   tputs <<- experiments %>% 
     #filter(load > 0.4) %>% 
     mutate(arrivals = map(filename,
@@ -170,9 +170,25 @@ experiments <- tibble(
   filename = list.files(path = "../data/", pattern = ".*ms(.+-){4}.+.csv", full.names = TRUE)
 ) %>% 
   mutate(metadata = map(filename, read_csv, n_max = 1)) %>% 
-  unnest(metadata)
+  unnest(metadata) %>% 
+  bind_rows(
+    tibble(filename = list.files(path = "../data/", pattern = "^129-21:.*,5-chen-.*-10000ms.csv", full.names = TRUE)) %>% 
+      mutate(n_xpand = 5,
+             n_tor   = 129,
+             n_switches = 21,
+             time_limit = 10000,
+             workload   = "chen",
+             load       = 
+             n_rotor = ifelse(grepl("0,5", filename), 16, 8),
+             n_cache = ifelse(grepl("0,5", filename), 16, 8),
+             )
+  )
 
-tput_plot(experiments)
+tput_plot(experiments %>% 
+    filter(n_xpand == 21) %>%
+    group_by(load) %>%
+      top_n(1, timestamp) %>% 
+      ungroup())
 ```
 
 ```{r}

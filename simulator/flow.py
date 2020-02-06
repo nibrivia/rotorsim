@@ -48,7 +48,7 @@ class Flow:
 
 
     def pop_lump(self, n=1):
-        assert self.tag != "xpand"
+        assert self.tag != "xpand", self
         assert self.remaining_packets >= n, \
                 "Flow %d does not have %d packets to send" % (self.id, n)
 
