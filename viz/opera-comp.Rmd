@@ -107,6 +107,7 @@ opera_cmp_plot <- function(dir, flow_fns) {
 
 tput_plot <- function(dir, flow_fns) {
   tputs <<- experiments %>% 
+    #filter(load > 0.4) %>% 
     mutate(arrivals = map(filename,
                            function(fn) {
                              read_csv(fn, col_types = "--iid-ddd", skip = 2) %>% 
@@ -138,22 +139,24 @@ tput_plot <- function(dir, flow_fns) {
                color = n_cache > 0)) +
     geom_point() +
     geom_line() +
-    geom_text(aes(label = max_time), hjust = "inward") +
+    geom_text(aes(label = round(max_time)),
+              color = "black",
+              hjust = "inward", vjust = "inward") +
     
-    scale_x_percent() +
+    scale_x_percent(   limits = c(0, 1)) +
     scale_y_continuous(limits = c(0, NA)) +
     
     theme_ipsum_rc() +
-    theme(legend.position = c(.85, .85)) +
-    labs(title = "ToR Throughput of skewed workload by load",
+    theme(legend.position = c(.85, .15)) +
+    labs(title = "Throughput of skewed workload by load",
          subtitle = paste0(exp$n_tor, " tors ",
-                           "for ", exp$duration, "ms. ",
+                           "for ", round(exp$duration), "ms. ",
                            exp$n_switches, " switches: ",
                            exp$n_cache, " cache, ",
                            exp$n_xpand, " xpand. "
          ),
          color = "Cachenet",
-         x = "Load",
+         x = NULL,
          y = "Mean ToR tput (Gb/s)",
          caption = "github.com/nibrivia/rotorsim")
 }
