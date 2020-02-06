@@ -152,8 +152,8 @@ def generate_flows(
         flow_id = -1
         for _ in range(n_flows):
             # Stop backlogging if we're doing skewed -> less memory
-            if skewed and len(FLOWS) > n_links * 100: # Each link has 10 flows waiting on average
-                yield (.1, None)
+            if skewed and len(FLOWS) > n_links * 10: # Each link has 10 flows waiting on average
+                yield (iflow_wait, None)
 
             flow_id += 1
             if arrive_at_start:
