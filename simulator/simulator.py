@@ -224,6 +224,9 @@ def main(
     if LOG is not None:
         LOG.close()
 
+    for s in net.switches:
+        print(s.tag, s.n_packets)
+
     # dump status for all flows
 
     print("done")

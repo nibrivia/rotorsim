@@ -24,7 +24,9 @@ class RotorSwitch:
         self.available_dn = [True for _ in range(n_ports)]
 
         # About time
-        self.slice_t              = -1
+        self.slice_t   = -1
+        self.n_packets = [0 for _ in range(n_ports)]
+        self.starts    = [0 for _ in range(n_ports)]
 
         # About IO
         self.verbose = verbose
@@ -53,7 +55,8 @@ class RotorSwitch:
 
     # Returns True/False if the connection can be established
     def request_matching(self, tor, dst_id):
-        assert self.available_up[tor.id]
+        assert self.available_up[tor.id], "%s %s %s %s" % (
+                self, tor, dst_id, tor.active_flow[tor.debug])
 
         # Make sure the connection can be established
         if not self.available_dn[dst_id]:
@@ -63,7 +66,8 @@ class RotorSwitch:
         self.available_up[tor.id] = False
         self.available_dn[dst_id] = False
 
-        self.dests[tor.id] = self.tors[dst_id]
+        self.dests[ tor.id] = self.tors[dst_id]
+        self.starts[tor.id] = R.time + 15#...
 
         return True
 
@@ -73,6 +77,8 @@ class RotorSwitch:
         self.available_dn[dst.id] = True
 
         self.dests[tor.id] = None
+
+        self.n_packets[tor.id] += max(0, R.time - self.starts[tor.id])
 
         # TODO notify
         for tor in self.tors:
@@ -139,7 +145,10 @@ class RotorSwitch:
 
         # Some checking for rotors
         if self.is_rotor:
-            intended_dst, port_id, slot_t, lump = packet
+            intended_dst, port_id, slot_t, lumps = packet
+            if len(lumps) == 0:
+                return
+
             assert intended_dst == dst.id, \
                     "%.3f %s %d:%d->(%d) actual %d. Tor slot %d Rot slot %d\n%s" % (
                         R.time,
@@ -148,7 +157,10 @@ class RotorSwitch:
                         intended_dst, dst.id,
                         slot_t, self.slot_t,
                         self.matchings_by_slot[self.slot_t][tor.id][1].id)
-            dst.rx_rotor(lump)
+            for _, _, n in lumps:
+                self.n_packets[tor.id] += n
+
+            dst.rx_rotor(lumps)
             return
 
         # Print
@@ -159,6 +171,7 @@ class RotorSwitch:
             assert p.intended_dest == dst.id
 
         # Send non-rotor packet
+        self.n_packets[tor.id] += 1
         self.dests[tor.id].recv(packet)
 
     def __str__(self):
