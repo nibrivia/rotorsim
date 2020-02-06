@@ -106,33 +106,17 @@ opera_cmp_plot <- function(dir, flow_fns) {
 }
 
 tput_plot <- function(dir, flow_fns) {
-    experiments <<- tibble(filename = flow_fns) %>%
-      mutate(exp_id     = seq_along(filename),
-             base_fn    = strsplit(flow_fns, "ms.csv") %>% map_chr(1) %>% strsplit("skewed-") %>% map_chr(2) ,
-             split = strsplit(base_fn, "-"),
-             n_tor      = as.integer(map_chr(split, 1)),
-             n_switches = strsplit(map_chr(split, 2), ":"),
-             n_xpand    = as.integer(map_chr(n_switches, 2) %>% strsplit(., ",") %>% map(2)),
-             n_cache    = as.integer(map_chr(n_switches, 2) %>% strsplit(., ",") %>% map(1)),
-             n_switches = as.integer(map_chr(n_switches, 1)),
-             workload   = map_chr(split, 3),
-             load       = as.double(map_chr(split, 4)),
-             duration   = as.integer(map_chr(split, 5))) %>% 
-      #filter(n_cache %in% c(0)) %>% 
-      #filter(load %in% c(.1, .4, .8)) %>% 
-      select(-split, -base_fn)
-  
   tputs <<- experiments %>% 
-    mutate(arrivals = map(paste0(dir, filename),
+    mutate(arrivals = map(filename,
                            function(fn) {
-                             read_csv(fn, col_types = "--iid-ddd") %>% 
+                             read_csv(fn, col_types = "--iid-ddd", skip = 2) %>% 
                                filter(!is.na(fct)) %>% 
                                group_by(src) %>%
-                                 summarize(gbits_sent = sum(size)/1e9,
-                                           max_time   = max(start+fct)) %>%
+                                 summarize(bits_sent  = sum(sent),
+                                           max_t      = max(start+fct)) %>%
                                 ungroup() %>% 
-                               summarize(max_time  = max(max_time),
-                                         mean_sent = mean(gbits_sent)*1e9/(max_time/1e3))
+                               summarize(mean_sent = mean(bits_sent)/max(max_t/1e3),
+                                         max_time  = max(max_t))
                                })) %>% 
     unnest(arrivals)
   
@@ -150,13 +134,14 @@ tput_plot <- function(dir, flow_fns) {
   exp$duration <- min(tputs$max_time, na.rm = TRUE)
   tputs %>%
     ggplot(aes(x = load,
-               y = mean_sent,
+               y = mean_sent/1e9,
                color = n_cache > 0)) +
     geom_point() +
     geom_line() +
     geom_text(aes(label = max_time), hjust = "inward") +
     
     scale_x_percent() +
+    scale_y_continuous(limits = c(0, NA)) +
     
     theme_ipsum_rc() +
     theme(legend.position = c(.85, .85)) +
@@ -169,7 +154,7 @@ tput_plot <- function(dir, flow_fns) {
          ),
          color = "Cachenet",
          x = "Load",
-         y = "Mean ToR tput",
+         y = "Mean ToR tput (Gb/s)",
          caption = "github.com/nibrivia/rotorsim")
 }
 
@@ -178,23 +163,13 @@ flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.*-10000ms.cs
 #opera_cmp_plot(dir, flow_fns)
 
 dir <- "../data/"
-flow_fns <- c(
-"skewed-129-21:0,5-chen-0.875-1000ms.csv",
-"skewed-129-21:0,5-chen-0.75-1000ms.csv",
-"skewed-129-21:0,5-chen-0.625-1000ms.csv",
-"skewed-129-21:0,5-chen-0.5-1000ms.csv",
-"skewed-129-21:0,5-chen-0.375-1000ms.csv",
-"skewed-129-21:0,5-chen-0.25-1000ms.csv",
-"skewed-129-21:0,5-chen-0.125-1000ms.csv",
-"skewed-129-21:8,5-chen-0.875-1000ms.csv",
-"skewed-129-21:8,5-chen-0.75-1000ms.csv",
-"skewed-129-21:8,5-chen-0.625-1000ms.csv",
-"skewed-129-21:8,5-chen-0.5-1000ms.csv",
-"skewed-129-21:8,5-chen-0.375-1000ms.csv",
-"skewed-129-21:8,5-chen-0.25-1000ms.csv",
-"skewed-129-21:8,5-chen-0.125-1000ms.csv"
-)
-tput_plot(dir, flow_fns)
+experiments <- tibble(
+  filename = list.files(path = "../data/", pattern = ".*ms(.+-){4}.+.csv", full.names = TRUE)
+) %>% 
+  mutate(metadata = map(filename, read_csv, n_max = 1)) %>% 
+  unnest(metadata)
+
+tput_plot(experiments)
 ```
 
 ```{r}
