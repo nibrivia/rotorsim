@@ -1,5 +1,6 @@
 import time, socket, git, uuid
 from event import R
+import os
 
 class Log:
     def __init__(self, fn = "out.csv"):
@@ -58,6 +59,7 @@ class Log:
     def close(self):
         self._flush()
         self.file.close()
+        os.rename(self.fn, "done-" + self.fn)
 
 LOG = Log()
 

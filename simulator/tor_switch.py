@@ -288,13 +288,14 @@ class ToRSwitch:
                 n_packets = f.size_packets
 
                 time_left = R.limit - R.time - self.reconf_cache
+                self.active_flow[port_id] = f
+
                 if fct > time_left:
                     n_packets = math.floor(time_left/fct * n_packets)
                     if n_packets < 0:
                         return
                     fct = n_packets * self.packet_ttime
 
-                self.active_flow[port_id] = f
                 lump = f.pop_lump(n_packets)
 
                 R.call_in(self.reconf_cache + fct, self.cache_flow_done, port_id = port_id, lump = lump)
