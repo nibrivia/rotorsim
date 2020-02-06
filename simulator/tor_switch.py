@@ -476,29 +476,25 @@ class ToRSwitch:
 
     def _recv(self, p):
         assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
+
         # You have arrived :)
         if p.dst_id == self.id:
             FLOWS[p.flow_id].rx()
             return
 
-        # Time-sensitive stuff
         if p.tag == "cache" and self.n_cache > 0:
             assert False, "Cache should always hit home..."
 
+        # Get next hop
+        path, _ = self.route[p.dst_id]
+        next_hop = path[0]
+        port_id = self.tor_to_port[next_hop]
 
-        # Low latency, through the expander
-        if p.tag == "xpand":
-            # Get next hop
-            path, _ = self.route[p.dst_id]
-            next_hop = path[0]
-            port_id = self.tor_to_port[next_hop]
+        # Add to queue
+        self.buffers_fst[port_id].recv(p)
 
-            # Add to queue
-            self.buffers_fst[port_id].recv(p)
-
-            # Attempt to send now
-            self._send(port_id)
-            return
+        # Attempt to send now
+        self._send(port_id)
 
     def recv(self, p):
         packet_ttime = self.packet_lag(p.size) 

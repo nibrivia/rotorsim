@@ -14,7 +14,29 @@ require(tidyverse)
 require(scales)
 require(hrbrthemes)
 
+load_experiments <- function() {
+  tibble(filename = list.files(path = "../data/",
+                               pattern = ".*ms(.+-){4}.+.csv",
+                               full.names = TRUE)) %>% 
+    mutate(metadata = map(filename, read_csv, n_max = 1)) %>% 
+    unnest(metadata) %>% 
+    mutate(done = grepl("done", filename)) %>% 
+    bind_rows(
+      tibble(filename = list.files(path = "../data/", pattern = "^129-21:.*,5-chen-.*-10000ms.csv", full.names = TRUE)) %>% 
+        mutate(n_xpand = 5,
+               n_tor   = 129,
+               n_switches = 21,
+               time_limit = 10000,
+               workload   = "chen",
+               load       = filename %>% str_extract("[01]\\.[0-9]+") %>% as.numeric(),
+               n_rotor = ifelse(grepl("0,5", filename), 16, 8),
+               n_cache = ifelse(grepl("0,5", filename), 16, 8),
+        )
+    )
+}
+```
 
+```{r}
 opera_cmp_plot <- function(dir, flow_fns) {
   experiments <- tibble(filename = flow_fns) %>%
       mutate(exp_id     = seq_along(filename),
@@ -105,18 +127,17 @@ opera_cmp_plot <- function(dir, flow_fns) {
          caption = "github.com/nibrivia/rotorsim")
 }
 
-tput_plot <- function(experiments) {
-  tputs <<- experiments %>% 
-    #filter(load > 0.4) %>% 
+tput_plot <- function(tput_experiments) {
+  tputs <<- tput_experiments %>% 
+    filter(load < 0.2) %>% 
     mutate(arrivals = map(filename,
                            function(fn) {
-                             read_csv(fn, col_types = "--iid-ddd", skip = 2) %>% 
-                               filter(!is.na(fct)) %>% 
+                             fread(fn, skip = "flow_id") %>% 
                                group_by(src) %>%
-                                 summarize(bits_sent  = sum(sent),
-                                           max_t      = max(start+fct)) %>%
+                                 summarize(gbits_sent  = sum(sent/1e9),
+                                           max_t      = max(end)) %>%
                                 ungroup() %>% 
-                               summarize(mean_sent = mean(bits_sent)/max(max_t/1e3),
+                               summarize(mean_sent = mean(gbits_sent)/max(max_t/1e3),
                                          max_time  = max(max_t))
                                })) %>% 
     unnest(arrivals)
@@ -135,7 +156,7 @@ tput_plot <- function(experiments) {
   exp$duration <- min(tputs$max_time, na.rm = TRUE)
   tputs %>%
     ggplot(aes(x = load,
-               y = mean_sent/1e9,
+               y = mean_sent,
                color = n_cache > 0)) +
     geom_point() +
     geom_line() +
@@ -165,30 +186,17 @@ dir <- "../simulator/"
 flow_fns <- list.files(path = dir, pattern = "108-13.*-datamining-0.*-10000ms.csv")
 #opera_cmp_plot(dir, flow_fns)
 
-dir <- "../data/"
-experiments <- tibble(
-  filename = list.files(path = "../data/", pattern = ".*ms(.+-){4}.+.csv", full.names = TRUE)
-) %>% 
-  mutate(metadata = map(filename, read_csv, n_max = 1)) %>% 
-  unnest(metadata) %>% 
-  bind_rows(
-    tibble(filename = list.files(path = "../data/", pattern = "^129-21:.*,5-chen-.*-10000ms.csv", full.names = TRUE)) %>% 
-      mutate(n_xpand = 5,
-             n_tor   = 129,
-             n_switches = 21,
-             time_limit = 10000,
-             workload   = "chen",
-             load       = 
-             n_rotor = ifelse(grepl("0,5", filename), 16, 8),
-             n_cache = ifelse(grepl("0,5", filename), 16, 8),
-             )
-  )
 
-tput_plot(experiments %>% 
+
+tput_experiments <- experiments %>% 
+  mutate(load = round(load, digits = 3)) %>% 
+  ungroup() %>% 
     filter(n_xpand == 21) %>%
     group_by(load) %>%
       top_n(1, timestamp) %>% 
-      ungroup())
+      slice(1) %>% # break ties
+      ungroup()
+tput_plot(tput_experiments)
 ```
 
 ```{r}
