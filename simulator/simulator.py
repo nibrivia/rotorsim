@@ -147,14 +147,6 @@ def main(
         skewed
     ):
 
-    if no_log:
-        logger = None
-    else:
-        base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
-        print(base_fn)
-        if arrive_at_start:
-            base_fn = "drain-" + base_fn
-        init_log(fn = base_fn + ".csv")
 
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
 
@@ -198,10 +190,18 @@ def main(
             time_limit = time_limit,
             arrive_at_start = arrive_at_start,
             workload_name   = workload,
-            skewed = skewed,
-            results_file = base_fn + "-flows.csv")
+            skewed = skewed)
 
-    # open connection for each flow at the time it should arrive
+
+    # Start the log
+    if not no_log:
+        base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
+        n_rotor = net.n_rotor
+        n_cache = net.n_cache
+        n_xpand = net.n_xpand
+        if arrive_at_start:
+            base_fn = "drain-" + base_fn
+        init_log(fn = base_fn, **locals())
 
     # set up printing
     time = 0

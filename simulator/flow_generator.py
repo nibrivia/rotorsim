@@ -81,7 +81,6 @@ def generate_flows(
     num_switches,
     workload_name,
     arrive_at_start = False,
-    results_file='flows.csv',
     skewed = False,
 ):
 
@@ -147,11 +146,9 @@ def generate_flows(
                     yield (0, f)
                     flow_id += 1
         return
-
-
     else:
         flow_id = -1
-        for _ in range(2*n_flows):
+        for _ in range(n_flows):
             flow_id += 1
             if arrive_at_start:
                 wait = 0
@@ -159,14 +156,19 @@ def generate_flows(
                 wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
 
             # pairs
+            #print("pairs")
             pair_id = np.random.choice(len(tor_pairs), size = 1)[0]
-            src, dst = tor_pairs[pair_id]
-
+            pair = tor_pairs[pair_id]
+            src, dst = pair
             # sizes
+            #print("sizes")
             size = workload.get_flows(n = 1)[0]
 
             # start, id, size, src, dst
-            flow = Flow(R.time + wait, flow_id, size, src, dst)
+            #print("Flow gen...", end = "")
+            flow = Flow(R.time + wait, flow_id, size, pair[0], pair[1])
+
+            # write flows out to csv in increasing arrival order
 
             FLOWS[flow_id] = flow
             N_FLOWS[0] += 1
