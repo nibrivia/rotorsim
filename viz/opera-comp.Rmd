@@ -21,8 +21,11 @@ load_experiments <- function() {
                                full.names = TRUE)) %>% 
     mutate(metadata = map(filename, read_csv, n_max = 1)) %>% 
     unnest(metadata) %>% 
-    mutate(done = grepl("done", filename),
-           time = lubridate::as_datetime(timestamp, tz = Sys.timezone()))
+    mutate(done  = grepl("done",  filename),
+           drain = grepl("drain", filename),
+           time  = lubridate::as_datetime(timestamp, tz = Sys.timezone()),
+           type = ifelse(n_rotor == 0, "xpand",
+                         ifelse(n_rotor == n_cache, "cache", "opera*")))
 }
 
 experiments <- load_experiments()
@@ -129,10 +132,12 @@ tput_plot <- function(tput_experiments) {
                              fread(fn, skip = "flow_id") %>% 
                                group_by(src) %>%
                                  summarize(gbits_sent  = sum(sent/1e9),
-                                           max_t      = max(start, end, na.rm = TRUE)) %>%
+                                           max_t      = max(start, end, na.rm = TRUE),
+                                           n = n()) %>%
                                 ungroup() %>% 
                                summarize(mean_sent = mean(gbits_sent)/max(max_t/1e3),
-                                         max_time  = max(max_t))
+                                         max_time  = max(max_t),
+                                         n = sum(n))
                                })) %>% 
     unnest(arrivals)
   
@@ -146,7 +151,7 @@ tput_plot <- function(tput_experiments) {
   #               mean_sent = mean(gbits_sent)*1e9/(max_time*1e3)) %>%
   #   left_join(experiments, by = "exp_id")
     
-  exp <- experiments[1, ]
+  exp <- tput_experiments[1, ]
   exp$duration <- min(tputs$max_time, na.rm = TRUE)
   tputs %>%
     ggplot(aes(x = load,
@@ -156,9 +161,6 @@ tput_plot <- function(tput_experiments) {
                group = type)) +
     geom_point() +
     geom_line() +
-    geom_text(aes(label = round(max_time)),
-              color = "black",
-              hjust = "inward", vjust = "inward") +
     
     scale_x_percent(   limits = c(0, 1)) +
     scale_y_continuous(limits = c(0, NA)) +
@@ -191,6 +193,41 @@ tput_experiments <- load_experiments() %>%
     slice(1) %>% # break ties
     ungroup()
 tput_plot(tput_experiments)
+```
+
+```{r fcts, }
+fct256_experiments <- load_experiments() %>% 
+  filter(done, n_tor ==256)
+
+fct256_flows <- fct256_experiments %>% 
+  select(uuid, filename) %>% 
+  mutate(arrivals = map(filename,
+                         function(fn) {
+                           print(fn)
+                           fread(fn, skip = "flow_id")
+                             })) %>% 
+  select(-filename) %>% 
+  unnest(arrivals)
+
+fct256_data <- fct256_flows %>% 
+  group_by(uuid, src) %>% 
+    summarize(drain_time = max(end),
+              size_gb    = sum(size/1e9)) %>% 
+  group_by(uuid) %>% 
+    summarize(gbits_sent = sum(size_gb),
+              mean = weighted.mean(drain_time, wt = size_gb),
+              `90%-ile` = quantile(drain_time, .9),
+              `99%-ile` = quantile(drain_time, .99),
+              max       = max(drain_time)
+              ) %>%
+    ungroup() %>% 
+  reshape2::melt(measure.vars = c("mean", "90%-ile", "99%-ile", "max"),
+                 variable.name = "type",
+                 value.name    = "fct") %>%
+  tibble() %>% 
+  left_join(experiments, by = "uuid") %>%
+  mutate(real_load = gbits_sent/(n_tor*n_switches*10*time_limit/1000))
+
 ```
 
 ```{r}
