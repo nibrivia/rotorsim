@@ -94,11 +94,36 @@ params_ml_xpand = {**params_ml,
         'n_cache' : [0]
         }
 
+params_256 = dict(
+        n_tor      = [256],
+        n_switches = [37],
+        n_xpand    = [5],
+        n_cache    = [0, 16]
+        )
+params_128 = dict(
+        n_tor      = [128],
+        n_switches = [21],
+        n_xpand    = [5],
+        n_cache    = [0, 8]
+        )
+params_96 = dict(
+        n_tor      = [96],
+        n_switches = [17],
+        n_xpand    = [5],
+        n_cache    = [0, 6]
+        )
+                
+params_datamining = dict(
+        time_limit = [10000],
+        workload   = ["datamining"],
+        load       = [i/10 for i in range(1,10)]
+        )
 
 
-with concurrent.futures.ProcessPoolExecutor(max_workers = 14) as executor:
-    run_experiments(executor, params_cache)
-    run_experiments(executor, params_xpand)
+with concurrent.futures.ProcessPoolExecutor(max_workers = 36) as executor:
+    run_experiments(executor, {**params_datamining, **params_256})
+    run_experiments(executor, {**params_datamining, **params_128})
+    run_experiments(executor, {**params_datamining, **params_96 })
 
 
 print("done")
