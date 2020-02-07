@@ -38,7 +38,7 @@ def run_experiments(p_space):
     n_experiments = len_param_space(param_space)
     print(n_experiments, "experiments to run")
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers = 3) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = 12) as executor:
         for params in gen_params(param_space):
             executor.submit(run_experiment, **params)
 
@@ -77,7 +77,7 @@ params_xpand = {**params_cache,
         'n_cache'    : [0],
         }
 
-run_experiments(params_xpand)
+run_experiments(params_cache)
 
 
 print("done")
