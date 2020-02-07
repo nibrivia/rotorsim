@@ -193,7 +193,7 @@ def generate_flows(
                     if n_flows == 0:
                         for src, dst in pairs:
                             flow_id += 1
-                            f = Flow(R.time, flow_id, size/len(pairs), src, dst, ml_id = i)
+                            f = Flow(R.time, flow_id, size, src, dst, ml_id = i)
                             FLOWS[flow_id] = f
                             N_FLOWS[0] += 1
                             yield (0, f)
