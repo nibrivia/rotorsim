@@ -122,8 +122,7 @@ def generate_flows(
         rotor_per_pair = flows_per_pair * workload.probs[1]
         cache_per_pair = flows_per_pair * workload.probs[2]
 
-        print(n_flows, flows_per_pair, rotor_per_pair, cache_per_pair)
-        assert cache_per_pair + rotor_per_pair + xpand_per_pair == flows_per_pair
+        print(n_flows, flows_per_pair, rotor_per_pair+ cache_per_pair+xpand_per_pair)
 
 
         flow_id = 0
