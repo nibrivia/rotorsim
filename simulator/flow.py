@@ -1,6 +1,6 @@
 import math
 from logger import LOG
-from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS
+from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML_QUEUE
 from event import R
 
 class Packet:
@@ -21,12 +21,13 @@ class Packet:
                 self.flow_id, self.src_id, self.dst_id, self.seq_num, self.intended_dest)
 
 class Flow:
-    def __init__(self, arrival, flow_id, size, src, dst):
+    def __init__(self, arrival, flow_id, size, src, dst, ml_id = None):
         self.arrival = arrival
         self.id      = flow_id
         self.size    = size
         self.src     = src
         self.dst     = dst
+        self.ml_id   = ml_id
 
         #if size < 15e6*8:
         if size < 1e6:
@@ -48,7 +49,7 @@ class Flow:
 
 
     def pop_lump(self, n=1):
-        assert self.tag != "xpand", self
+        #assert self.tag != "xpand", self
         assert self.remaining_packets >= n, \
                 "Flow %d does not have %d packets to send" % (self.id, n)
 
@@ -88,10 +89,15 @@ class Flow:
             else:
                 self.end = t
 
-            if self.tag == "rotor" and False:
-                print(self, "done")
-
             LOG.log_flow_done(self)
+
+            global ML_JOBS, ML_QUEUE
+            if self.ml_id is not None:
+                size, pairs, n = ML_JOBS[self.ml_id]
+                ML_JOBS[self.ml_id] = (size, pairs, n-1)
+                if n == 1:
+                    ML_QUEUE.append(self.ml_id)
+
             global FLOWS, N_DONE
             N_DONE[0] += 1
             del FLOWS[self.id]

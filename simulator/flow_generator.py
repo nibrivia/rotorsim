@@ -11,6 +11,8 @@ from workloads.uniform import log_uniform_distribution, log_uniform_size
 BYTES_PER_PACKET = 10000
 global FLOWS, N_FLOWS, N_DONE
 FLOWS = dict()
+ML_JOBS = []
+ML_QUEUE = []
 N_FLOWS = [0]
 N_DONE  = [0]
 
@@ -155,16 +157,51 @@ def generate_flows(
                     yield (0, f)
                     flow_id += 1
         return
-
-    elif is_ml and workload_name == "datamining":
-        resnet_med = 1e6
-        vgg_med    = 1e6
-        gpt2_med   = 1e6
-        yield (100, None)
-
     else:
         flow_id = -1
+        if is_ml and workload_name == "datamining":
+            resnet_med =  180e6
+            vgg_med    = 1080e6
+            gpt2_med   = 5300e6
+            sizes = [resnet_med, vgg_med, gpt2_med]
+
+            if load == .2:
+                n_job = [1, 2, 2]
+            elif load == .7:
+                n_job = [3, 6, 12]
+            else:
+                assert False, "please no"
+            job_desc = zip(sizes, n_job)
+
+            global ML_JOBS, ML_QUEUE
+            for size, n in job_desc:
+                for _ in range(n):
+                    nodes = random.sample(tors, 4)
+                    pairs = [p for p in zip(nodes[-1:]+nodes[:-1], nodes)]
+
+                    job = (size, pairs, 0)
+                    ML_JOBS.append(job)
+                    ML_QUEUE.append(len(ML_QUEUE))
+                    print(job)
+
+
+
         for _ in range(n_flows):
+            if is_ml:
+                for i in ML_QUEUE:
+                    size, pairs, n_flows = ML_JOBS[i]
+                    if n_flows == 0:
+                        for src, dst in pairs:
+                            flow_id += 1
+                            f = Flow(R.time, flow_id, size/len(pairs), src, dst, ml_id = i)
+                            FLOWS[flow_id] = f
+                            N_FLOWS[0] += 1
+                            yield (0, f)
+                        print("more flows %d %d" % (i, size))
+                        ML_JOBS[i] = (size, pairs, 4)
+                for _ in range(len(ML_QUEUE)):
+                    ML_QUEUE.pop()
+
             # Stop backlogging if we're doing skewed -> less memory
             if skewed and len(FLOWS) > n_links * 10: # Each link has 10 flows waiting on average
                 yield (iflow_wait, None)
