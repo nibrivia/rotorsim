@@ -70,7 +70,7 @@ params_cache = dict(
         n_tor      = [256],
         workload   = ["chen"],
         n_xpand    = [5],
-        load       = [i/8 for i in range(1,8)]
+        load       = [i/8 for i in range(1,8)],
         n_cache    = [0, 8],
         )
 params_xpand = {**params_cache,
