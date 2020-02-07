@@ -25,7 +25,7 @@ def len_param_space(param_space):
 
 # Runs a single experiment
 def run_experiment(**kwargs):
-    cmd = "python3 simulator.py --arrive-at-start " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
+    cmd = "python3 simulator.py " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
     print(cmd)
     subprocess.run(cmd.split(), stdout=subprocess.DEVNULL)
     print(cmd, "done")
