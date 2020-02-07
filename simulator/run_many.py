@@ -79,9 +79,27 @@ params_xpand = {**params_cache,
         'n_cache'    : [0],
         }
 
+params_ml = dict(
+        time_limit = [10000],
+        n_switches = [21],
+        n_tor      = [128],
+        workload   = ["datamining"],
+        load       = [.2, .7],
+        is_ml      = [""])
+params_ml_cache = {**params_ml,
+        'n_xpand' : [5],
+        'n_cache' : [0, 8]
+        }
+params_ml_xpand = {**params_ml,
+        'n_xpand' : [21],
+        'n_cache' : [0]
+        }
+
+
+
 with concurrent.futures.ProcessPoolExecutor(max_workers = 30) as executor:
-    run_experiments(executor, params_drain)
-    run_experiments(executor, params_drain_xpand)
+    run_experiments(executor, params_ml_cache)
+    run_experiments(executor, params_ml_xpand)
 
 
 print("done")
