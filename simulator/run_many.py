@@ -47,7 +47,7 @@ params_drain = dict(
         n_tor      = [256],
         workload   = ["chen"],
         n_xpand    = [5],
-        load       = [.1, .2, .3, .4, .5, .6, .7, .8, .9],
+        load       = [i/8 for i in range(1,8)],
         n_cache    = [16, 0],
         )
 params_drain_xpand = {**params_drain, 
@@ -65,13 +65,12 @@ params_opera = dict(
         )
 
 params_cache = dict(
-        time_limit = [10000],
-        n_switches = [21],
-        n_tor      = [129],
+        time_limit = [1000],
+        n_switches = [37],
+        n_tor      = [256],
         workload   = ["chen"],
         n_xpand    = [5],
-        skewed     = [" "],
-        load       = [i/8 for i in range(8, 0, -1)],
+        load       = [i/8 for i in range(1,8)],
         n_cache    = [0, 8],
         )
 params_xpand = {**params_cache,
@@ -97,9 +96,8 @@ params_ml_xpand = {**params_ml,
 
 
 
-with concurrent.futures.ProcessPoolExecutor(max_workers = 30) as executor:
-    run_experiments(executor, params_ml_cache)
-    run_experiments(executor, params_ml_xpand)
+with concurrent.futures.ProcessPoolExecutor(max_workers = 14) as executor:
+    run_experiments(executor, params_drain)
 
 
 print("done")
