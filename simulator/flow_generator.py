@@ -118,11 +118,12 @@ def generate_flows(
 
     if arrive_at_start and workload_name == "chen":
         flows_per_pair = n_flows/n_pairs
-        rotor_per_pair = flows_per_pair * workload.probs[0]
-        cache_per_pair = flows_per_pair * workload.probs[1]
+        xpand_per_pair = flows_per_pair * workload.probs[0]
+        rotor_per_pair = flows_per_pair * workload.probs[1]
+        cache_per_pair = flows_per_pair * workload.probs[2]
 
         print(n_flows, flows_per_pair, rotor_per_pair, cache_per_pair)
-        assert cache_per_pair + rotor_per_pair == flows_per_pair
+        assert cache_per_pair + rotor_per_pair + xpand_per_pair == flows_per_pair
 
 
         flow_id = 0
@@ -131,17 +132,25 @@ def generate_flows(
                 if dst == src:
                     continue
 
-                rotor_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[0])
+                xpand_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[0])
+                if xpand_per_pair > 0:
+                    f = Flow(0, flow_id, xpand_per_pair*workload.sizes[0], src, dst)
+                    f.tag = "xpand"
+                    FLOWS[flow_id] = f
+                    yield (0, f)
+                    flow_id += 1
+
+                rotor_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[1])
                 if rotor_per_pair > 0:
-                    f = Flow(0, flow_id, rotor_per_pair*workload.sizes[0], src, dst)
+                    f = Flow(0, flow_id, rotor_per_pair*workload.sizes[1], src, dst)
                     f.tag = "rotor"
                     FLOWS[flow_id] = f
                     yield (0, f)
                     flow_id += 1
 
-                cache_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[1])
+                cache_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[2])
                 if cache_per_pair > 0:
-                    f = Flow(0, flow_id, cache_per_pair*workload.sizes[1], src, dst)
+                    f = Flow(0, flow_id, cache_per_pair*workload.sizes[2], src, dst)
                     f.tag = "cache"
                     FLOWS[flow_id] = f
                     yield (0, f)
