@@ -74,7 +74,7 @@ params_cache = dict(
         n_cache    = [0, 8],
         )
 params_xpand = {**params_cache,
-        'n_xpand'    : [21],
+        'n_xpand'    : [37],
         'n_cache'    : [0],
         }
 
@@ -97,8 +97,8 @@ params_ml_xpand = {**params_ml,
 
 
 with concurrent.futures.ProcessPoolExecutor(max_workers = 14) as executor:
-    run_experiments(executor, params_ml_cache)
-    run_experiments(executor, params_ml_xpand)
+    run_experiments(executor, params_cache)
+    run_experiments(executor, params_xpand)
 
 
 print("done")
