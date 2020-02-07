@@ -96,8 +96,13 @@ params_ml_xpand = {**params_ml,
 
 
 
-with concurrent.futures.ProcessPoolExecutor(max_workers = 14) as executor:
-    run_experiments(executor, params_drain)
+with concurrent.futures.ProcessPoolExecutor(max_workers = 30) as executor:
+    run_experiments(executor, params_ml_cache)
+    run_experiments(executor, params_ml_xpand)
+    run_experiments(executor, {**params_ml_cache, 'n_tor': [96]})
+    run_experiments(executor, {**params_ml_xpand, 'n_tor': [96]})
+    run_experiments(executor, {**params_ml_cache, 'n_tor': [64], 'n_switches': [13], 'n_xpand' : [5],  'n_cache' : [0, 4]})
+    run_experiments(executor, {**params_ml_xpand, 'n_tor': [64], 'n_switches': [13], 'n_xpand' : [13], 'n_cache' : [0]})
 
 
 print("done")
