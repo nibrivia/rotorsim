@@ -17,7 +17,7 @@ class Log:
         param_names = [ "uuid",
                 "n_tor", "n_switches", "time_limit",
                 "n_cache", "n_rotor", "n_xpand",
-                "workload", "arrive_at_start", "skewed", "load",
+                "workload", "arrive_at_start", "skewed", "load", "is_ml",
                 "commit", "host", "timestamp"]
         params["commit"]    = git.Repo(search_parent_directories=True).head.object.hexsha
         params["host"]      = socket.gethostname()

@@ -123,6 +123,10 @@ def load_flows(slot_duration):
         is_flag=True
 )
 @click.option(
+        "--is_ml",
+        is_flag=True
+)
+@click.option(
         "--arrive-at-start",
         is_flag=True
 )
@@ -144,7 +148,8 @@ def main(
         verbose,
         no_log,
         no_pause,
-        skewed
+        skewed,
+        is_ml
     ):
 
 
@@ -190,7 +195,8 @@ def main(
             time_limit = time_limit,
             arrive_at_start = arrive_at_start,
             workload_name   = workload,
-            skewed = skewed)
+            skewed = skewed,
+            is_ml = is_ml)
 
 
     # Start the log

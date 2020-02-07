@@ -80,9 +80,9 @@ def generate_flows(
     num_tors,
     num_switches,
     workload_name,
-    arrive_at_start = False,
-    results_file='flows.csv',
-    skewed = False,
+    arrive_at_start,
+    skewed,
+    is_ml
 ):
 
     # get workload generator
@@ -155,6 +155,12 @@ def generate_flows(
                     yield (0, f)
                     flow_id += 1
         return
+
+    elif is_ml and workload_name == "datamining":
+        resnet_med = 1e6
+        vgg_med    = 1e6
+        gpt2_med   = 1e6
+        yield (100, None)
 
     else:
         flow_id = -1
