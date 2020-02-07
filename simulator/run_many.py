@@ -72,7 +72,6 @@ params_cache = dict(
         n_cache    = [0, 8],
         )
 params_xpand = {**params_cache,
-        'load'       : [.625],
         'n_xpand'    : [21],
         'n_cache'    : [0],
         }
