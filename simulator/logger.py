@@ -7,8 +7,8 @@ class Log:
         self.cache = [] # Use array to avoid n^2 string append
 
     def set_fn(self, fn = "out", **params):
-        sim_id = uuid.uuid4()
-        self.fn = fn + str(sim_id) + ".csv"
+        self.sim_id = uuid.uuid4()
+        self.fn = fn + str(self.sim_id) + ".csv"
 
         # Initialize the .csv
         self.file = open(self.fn, "w")
@@ -22,7 +22,7 @@ class Log:
         params["commit"]    = git.Repo(search_parent_directories=True).head.object.hexsha
         params["host"]      = socket.gethostname()
         params["timestamp"] = time.time()
-        params["uuid"]      = sim_id
+        params["uuid"]      = self.sim_id
 
         values = [str(params[name]) for name in param_names]
 
