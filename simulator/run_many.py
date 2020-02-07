@@ -25,32 +25,35 @@ def len_param_space(param_space):
 
 # Runs a single experiment
 def run_experiment(**kwargs):
-    cmd = "python3 simulator.py " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
+    cmd = "python3 simulator.py --arrive-at-start " + " ".join("--%s %s" % (k, v) for k, v in kwargs.items())
     print(cmd)
     subprocess.run(cmd.split(), stdout=subprocess.DEVNULL)
     print(cmd, "done")
 
 
 # Runs all experiments
-def run_experiments(p_space):
+def run_experiments(executor, p_space):
     param_space = [(key, value) for key, value in p_space.items()]
 
     n_experiments = len_param_space(param_space)
     print(n_experiments, "experiments to run")
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers = 12) as executor:
-        for params in gen_params(param_space):
-            executor.submit(run_experiment, **params)
+    for params in gen_params(param_space):
+        executor.submit(run_experiment, **params)
 
 params_drain = dict(
         time_limit = [1000],
         n_switches = [37],
-        n_tor      = [129],
+        n_tor      = [256],
         workload   = ["chen"],
         n_xpand    = [5],
-        load       = [.1, .2, .3, .4, .5, .6, .7, .8],
-        n_cache    = [0, 16],
+        load       = [.1, .2, .3, .4, .5, .6, .7, .8, .9],
+        n_cache    = [16, 0],
         )
+params_drain_xpand = {**params_drain, 
+        'n_xpand' : [37],
+        'n_cache' : [0]
+        }
 params_opera = dict(
         time_limit = [10000],
         n_switches = [13],
@@ -76,7 +79,9 @@ params_xpand = {**params_cache,
         'n_cache'    : [0],
         }
 
-run_experiments(params_cache)
+with concurrent.futures.ProcessPoolExecutor(max_workers = 30) as executor:
+    run_experiments(executor, params_drain)
+    run_experiments(executor, params_drain_xpand)
 
 
 print("done")
