@@ -166,7 +166,7 @@ def generate_flows(
             sizes = [resnet_med, vgg_med, gpt2_med]
 
             if load == .2:
-                n_job = [1, 2, 2]
+                n_job = [1, 2, 4]
             elif load == .7:
                 n_job = [3, 6, 12]
             else:
