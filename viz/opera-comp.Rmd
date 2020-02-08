@@ -31,7 +31,7 @@ load_experiments <- function() {
 experiments <- load_experiments()
 ```
 
-```{r}
+```{r throughput}
 opera_cmp_plot <- function(dir, flow_fns) {
   experiments <- tibble(filename = flow_fns) %>%
       mutate(exp_id     = seq_along(filename),
@@ -195,11 +195,11 @@ tput_experiments <- load_experiments() %>%
 tput_plot(tput_experiments)
 ```
 
-```{r fcts, }
-fct256_experiments <- load_experiments() %>% 
-  filter(done, n_tor ==256)
+```{r drain, }
+drain256_experiments <- load_experiments() %>% 
+  filter(done, n_tor ==256, drain)
 
-fct256_flows <- fct256_experiments %>% 
+drain256_flows <- drain256_experiments %>% 
   select(uuid, filename) %>% 
   mutate(arrivals = map(filename,
                          function(fn) {
@@ -209,7 +209,7 @@ fct256_flows <- fct256_experiments %>%
   select(-filename) %>% 
   unnest(arrivals)
 
-fct256_data <- fct256_flows %>% 
+drain256_data <- drain256_flows %>% 
   group_by(uuid, src) %>% 
     summarize(drain_time = max(end),
               size_gb    = sum(size/1e9)) %>% 
@@ -222,15 +222,143 @@ fct256_data <- fct256_flows %>%
               ) %>%
     ungroup() %>% 
   reshape2::melt(measure.vars = c("mean", "90%-ile", "99%-ile", "max"),
-                 variable.name = "type",
+                 variable.name = "statistic",
                  value.name    = "fct") %>%
-  tibble() %>% 
-  left_join(experiments, by = "uuid") %>%
+  as_tibble() %>% 
+  left_join(drain256_experiments, by = "uuid") %>%
   mutate(real_load = gbits_sent/(n_tor*n_switches*10*time_limit/1000))
+
+drain256_data %>%
+  ggplot(aes(x = real_load,
+             y = fct,
+             color = type,
+             linetype=type)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~statistic) +
+  theme_ipsum_rc() +
+  geom_abline(slope = 10000/10)
+
+drain256_data %>% 
+  select(-hostname, -filename, -time, -done) %>% 
+  write_csv("drain-256.csv")
+```
+
+
+```{r fct-ml, }
+ml_exp <- load_experiments() %>% 
+  filter(is_ml, done, time_limit >= 10000) %>% 
+  filter(n_tor == 128) %>% 
+  filter(grepl("bf96a4", commit)) %>% 
+  group_by(n_tor, load, type, n_switches, n_rotor) %>% 
+    top_n(1, time) %>% 
+    ungroup()
+
+ml_flows <- ml_exp %>% 
+  select(uuid, filename) %>% 
+  mutate(arrivals = map(filename,
+                         function(fn) {
+                           print(fn)
+                           fread(fn, skip = "flow_id")
+                             })) %>% 
+  select(-filename) %>% 
+  unnest(arrivals)
+
+ml_data <- ml_flows %>%
+  filter(!is.na(fct)) %>%
+  mutate(size = as.numeric(size))
+
+ml_data %>% 
+  group_by(uuid, size) %>%
+    summarize(fct_mean = as.numeric(mean(fct))) %>%
+  ungroup() %>%
+  left_join(ml_exp, by = "uuid") %>% 
+  ggplot(aes(x = size,
+             y = fct_mean,
+             color = type,
+             group = paste(load, type))) +
+  geom_point() +
+  geom_line() +
+  #scale_x_log10() +
+  #scale_y_log10() +
+  facet_wrap(~load)
+
+n_iter <- ml_data %>%
+  filter(size %in% ml_sizes) %>%
+  group_by(uuid, size) %>%
+  summarize(n=n()) %>%
+  left_join(ml_exp %>%
+              select(uuid, type, load)) %>%
+  arrange(size, load, type)
+
+n_iter %>%
+  write_csv("ml-itercount-128.csv")
+
+n_iter %>%
+  ggplot(aes(x = as_factor(size),
+             y = n,
+             fill = type)) +
+  geom_col(position = "dodge") +
+  facet_grid(load~size, scales = "free")
+
+ml_cdf <- ml_data %>% 
+    filter(size %in% ml_sizes) %>% 
+  group_by(uuid, size) %>%
+    mutate(cdf = percent_rank(fct)) %>% 
+  ungroup() %>%
+  left_join(ml_exp, by = "uuid") %>% 
+  select(-hostname, -filename, -time, -done)
+
+ml_cdf %>% 
+  write_csv("ml-cdf-128.csv")
+
+ml_cdf %>% 
+  ggplot(aes(x = fct,
+             y = cdf,
+             color = type,
+             group = paste(load, type))) +
+  #geom_point() +
+  geom_line() +
+  #scale_x_log10() +
+  #scale_y_log10() +
+  facet_grid(size~load, scales = "free")
+```
+
+```{r fct-cdf, options}
+exps <- 
+  experiments %>% 
+  filter(n_tor == 128, workload == "datamining", !is_ml, time_limit > 100) %>% 
+  group_by(type, load) %>% 
+    top_n(1, desc(time))
+
+cdfs <_ function(exps) {
+  exps_fows <- exps %>% 
+    select(uuid, filename) %>% 
+    mutate(arrivals = map(filename,
+                          function(fn) {
+                            print(fn)
+                            fread(fn, skip = "flow_id") %>% 
+                              filter(!is.na(fct)) %>%
+                              mutate(p = round(percent_rank(fct), 3)) %>% 
+                              group_by(p) %>% 
+                                summarize(fct = max(fct)) %>% 
+                                ungroup()
+                          })) %>% 
+    select(-filename) %>% 
+    unnest(arrivals)
+}
 
 ```
 
-```{r}
+
+
+
+
+
+
+
+
+```{r repeat-run}
 mt_old <- file.mtime(paste0(dir, flow_fns))
 while(TRUE) {
   mt_new <- file.mtime(paste0(dir, flow_fns))
