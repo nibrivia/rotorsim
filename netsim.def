@@ -2,31 +2,51 @@ Bootstrap: library
 From: ubuntu:18.04
 Stage: build
 
-%environment
-    export LISTEN_PORT=12345
-    export LC_ALL=C
-
 %post
-    # Add universe repo
+    # Add universe
     apt-get update && apt-get install -y \
         software-properties-common
     add-apt-repository universe
 
-    # Install my dependencies
+    # System dependencies
     apt-get update && apt-get install -y \
+        wget \
         git \
-        python3 \
-        python3-numpy \
-        python3-click \
-        python3-git
+        lbzip2
 
+    # Get repo if need be
+    cd ~
+    if [! -d sim-worker]; then
+        git clone https://github.com/nibrivia/rotorsim sim-worker
+    fi
 
-%startscript
-    echo "Cloning repo"
-    git clone https://github.com/nibrivia/rotorsim.git /root/rotorsim
-    lscpu
-    # python3 get_job.py?
-    # python3 start_procs.py?
+    # Install pypy: much faster runtime!
+    cd /opt
+    wget https://bitbucket.org/pypy/pypy/downloads/pypy3.6-v7.3.0-linux64.tar.bz2
+    if ! echo "d3d549e8f43de820ac3385b698b83fa59b4d7dd6cf3fe34c115f731e26ad8856  pypy3.6-v7.3.0-linux64.tar.bz2" | sha256sum -c --status; then
+        echo "bad"
+        exit 1
+    fi
+    tar xf pypy3.6-v7.3.0-linux64.tar.bz2
+    ln -s /opt/pypy3.6-v7.3.0-linux64/bin/pypy3 /usr/local/bin/pypy3
+
+    # Install python dependencies
+    pypy3 -m ensurepip
+    pypy3 -m pip install --upgrade pip
+    pypy3 -m pip install GitPython click
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+%runscript
+    # Should already be in the repo
+    echo "Updating repo..."
+    git pull
+    cd simulator/
+
+    echo "pypy3 $@"
+    exec pypy3 simulator.py $@
 
 %test
     grep -q NAME=\"Ubuntu\" /etc/os-release
