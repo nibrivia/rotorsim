@@ -1,8 +1,7 @@
-import numpy as np
+#import numpy as np
 import math
 from itertools import product
 import collections
-import numpy as np
 
 from workloads.websearch import websearch_distribution, websearch_size
 from workloads.chen import chen_distribution, chen_size
@@ -35,7 +34,7 @@ class FlowDistribution:
         self.size = sum(p*size for p, size in self.pdf) # in bits
 
     def get_flows(self, n=1):
-        return np.random.choice(self.sizes, size = n, p = self.probs)
+        return random.choices(self.sizes, k = n, weights = self.probs)
 
 def dist_from_file(filename):
     with open(filename) as f:
@@ -99,7 +98,7 @@ def generate_flows(
         load     = 1
 
     tors = set(range(n_active))
-    tor_pairs = np.array(list(set(product(tors, tors)) - { (i, i) for i in tors }))
+    tor_pairs = list(set(product(tors, tors)) - { (i, i) for i in tors })
 
     # Find interflow arrival rate
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
@@ -133,7 +132,8 @@ def generate_flows(
                 if dst == src:
                     continue
 
-                xpand_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[0])
+                assert False, "Binomial doesn't exist here"
+                #xpand_per_pair = np.random.binomial(n=flows_per_pair, p = workload.probs[0])
                 if xpand_per_pair > 0:
                     f = Flow(0, flow_id, xpand_per_pair*workload.sizes[0], src, dst)
                     f.tag = "xpand"
@@ -183,9 +183,6 @@ def generate_flows(
                     ML_JOBS.append(job)
                     ML_QUEUE.append(len(ML_QUEUE))
                     print(job)
-
-
-
         for _ in range(n_flows):
             if is_ml:
                 for i in ML_QUEUE:
@@ -211,12 +208,11 @@ def generate_flows(
             if arrive_at_start:
                 wait = 0
             else:
-                wait = np.random.poisson(lam=iflow_wait*1e6, size=1)[0]/1e6
+                wait = random.expovariate(lambd=1/iflow_wait)
 
             # pairs
             #print("pairs")
-            pair_id = np.random.choice(len(tor_pairs), size = 1)[0]
-            pair = tor_pairs[pair_id]
+            pair = random.choice(tor_pairs)
             src, dst = pair
             # sizes
             #print("sizes")
