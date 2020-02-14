@@ -1,0 +1,41 @@
+Bootstrap: library
+From: ubuntu:18.04
+Stage: build
+
+%environment
+    export LISTEN_PORT=12345
+    export LC_ALL=C
+
+%post
+    # Add universe repo
+    apt-get update && apt-get install -y \
+        software-properties-common
+    add-apt-repository universe
+
+    # Install my dependencies
+    apt-get update && apt-get install -y \
+        git \
+        python3 \
+        python3-numpy \
+        python3-click \
+        python3-git
+
+
+%startscript
+    echo "Cloning repo"
+    git clone https://github.com/nibrivia/rotorsim.git /root/rotorsim
+    lscpu
+    # python3 get_job.py?
+    # python3 start_procs.py?
+
+%test
+    grep -q NAME=\"Ubuntu\" /etc/os-release
+    if [ $? -eq 0 ]; then
+        echo "Container base is Ubuntu as expected."
+    else
+        echo "Container base is not Ubuntu."
+    fi
+
+%labels
+    Author nibr@mit.edu
+    Version v0.0.0.1
