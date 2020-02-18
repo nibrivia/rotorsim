@@ -1,4 +1,5 @@
-import time, socket, git, uuid
+import time, socket, git
+import uuid as _uuid
 from event import R
 import os
 
@@ -6,9 +7,14 @@ class Log:
     def __init__(self, fn = "out.csv"):
         self.cache = [] # Use array to avoid n^2 string append
 
-    def set_fn(self, fn = "out", **params):
-        self.sim_id = uuid.uuid4()
-        self.fn = fn + str(self.sim_id) + ".csv"
+    def set_fn(self, fn = "out", uuid = None, **params):
+        self.sim_id = uuid
+        if uuid is None:
+            self.sim_id = _uuid.uuid4()
+
+        self.fn = fn
+        if fn is None:
+            self.fn = str(self.sim_id) + ".csv"
 
         # Initialize the .csv
         self.file = open(self.fn, "w")

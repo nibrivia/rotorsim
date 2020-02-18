@@ -5,7 +5,7 @@ from logger import LOG, init_log
 from helpers import *
 #from tcp_flow import TCPFlow, BYTES_PER_PACKET
 from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PACKET
-import sys
+import sys, uuid
 import click
 import math
 
@@ -107,6 +107,11 @@ def load_flows(slot_duration):
         default='websearch'
 )
 @click.option(
+        "--uuid",
+        type=str,
+        default=None
+)
+@click.option(
         "--verbose",
         is_flag=True
 )
@@ -144,6 +149,7 @@ def main(
         slice_duration,
         reconfiguration_time,
         jitter,
+        uuid,
         log,
         verbose,
         no_log,
@@ -201,13 +207,13 @@ def main(
 
     # Start the log
     if not no_log:
-        base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
+        #base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
         n_rotor = net.n_rotor
         n_cache = net.n_cache
         n_xpand = net.n_xpand
         if arrive_at_start:
             base_fn = "drain-" + base_fn
-        init_log(fn = base_fn, **locals())
+        init_log(fn = None, **locals())
 
     # set up printing
     time = 0
