@@ -12,3 +12,4 @@ pkts.txt
 *.gz
 .Rhistory
 *.tbl
+*.sif
