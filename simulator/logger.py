@@ -64,8 +64,9 @@ class Log:
 
     def close(self):
         self._flush()
-        self.file.close()
+        # rename before close?
         os.rename(self.fn, "done-" + self.fn)
+        self.file.close()
 
 LOG = Log()
 
