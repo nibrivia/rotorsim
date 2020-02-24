@@ -14,16 +14,17 @@ require(tidyverse)
 require(scales)
 require(hrbrthemes)
 require(data.table)
+require(lubridate)
 
 load_experiments <- function() {
   tibble(filename = list.files(path = "../data",
-                               pattern = ".*ms(.+-){4}.+.csv",
+                               pattern = "done.*csv",
                                full.names = TRUE)) %>% 
     mutate(metadata = map(filename, read_csv, n_max = 1)) %>% 
     unnest(metadata) %>% 
     mutate(done  = grepl("done",  filename),
            drain = grepl("drain", filename),
-           time  = lubridate::as_datetime(timestamp, tz = Sys.timezone()),
+           #time  = lubridate::as_datetime(timestamp, tz = Sys.timezone()),
            type = ifelse(n_rotor == 0, "xpand",
                          ifelse(n_rotor == n_cache, "cache", "opera*")))
 }
