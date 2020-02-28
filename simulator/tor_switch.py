@@ -535,7 +535,7 @@ class ToRSwitch:
                     free = True
                     break
             if not free:
-                self.recv_flow(flow, add_to = "rotor")
+                return self.recv_flow(flow, add_to = "rotor")
 
 
             self.flows_cache.append(flow)
