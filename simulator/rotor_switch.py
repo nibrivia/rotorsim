@@ -12,6 +12,7 @@ class RotorSwitch:
             id, n_ports,
             tag,
             verbose):
+        """"""
         # About me
         self.id   = id
         self.dests = [None for _ in range(n_ports)]

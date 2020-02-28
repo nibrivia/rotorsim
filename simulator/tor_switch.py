@@ -417,8 +417,6 @@ class ToRSwitch:
             return f
 
 
-
-
     # Actual packets moving
     ########################
 
@@ -529,6 +527,16 @@ class ToRSwitch:
         if add_to == "cache":
             if self.n_cache == 0:
                 return self.recv_flow(flow, add_to = "rotor")
+
+            # If all cache links are busy, route to rotor
+            free = False
+            for cache_port in self.cache_ports:
+                if self.active_flow[cache_port] is None:
+                    free = True
+                    break
+            if not free:
+                self.recv_flow(flow, add_to = "rotor")
+
 
             self.flows_cache.append(flow)
             for cache_port in self.cache_ports:
