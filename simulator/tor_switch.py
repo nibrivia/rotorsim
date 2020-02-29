@@ -220,6 +220,7 @@ class ToRSwitch:
 
 
     @property
+    @lru_cache(maxsize = None)
     def link_state(self):
         # TODO do this in connect_to, reduces complexity by at least O(n_tor)
         links = dict()
@@ -508,9 +509,11 @@ class ToRSwitch:
             if self.n_xpand == 0:
                 return self.recv_flow(flow, add_to = "rotor")
 
-            path, _ = self.route[flow.dst]
-            n_tor   = path[0]
-            port_id = self.tor_to_port[n_tor]
+            #path, _ = self.route[flow.dst]
+            #n_tor   = path[0]
+            #port_id = self.tor_to_port[n_tor]
+
+            port_id = random.choice(list(self.xpand_ports))
 
             heapq.heappush(self.flows_xpand[port_id], (flow.remaining_packets, flow.id, flow))
             self._send(port_id)
@@ -529,12 +532,7 @@ class ToRSwitch:
                 return self.recv_flow(flow, add_to = "rotor")
 
             # If all cache links are busy, route to rotor
-            free = False
-            for cache_port in self.cache_ports:
-                if self.active_flow[cache_port] is None:
-                    free = True
-                    break
-            if not free:
+            if len(self.flows_cache) > 1:
                 return self.recv_flow(flow, add_to = "rotor")
 
 
