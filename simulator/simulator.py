@@ -8,6 +8,7 @@ from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PAC
 import sys, uuid
 import click
 import math
+from params import *
 
 
 def generate_demand(min_demand = 0, max_demand = 1):
@@ -107,6 +108,11 @@ def load_flows(slot_duration):
         default='websearch'
 )
 @click.option(
+        "--cache_policy",
+        type=str,
+        default=""
+)
+@click.option(
         "--uuid",
         type=str,
         default=None
@@ -155,10 +161,14 @@ def main(
         no_log,
         no_pause,
         skewed,
+        cache_policy,
         is_ml
     ):
 
 
+    NET_PARAMS.load = load
+    NET_PARAMS.n_switches = n_switches
+    NET_PARAMS.cache_policy = cache_policy
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
 
     print("Setting up network...")

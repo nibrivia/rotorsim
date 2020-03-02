@@ -6,6 +6,7 @@ from event import Delay, R
 from functools import lru_cache
 from collections import deque
 from flow_generator import FLOWS, BYTES_PER_PACKET
+from params import NET_PARAMS, SIM_PARAMS
 
 class ToRSwitch:
     def __init__(self, name,
@@ -267,6 +268,16 @@ class ToRSwitch:
             return self.next_queue_xpand(port_id)
         if port_type == "cache":
             return self.next_queue_cache(port_id)
+
+    def cache_port_for_flow(self, flow):
+        for port in self.cache_ports:
+            # Port already busy
+            if self.active_flow[port] is not None:
+                continue
+
+            switch = self.switches[port]
+            if switch.request_matching(self, flow.dst):
+                return switch
 
     def next_queue_cache(self, port_id):
         switch = self.switches[port_id]
@@ -532,8 +543,14 @@ class ToRSwitch:
                 return self.recv_flow(flow, add_to = "rotor")
 
             # If all cache links are busy, route to rotor
-            if len(self.flows_cache) > 1:
-                return self.recv_flow(flow, add_to = "rotor")
+            if NET_PARAMS.cache_policy == "rotor":
+                free = False
+                for p in self.cache_ports:
+                    if self.active_flow[p] is None:
+                        free = True
+                        break
+                if not free:
+                    return self.recv_flow(flow, add_to = "rotor")
 
 
             self.flows_cache.append(flow)
