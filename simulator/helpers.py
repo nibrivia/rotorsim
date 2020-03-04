@@ -3,10 +3,11 @@ from functools import lru_cache
 import click
 import sys
 from event import R
+from params import PARAMS
 
-def vprint(s = "", verbose = True):
-    if verbose:
-        print(s)
+def vprint(*args):
+    if PARAMS.verbose:
+        print(*args)
 
 @lru_cache()
 def bound(lo, val, hi):
@@ -28,3 +29,28 @@ def pause():
             _pause_enabled = False
         if user_str == "x":
             sys.exit()
+
+def port_type(port_id):
+    if port_id < PARAMS.n_rotor:
+        return "rotor"
+    if port_id < PARAMS.n_rotor + PARAMS.n_xpand:
+        return "xpand"
+    else:
+        return "cache"
+
+def gen_ports():
+    global rotor_ports
+    for port_id in range(PARAMS.n_rotor):
+        rotor_ports.append(port_id)
+
+    global xpand_ports
+    for i in range(PARAMS.n_xpand):
+        xpand_ports.append(PARAMS.n_rotor + i)
+
+    global cache_ports
+    for i in range(PARAMS.n_cache):
+        cache_ports.append(PARAMS.n_rotor + PARAMS.n_xpand + i)
+
+rotor_ports = []
+xpand_ports = []
+cache_ports = []

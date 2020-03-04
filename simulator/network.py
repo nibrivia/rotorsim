@@ -9,76 +9,64 @@ from event import Registry, Delay, stop_simulation, R
 from xpand_108 import xpand1
 
 class RotorNet:
-    def __init__(self,
-                 n_tor,
-                 packets_per_slot,
-                 n_switches,
-                 arrive_at_start,
-                 n_cache    = None,
-                 n_xpand    = None,
-                 slice_duration = 1, 
-                 reconfiguration_time = .1, 
-                 jitter = 0,
-                 verbose = True, 
-                 do_pause = True):
+    def __init__(self):
+                 #n_tor,
+                 #packets_per_slot,
+                 #n_switches,
+                 #arrive_at_start,
+                 #n_cache    = None,
+                 #n_xpand    = None,
+                 #slice_duration = 1, 
+                 #reconfiguration_time = .1, 
+                 #jitter = 0,
+                 #verbose = True, 
+                 #do_pause = True):
 
         # Network config
-        self.n_tor   = n_tor
-        self.arrive_at_start = arrive_at_start
-
-        self.n_switches = n_switches
-
-        if n_xpand is not None:
-            assert n_xpand <= n_switches
-            self.n_xpand = n_xpand
-        else:
-            self.n_xpand = 1 #round(min(5, n_switches/3))
-
-        if n_cache is not None:
-            assert n_cache + self.n_xpand <= n_switches
-            assert n_cache < n_switches
-            self.n_cache = n_cache
-        else:
-            self.n_cache = floor((n_switches - self.n_xpand) / 2)
-
-        self.n_rotor = n_switches - self.n_xpand - self.n_cache
-
-        print("%d xpander, %d rotor, %d cache. %d total" %
-                (self.n_xpand, self.n_rotor, self.n_cache, self.n_switches))
 
         # Matchings need to be done early to get constants
         self.generate_matchings()
-        if self.n_rotor > 0:
-            self.n_slots = ceil(len(self.matchings) / self.n_rotor)
+        if PARAMS.n_rotor > 0:
+            PARAMS.n_slots = ceil(len(self.matchings) / PARAMS.n_rotor)
         else:
-            self.n_slots = 1
+            PARAMS.n_slots = 1
+
+        #assert PARAMS.slot_duration is     None or PARAMS.slice_duration is     None
+        #assert PARAMS.slot_duration is not None or PARAMS.slice_duration is not None
+        PARAMS.reconf_cache   = 15 # TODO as argument
+
+        #if PARAMS.slice_duration is not None:
+            #self.packet_ttime   = PARAMS.slice_duration / PARAMS.packets_per_slot
+        if PARAMS.slot_duration is not None:
+            PARAMS.packet_ttime   = PARAMS.slot_duration  / PARAMS.packets_per_slot
 
         # Timings
-        self.slice_duration = slice_duration
-        self.slot_duration  = slice_duration#*self.n_rotor
-        self.cycle_duration = self.slot_duration * self.n_slots
-        self.reconf_time    = reconfiguration_time
+        #self.slice_duration = slice_duration
+        #self.slot_duration  = slice_duration#*self.n_rotor
+        #self.cycle_duration = self.slot_duration * self.n_slots
+        #self.reconf_time    = reconfiguration_time
 
         # Internal variables
         self.switches = [RotorSwitch(
                             id = i,
-                            n_ports  = n_tor,
-                            tag = self.port_type(i),
-                            verbose = verbose)
-                for i in range(self.n_switches)]
+                            #n_ports  = n_tor,
+                            tag = port_type(i),
+                            #verbose = verbose
+                            )
+                for i in range(PARAMS.n_switches)]
 
         self.tors = [ToRSwitch(
-                            name    = i,
-                            n_tor   = n_tor,
-                            n_xpand = self.n_xpand,
-                            n_rotor = self.n_rotor,
-                            n_cache = self.n_cache,
-                            packets_per_slot = packets_per_slot,
-                            slot_duration = slice_duration,
-                            reconfiguration_time = self.reconf_time,
-                            clock_jitter  = jitter,
-                            verbose = verbose)
-                for i in range(n_tor)]
+                            name    = i)
+                            #n_tor   = n_tor,
+                            #n_xpand = self.n_xpand,
+                            #n_rotor = self.n_rotor,
+                            #n_cache = self.n_cache,
+                            #packets_per_slot = packets_per_slot,
+                            #slot_duration = slice_duration,
+                            #reconfiguration_time = self.reconf_time,
+                            #clock_jitter  = jitter,
+                            #verbose = verbose)
+                for i in range(PARAMS.n_tor)]
 
         for tor in self.tors:
             tor.set_tor_refs(self.tors)
@@ -96,24 +84,24 @@ class RotorNet:
 
         # This is what we'll distribute
         self.matchings_by_slot_rotor = []
-        for slot in range(self.n_slots):
+        for slot in range(PARAMS.n_slots):
             slot_matchings = []
-            for rotor_id in self.rotor_ports:
+            for rotor_id in rotor_ports:
                 rotor = self.switches[rotor_id]
 
-                matching_i = (slot + rotor.id*self.n_slots) % \
+                matching_i = (slot + rotor.id*PARAMS.n_slots) % \
                         len(self.matchings)
                 rotor_matchings = self.matchings[matching_i]
                 slot_matchings.append(rotor_matchings)
             self.matchings_by_slot_rotor.append(slot_matchings)
 
         # Distribute to rotors
-        for rotor_id in self.rotor_ports:
+        for rotor_id in rotor_ports:
             rotor = self.switches[rotor_id]
             rotor_matchings_by_slot = [
                     self.matchings_by_slot_rotor[slot][rotor_id]
-                            for slot in range(self.n_slots)]
-            rotor.add_matchings(rotor_matchings_by_slot, self.n_rotor)
+                            for slot in range(PARAMS.n_slots)]
+            rotor.add_matchings(rotor_matchings_by_slot, PARAMS.n_rotor)
 
         # Distribute to ToRs
         for tor in self.tors:
@@ -123,10 +111,10 @@ class RotorNet:
         ##########
         xpand_matchings = dict()
         if True:
-            for i, xpand_id in enumerate(self.xpand_ports):
+            for i, xpand_id in enumerate(xpand_ports):
                 found = False
                 while not found:
-                    tor_ids = [i for i in range(n_tor)]
+                    tor_ids = [i for i in range(PARAMS.n_tor)]
                     random.shuffle(tor_ids)
                     rand_matching = [(i, j) for i, j in enumerate(tor_ids)]
 
@@ -140,7 +128,7 @@ class RotorNet:
                 xpand_matchings[xpand_id] = matching
                 self.switches[xpand_id].add_matchings([matching], 1)
         else:
-            for i, port_id in enumerate(self.xpand_ports):
+            for i, port_id in enumerate(xpand_ports):
                 # Install one matching per switch, never changes
                 m = xpand1[i]
                 xpand_matchings[port_id] = [(src-1, dst-1) for src, dst in m]
@@ -159,46 +147,20 @@ class RotorNet:
 
         # CACHE
         #######
-        for cache_id in self.cache_ports:
+        for cache_id in cache_ports:
             # Start with a default, this will be changing though...
             cache = self.switches[cache_id]
             cache_matchings = [self.matchings[0]]
             cache.add_matchings(cache_matchings, 1)
 
-        # I/O stuff
-        self.verbose  = verbose
-        self.do_pause = do_pause
-
-    def port_type(self, port_id):
-        if port_id < self.n_rotor:
-            return "rotor"
-        if port_id < self.n_rotor + self.n_xpand:
-            return "xpand"
-        else:
-            return "cache"
-    @property
-    def rotor_ports(self):
-        for port_id in range(self.n_rotor):
-            yield port_id
-
-    @property
-    def xpand_ports(self):
-        for i in range(self.n_xpand):
-            yield self.n_rotor + i
-
-    @property
-    def cache_ports(self):
-        for i in range(self.n_cache):
-            yield self.n_rotor + self.n_xpand + i
 
     def generate_matchings(self):
         self.matchings = []
-        n_tors = self.n_tor
 
-        for offset in range(1, n_tors):
+        for offset in range(1, PARAMS.n_tor):
             # Compute the indices
-            slot_matching = [(src_i, ((src_i+offset) % n_tors))
-                    for src_i in range(n_tors)]
+            slot_matching = [(src_i, ((src_i+offset) % PARAMS.n_tor))
+                    for src_i in range(PARAMS.n_tor)]
 
             # Add to the list of matchings
             self.matchings.append(slot_matching)
@@ -213,16 +175,16 @@ class RotorNet:
 
         # Register first events
         for s_id, s in enumerate(self.switches):
-            if s_id < self.n_rotor:
-                s.start(slice_duration = self.slice_duration,
-                        reconf_time    = self.reconf_time)
+            if s_id < PARAMS.n_rotor:
+                s.start(slice_duration = PARAMS.slot_duration,
+                        reconf_time    = PARAMS.reconfiguration_time)
             else:
                 s.start(slice_duration = float("Inf"))
         for t in self.tors:
             t.start()
 
         # Start events
-        if not self.arrive_at_start:
+        if not PARAMS.arrive_at_start:
             R.limit = time_limit
         R.run_next()
 
@@ -238,5 +200,5 @@ class RotorNet:
             pass
 
     def print_demand(self):
-        if self.verbose:
+        if PARAMS.verbose:
             print_demand(self.tors)

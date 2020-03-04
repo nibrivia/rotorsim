@@ -9,8 +9,6 @@ class Log:
 
     def set_fn(self, fn = "out", uuid = None, **params):
         self.sim_id = uuid
-        if uuid is None:
-            self.sim_id = _uuid.uuid4()
 
         self.fn = fn
         if fn is None:

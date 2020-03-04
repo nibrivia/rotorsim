@@ -9,34 +9,33 @@ class Empty:
 
 class RotorSwitch:
     def __init__(self,
-            id, n_ports,
+            id,
+            #n_ports,
             tag,
-            verbose):
+            #verbose
+            ):
         """"""
         # About me
         self.id   = id
-        self.dests = [None for _ in range(n_ports)]
+        self.dests = [None for _ in range(PARAMS.n_tor)]
         self.tag   = tag
         self.is_rotor = tag == "rotor"
         # dests[1] is the destination of a packet arriving in on port 1
 
         # for cache
-        self.available_up = [True for _ in range(n_ports)]
-        self.available_dn = [True for _ in range(n_ports)]
+        self.available_up = [True for _ in range(PARAMS.n_tor)]
+        self.available_dn = [True for _ in range(PARAMS.n_tor)]
 
         # About time
         self.slice_t   = -1
-        self.n_packets = [0 for _ in range(n_ports)]
-        self.starts    = [0 for _ in range(n_ports)]
+        self.n_packets = [0 for _ in range(PARAMS.n_tor)]
+        self.starts    = [0 for _ in range(PARAMS.n_tor)]
 
         # About IO
-        self.verbose = verbose
-
         self._disable()
 
     def add_matchings(self, matchings_by_slot, n_rotor):
         self.matchings_by_slot = matchings_by_slot
-        self.n_rotor = n_rotor
 
     def start(self, slice_duration, reconf_time = 0):
         self.reconf_time = reconf_time # TODO
@@ -95,20 +94,19 @@ class RotorSwitch:
         n_slots = len(self.matchings_by_slot)
 
         # Skip if it's not our turn
-        if not self.is_rotor and self.slice_t % self.n_rotor != self.id:
+        if not self.is_rotor and self.slice_t % PARAMS.n_rotor != self.id:
             self._enable()
             return
 
         slot_id = self.slot_t % n_slots
-        if self.verbose:
-            print("%.6f %s switch %d" % (R.time, self, slot_id))
+        vprint("%.6f %s switch %d" % (R.time, self, slot_id))
         # Compute our new matching
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
 
         # Re-call ourselves
         self._enable()
-        R.call_in(self.slice_duration, self._disable)
+        R.call_in(PARAMS.slot_duration, self._disable)
         self.new_slice()
 
 
@@ -156,7 +154,7 @@ class RotorSwitch:
                         self,
                         tor.id, port_id,
                         intended_dst, dst.id,
-                        slot_t, self.slot_t,
+                        slot_t, PARAMS.slot_t,
                         self.matchings_by_slot[self.slot_t][tor.id][1].id)
             for _, _, n in lumps:
                 self.n_packets[tor.id] += n

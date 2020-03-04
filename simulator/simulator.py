@@ -2,13 +2,14 @@ from network import RotorNet
 import csv
 from event import R
 from logger import LOG, init_log
-from helpers import *
 #from tcp_flow import TCPFlow, BYTES_PER_PACKET
 from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PACKET
 import sys, uuid
 import click
+import uuid as _uuid
 import math
 from params import *
+from helpers import *
 
 
 def generate_demand(min_demand = 0, max_demand = 1):
@@ -165,44 +166,71 @@ def main(
         is_ml
     ):
 
-
-    NET_PARAMS.load = load
-    NET_PARAMS.n_switches = n_switches
-    NET_PARAMS.cache_policy = cache_policy
+    # Set parameters
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
-
-    print("Setting up network...")
-
     slice_duration /= 1000 #divide to be in ms
 
-    net = RotorNet(n_switches = n_switches,
-                   n_cache = n_cache,
-                   n_xpand = n_xpand,
-                   n_tor   = n_tor,
-                   arrive_at_start = arrive_at_start,
-                   packets_per_slot     = packets_per_slot,
-                   reconfiguration_time = reconfiguration_time/1000,
-                   slice_duration       = slice_duration, # R.time will be in ms
-                   jitter               = jitter,
-                   verbose = verbose,
-                   do_pause = not no_pause)
+    # Compute switch counts
+    if n_xpand is not None:
+        assert n_xpand <= n_switches
+        n_xpand = n_xpand
+    else:
+        self.n_xpand = 1 #round(min(5, n_switches/3))
 
-    if net.n_rotor > 0:
-        n_cycles = math.ceil(time_limit/(net.n_rotor*net.n_slots*slice_duration))
+    if n_cache is not None:
+        assert n_cache + n_xpand <= n_switches
+        assert n_cache < n_switches
+        n_cache = n_cache
+    else:
+        n_cache = floor((n_switches - self.n_xpand) / 2)
+
+    n_rotor = n_switches - n_xpand - n_cache
+    print("%d xpander, %d rotor, %d cache. %d total" %
+            (n_xpand, n_rotor, n_cache, n_switches))
+
+    if uuid is None:
+        uuid = _uuid.uuid4()
+    slot_duration = slice_duration*n_rotor
+
+
+    del slice_duration
+    PARAMS.set_many(locals())
+    print(PARAMS)
+    gen_ports()
+    print("Setting up network...")
+
+    # Uses global params object
+    net = RotorNet()#n_switches = n_switches,
+                   #n_cache = n_cache,
+                   #n_xpand = n_xpand,
+                   #n_tor   = n_tor,
+                   #arrive_at_start = arrive_at_start,
+                   #packets_per_slot     = packets_per_slot,
+                   #reconfiguration_time = reconfiguration_time/1000,
+                   #slice_duration       = slice_duration, # R.time will be in ms
+                   #jitter               = jitter,
+                   #verbose = verbose,
+                   #do_pause = not no_pause)
+
+    n_slots = math.ceil(time_limit/slot_duration)
+    if n_rotor > 0:
+        n_cycles = math.ceil(time_limit/(n_rotor*n_slots*PARAMS.slot_duration))
     else:
         n_cycles = 1
+
+    max_slots = n_cycles*n_slots
+    cycle_duration = slot_duration*n_slots
+    slice_duration = slot_duration
+
     #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             #(n_tor, n_rotor, packets_per_slot, n_cycles))
-    slot_duration = slice_duration*net.n_rotor
-    cycle_duration = slot_duration*net.n_slots
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
             (time_limit, cycle_duration, slot_duration, slice_duration))
     print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fGb/s" %
-            (n_tor, net.n_rotor, n_tor*net.n_rotor, bandwidth/1e3, n_tor*n_switches*bandwidth/1e3))
+            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_switches*bandwidth/1e3))
 
     print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
-    max_slots = n_cycles*net.n_slots
     flow_gen = generate_flows(
             load = load,
             bandwidth  = bandwidth,
@@ -218,9 +246,6 @@ def main(
     # Start the log
     if not no_log:
         #base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
-        n_rotor = net.n_rotor
-        n_cache = net.n_cache
-        n_xpand = net.n_xpand
         if arrive_at_start:
             base_fn = "drain-" + base_fn
         init_log(fn = None, **locals())
