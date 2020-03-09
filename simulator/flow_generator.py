@@ -183,7 +183,7 @@ def generate_flows(
                     ML_JOBS.append(job)
                     ML_QUEUE.append(len(ML_QUEUE))
                     print(job)
-        for _ in range(n_flows):
+        for _ in range(n_flows*2): # Cap #flows at twice what it should be
             if is_ml:
                 for i in ML_QUEUE:
                     size, pairs, n_flows = ML_JOBS[i]
