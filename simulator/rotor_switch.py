@@ -10,16 +10,13 @@ class Empty:
 class RotorSwitch:
     def __init__(self,
             id,
-            #n_ports,
             tag,
-            #verbose
             ):
         """"""
         # About me
         self.id   = id
         self.dests = [None for _ in range(PARAMS.n_tor)]
         self.tag   = tag
-        self.is_rotor = tag == "rotor"
         # dests[1] is the destination of a packet arriving in on port 1
 
         # for cache
@@ -42,12 +39,13 @@ class RotorSwitch:
         self.install_matchings(self.matchings_by_slot[0])
 
         # Create a recursive call
-        if self.is_rotor:
+        if self.tag == "rotor":
             self.new_slice = Delay(PARAMS.slot_duration + PARAMS.reconfiguration_time, priority = 2)(self._new_slice)
+            R.call_in(PARAMS.slot_duration, priority = 1, fn = self._disable)
         else:
             self.new_slice = lambda: None
+            self._enable()
 
-        R.call_in(PARAMS.slot_duration, priority = 1, fn = self._disable)
         self._new_slice()
 
     # Returns True/False if the connection can be established
@@ -93,7 +91,7 @@ class RotorSwitch:
         vprint("%.6f %s              slot_id %d" % (R.time, self, slot_id))
 
         # Skip if it's not our turn
-        if not self.is_rotor: #and self.slice_t % PARAMS.n_rotor != self.id:
+        if self.tag != "rotor": #and self.slice_t % PARAMS.n_rotor != self.id:
             self._enable()
             return
 
@@ -141,7 +139,7 @@ class RotorSwitch:
         dst = self.dests[tor.id]
 
         # Some checking for rotors
-        if self.is_rotor:
+        if self.tag == "rotor":
             intended_dst, port_id, slot_t, lumps = packet
             if len(lumps) == 0:
                 return
@@ -172,5 +170,5 @@ class RotorSwitch:
         self.dests[tor.id].recv(packet)
 
     def __str__(self):
-        return "Rot %s" % self.id
+        return "Switch %s (%s)" % (self.id, self.tag)
 
