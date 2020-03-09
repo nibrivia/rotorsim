@@ -169,6 +169,7 @@ def main(
     # Set parameters
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
     slice_duration /= 1000 #divide to be in ms
+    reconfiguration_time /= 1000 #divide to be in ms
 
     # Compute switch counts
     if n_xpand is not None:
@@ -190,7 +191,8 @@ def main(
 
     if uuid is None:
         uuid = _uuid.uuid4()
-    slot_duration = slice_duration*n_rotor
+    slot_duration = slice_duration#*n_rotor
+    cycle_duration = slice_duration*n_rotor
 
 
     del slice_duration
@@ -212,22 +214,24 @@ def main(
                    #verbose = verbose,
                    #do_pause = not no_pause)
 
-    n_slots = math.ceil(time_limit/slot_duration)
     if n_rotor > 0:
+        n_slots = math.ceil(time_limit/slot_duration)
         n_cycles = math.ceil(time_limit/(n_rotor*n_slots*PARAMS.slot_duration))
     else:
         n_cycles = 1
+        n_slots = 1
 
     max_slots = n_cycles*n_slots
-    cycle_duration = slot_duration*n_slots
+    #cycle_duration = slot_duration*n_slots
     slice_duration = slot_duration
 
     #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
             #(n_tor, n_rotor, packets_per_slot, n_cycles))
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
-            (time_limit, cycle_duration, slot_duration, slice_duration))
+            (PARAMS.time_limit, PARAMS.cycle_duration, PARAMS.slot_duration, slice_duration))
     print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fGb/s" %
-            (n_tor, n_rotor, n_tor*n_rotor, bandwidth/1e3, n_tor*n_switches*bandwidth/1e3))
+            (PARAMS.n_tor, PARAMS.n_rotor, PARAMS.n_tor*PARAMS.n_rotor, PARAMS.bandwidth/1e3,
+                PARAMS.n_tor*PARAMS.n_switches*PARAMS.bandwidth/1e3))
 
     print("Setting up flows, load %d%%..." % (100*load))
     # generate flows
@@ -255,7 +259,7 @@ def main(
     while time < time_limit*10:
         time += slice_duration
         if verbose and not no_pause:
-            R.call_in(time, print_demand, net.tors, priority=99)
+            #R.call_in(time, print_demand, net.tors, priority=99)
             R.call_in(time, pause, priority=100)
 
     #print time

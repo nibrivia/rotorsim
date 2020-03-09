@@ -101,8 +101,7 @@ class ToRSwitch:
 
         # This is the first time, we need to connect everyone
         slot_t = 0
-        n_slots = len(self.matchings_by_slot_rotor)
-        matchings_in_effect = self.matchings_by_slot_rotor[slot_t % n_slots]
+        matchings_in_effect = self.matchings_by_slot_rotor[slot_t % PARAMS.n_slots]
 
         # For all active matchings, connect them up!
         for rotor_id in rotor_ports:
@@ -152,7 +151,7 @@ class ToRSwitch:
         # If Rotor
         if PARAMS.slot_duration is not None:
             self.slot_id = self.slot_t % self.n_slots
-            vprint("%.6f %s switch %d" % (R.time, self, self.slot_id))
+            vprint("%.6f %s switch to slot_id %d" % (R.time, self, self.slot_id))
             matchings_in_effect = self.matchings_by_slot_rotor[self.slot_id]
             for rotor_id in rotor_ports:
                 dst = matchings_in_effect[rotor_id]
@@ -178,19 +177,17 @@ class ToRSwitch:
     @property
     @lru_cache(maxsize = None)
     def link_state(self):
-        # TODO do this in connect_to, reduces complexity by at least O(n_tor)
         links = dict()
         for port_id in xpand_ports:
             tor, _ = self.ports[port_id]
             links[tor.id] = 1
         return links
 
-
     # By having a delay 0 here, this means that every ToR will have gone
     # through its start, which will then mean that we can call link_state
     @Delay(0, priority = -10)
     def make_route(self, slice_id = None):
-        # Routing table
+        """Builds a routing table"""
         self.route = [(None, PARAMS.n_tor*1000) for _ in range(PARAMS.n_tor)]
         self.route[self.id] = ([], 0)
         queue = deque()
@@ -413,7 +410,7 @@ class ToRSwitch:
         # Get the packet
         p = queue.pop()
         p.intended_dest = dst_tor.id
-        if self.port_type(port_id) == "rotor":
+        if port_type(port_id) == "rotor":
             self.capacity[p.dst_id] += 1
             #self.capacities[port_id][p.dst_id] -= 1
 
@@ -472,7 +469,7 @@ class ToRSwitch:
             add_to = flow.tag
 
         if add_to == "xpand":
-            if self.n_xpand == 0:
+            if PARAMS.n_xpand == 0:
                 return self.recv_flow(flow, add_to = "rotor")
 
             #path, _ = self.route[flow.dst]

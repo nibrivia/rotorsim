@@ -175,11 +175,7 @@ class RotorNet:
 
         # Register first events
         for s_id, s in enumerate(self.switches):
-            if s_id < PARAMS.n_rotor:
-                s.start(slice_duration = PARAMS.slot_duration,
-                        reconf_time    = PARAMS.reconfiguration_time)
-            else:
-                s.start(slice_duration = float("Inf"))
+            s.start()
         for t in self.tors:
             t.start()
 

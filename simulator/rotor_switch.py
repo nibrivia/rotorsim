@@ -37,20 +37,17 @@ class RotorSwitch:
     def add_matchings(self, matchings_by_slot, n_rotor):
         self.matchings_by_slot = matchings_by_slot
 
-    def start(self, slice_duration, reconf_time = 0):
-        self.reconf_time = reconf_time # TODO
-
+    def start(self):
         self._disable()
         self.install_matchings(self.matchings_by_slot[0])
 
         # Create a recursive call
-        if slice_duration is not None and slice_duration > 0:
-            self.new_slice = Delay(slice_duration + reconf_time, priority = 2)(self._new_slice)
-            self.slice_duration = slice_duration
+        if self.is_rotor:
+            self.new_slice = Delay(PARAMS.slot_duration + PARAMS.reconfiguration_time, priority = 2)(self._new_slice)
         else:
             self.new_slice = lambda: None
 
-        R.call_in(slice_duration, priority = 1, fn = self._disable)
+        R.call_in(PARAMS.slot_duration, priority = 1, fn = self._disable)
         self._new_slice()
 
     # Returns True/False if the connection can be established
@@ -88,18 +85,19 @@ class RotorSwitch:
 
     @property
     def slot_t(self):
-        return round(R.time / (self.slice_duration+self.reconf_time))
+        return round(R.time / (PARAMS.slot_duration+PARAMS.reconfiguration_time))
 
     def _new_slice(self):
         n_slots = len(self.matchings_by_slot)
+        slot_id = self.slot_t % n_slots
+        vprint("%.6f %s              slot_id %d" % (R.time, self, slot_id))
 
         # Skip if it's not our turn
-        if not self.is_rotor and self.slice_t % PARAMS.n_rotor != self.id:
+        if not self.is_rotor: #and self.slice_t % PARAMS.n_rotor != self.id:
             self._enable()
             return
 
-        slot_id = self.slot_t % n_slots
-        vprint("%.6f %s switch %d" % (R.time, self, slot_id))
+        vprint("%.6f %s switching to slot_id %d" % (R.time, self, slot_id))
         # Compute our new matching
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
@@ -163,7 +161,7 @@ class RotorSwitch:
             return
 
         # Print
-        if self.verbose:
+        if PARAMS.verbose:
             p = packet
             print("@%.3f (%2d)    %d  ->%d %s\033[00m"
                     % (R.time, self.id, tor.id, dst.id, p))
