@@ -5,25 +5,12 @@ from math import ceil, floor
 from helpers import *
 from tor_switch import ToRSwitch
 from rotor_switch import RotorSwitch
+from optical_switch import OpticalSwitch
 from event import Registry, Delay, stop_simulation, R
 from xpand_108 import xpand1
 
 class RotorNet:
     def __init__(self):
-                 #n_tor,
-                 #packets_per_slot,
-                 #n_switches,
-                 #arrive_at_start,
-                 #n_cache    = None,
-                 #n_xpand    = None,
-                 #slice_duration = 1, 
-                 #reconfiguration_time = .1, 
-                 #jitter = 0,
-                 #verbose = True, 
-                 #do_pause = True):
-
-        # Network config
-
         # Matchings need to be done early to get constants
         self.generate_matchings()
         if PARAMS.n_rotor > 0:
@@ -40,38 +27,19 @@ class RotorNet:
         if PARAMS.slot_duration is not None:
             PARAMS.packet_ttime   = PARAMS.slot_duration  / PARAMS.packets_per_slot
 
-        # Timings
-        #self.slice_duration = slice_duration
-        #self.slot_duration  = slice_duration#*self.n_rotor
-        #self.cycle_duration = self.slot_duration * self.n_slots
-        #self.reconf_time    = reconfiguration_time
+        # Switches
+        self.switches = []
+        self.switches.extend([  RotorSwitch(id = r_id) for r_id in rotor_ports])
+        self.switches.extend([OpticalSwitch(id = x_id) for x_id in xpand_ports])
+        self.switches.extend([OpticalSwitch(id = c_id) for c_id in cache_ports])
 
-        # Internal variables
-        self.switches = [RotorSwitch(
-                            id = i,
-                            #n_ports  = n_tor,
-                            tag = port_type(i),
-                            #verbose = verbose
-                            )
-                for i in range(PARAMS.n_switches)]
-
-        self.tors = [ToRSwitch(
-                            name    = i)
-                            #n_tor   = n_tor,
-                            #n_xpand = self.n_xpand,
-                            #n_rotor = self.n_rotor,
-                            #n_cache = self.n_cache,
-                            #packets_per_slot = packets_per_slot,
-                            #slot_duration = slice_duration,
-                            #reconfiguration_time = self.reconf_time,
-                            #clock_jitter  = jitter,
-                            #verbose = verbose)
-                for i in range(PARAMS.n_tor)]
+        # ToRs
+        self.tors = [ToRSwitch(name = i) for i in range(PARAMS.n_tor)]
 
         for tor in self.tors:
             tor.set_tor_refs(self.tors)
 
-        # Physically connect them up
+        # "Physically" connect them up
         for s in self.switches:
             s.connect_tors(self.tors)
 

@@ -10,6 +10,9 @@ class Switch:
         self.id = id
         self._disable()
 
+        self.dests = [None for _ in range(PARAMS.n_tor)]
+        self.n_packets = [0 for _ in range(PARAMS.n_tor)]
+
     def start(self):
         raise NotImplementedError
 
@@ -32,6 +35,15 @@ class Switch:
             tor.connect_queue(port_id = self.id, switch = self, queue = handle)
 
     def recv(self, tor, packet):
-        raise NotImplementedError
+        if not self.enabled:
+            assert False,\
+                    "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
 
+        # Get destination
+        dst = self.dests[tor.id]
+
+        #TODO track utilization
+
+        # Send to destination
+        dst.recv(packet)
 

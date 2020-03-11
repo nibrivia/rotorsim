@@ -276,16 +276,18 @@ def main(
     # Create a new log with the 
     u_fn = "utilization-" + str(LOG.sim_id) + ".csv"
     max_packets = (R.time/1000) * (bandwidth*1e6) / (BYTES_PER_PACKET*8)
+    """
     with open(u_fn, "w") as f:
         print("switch,type,port,n_packets,divisor", file = f)
         for s in net.switches:
-            if s.tag == "cache":
-                divisor = R.time
-            else:
-                divisor = max_packets
+            #if s.tag == "cache":
+                #divisor = R.time
+            #else:
+            divisor = max_packets
 
             for port_id, n in enumerate(s.n_packets):
                 print(",".join(str(x) for x in [s.id, s.tag, port_id, n, divisor]), file = f)
+                """
 
     # Done!
     if LOG is not None:
