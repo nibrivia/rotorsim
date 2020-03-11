@@ -1,13 +1,10 @@
 from helpers import *
 from logger import LOG
-from functools import partial
 from event import R, Delay
+from switch import Switch
 
-class Empty:
-    def __str__(self):
-        return self.name
 
-class RotorSwitch:
+class RotorSwitch(Switch):
     def __init__(self,
             id,
             tag,
@@ -106,29 +103,11 @@ class RotorSwitch:
         self.new_slice()
 
 
-    def _disable(self):
-        self.enabled = False
-    def _enable(self):
-        self.enabled = True
-
     def install_matchings(self, matchings):
         assert not self.enabled, "@%.3f" % R.time
         for src, dst in matchings:
             self.dests[src.id] = dst
         # Wait for reconfiguration time, high priority so that reconf 0 has no down time
-
-    def connect_tors(self, tors):
-        assert not self.enabled
-        self.tors = tors
-        for t_id, tor in enumerate(tors):
-            # This handle thing is essentially giving the illusion that
-            # each port has its own .recv function. That's annoying to
-            # do in practice, so we just give out an object with a partial
-            handle = Empty()
-            handle.recv = partial(self.recv, tor)
-            handle.name = str(self)
-            handle.id   = self.id
-            tor.connect_queue(port_id = self.id, switch = self, queue = handle)
 
     def recv(self, tor, packet):
         if not self.enabled:
