@@ -1,20 +1,15 @@
-from helpers import *
-from logger import LOG
-from event import R, Delay
 from switch import Switch
 
+class OpticalSwitch(Switch):
+    def __init__(self, id):
+        """Optical switch"""
+        # TODO call super
 
-class RotorSwitch(Switch):
-    def __init__(self,
-            id,
-            tag,
-            ):
-        """A rotor switch"""
-        # About me
-        self.tag   = tag
+        # Link status
+        self.available_up = [True for _ in range(PARAMS.n_tor)]
+        self.available_dn = [True for _ in range(PARAMS.n_tor)]
 
         # About time
-        self.slice_t   = -1
         self.n_packets = [0 for _ in range(PARAMS.n_tor)]
 
     def add_matchings(self, matchings_by_slot, n_rotor):
