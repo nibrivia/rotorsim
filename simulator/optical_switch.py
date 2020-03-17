@@ -1,5 +1,6 @@
 from switch import Switch
 from params import PARAMS
+from event import R
 
 class OpticalSwitch(Switch):
     def __init__(self, id):
@@ -10,13 +11,15 @@ class OpticalSwitch(Switch):
         self.available_up = [True for _ in range(PARAMS.n_tor)]
         self.available_dn = [True for _ in range(PARAMS.n_tor)]
 
+        self.starts = [None for _ in range(PARAMS.n_tor)]
+
     def start(self):
         self._enable()
 
-    def add_matchings(self):
+    def add_matchings(self, matchings):
         assert not self.enabled
         for src, dst in matchings:
-            self.request_matching(srd, dst.id)
+            self.request_matching(src, dst.id)
 
     # Returns True/False if the connection can be established
     def request_matching(self, tor, dst_id):
@@ -51,26 +54,6 @@ class OpticalSwitch(Switch):
             # tor.cache_free(dst.id)
             pass
 
-    """
-    def recv(self, tor, packet):
-        if not self.enabled:
-            assert False,\
-                    "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
-
-        # Get destination
-        dst = self.dests[tor.id]
-
-        # Print
-        if PARAMS.verbose:
-            p = packet
-            print("@%.3f (%2d)    %d  ->%d %s\033[00m"
-                    % (R.time, self.id, tor.id, dst.id, p))
-            assert p.intended_dest == dst.id
-
-        # Send non-rotor packet
-        self.n_packets[tor.id] += 1
-        self.dests[tor.id].recv(packet)
-        """
 
     def __str__(self):
         return "Switch %s (optical)" % (self.id)

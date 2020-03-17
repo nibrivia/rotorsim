@@ -7,7 +7,7 @@ from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PAC
 import sys, uuid
 import click
 import uuid as _uuid
-import math
+import math, sys
 from params import *
 from helpers import *
 
@@ -171,6 +171,8 @@ def main(
     slice_duration /= 1000 #divide to be in ms
     reconfiguration_time /= 1000 #divide to be in ms
 
+    random.seed(42) # TODO Just to make things reproducible
+
     # Compute switch counts
     if n_xpand is not None:
         assert n_xpand <= n_switches
@@ -298,7 +300,8 @@ def main(
 def print_time(time_limit):
     print("\x1b[2K\r\033[1;91m%dms of %dms \033[00m %d (%d)" % (
         R.time, time_limit, len(FLOWS), N_FLOWS[0]),
-        end = "")
+        end = "",
+        file = sys.stderr)
     #print("%dms of %dms \033[00m %d" % (R.time, time_limit, len(FLOWS)), end = "")
     R.call_in(1, print_time, time_limit)
 

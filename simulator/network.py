@@ -94,7 +94,7 @@ class RotorNet:
 
                 matching = [(self.tors[src], self.tors[dst]) for src, dst in enumerate(tor_ids)]
                 xpand_matchings[xpand_id] = matching
-                self.switches[xpand_id].add_matchings([matching], 1)
+                self.switches[xpand_id].add_matchings(matching)
         else:
             for i, port_id in enumerate(xpand_ports):
                 # Install one matching per switch, never changes
@@ -115,11 +115,11 @@ class RotorNet:
 
         # CACHE
         #######
-        for cache_id in cache_ports:
-            # Start with a default, this will be changing though...
-            cache = self.switches[cache_id]
-            cache_matchings = [self.matchings[0]]
-            cache.add_matchings(cache_matchings, 1)
+        #for cache_id in cache_ports:
+            ## Start with a default, this will be changing though...
+            #cache = self.switches[cache_id]
+            #cache_matchings = [self.matchings[0]]
+            #cache.add_matchings(cache_matchings, 1)
 
 
     def generate_matchings(self):

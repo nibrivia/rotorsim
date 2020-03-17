@@ -245,23 +245,29 @@ class ToRSwitch:
                 #print("@%.3f %s got matching" % (R.time, f))
                 vprint("\033[0;33mflow %d start (%s)\033[00m" % (f.id, f.tag))
 
+                # Get the flow
                 self.ports[port_id][0] = self.tors[f.dst]
                 self.flows_cache.pop(i)
 
+                # Figure out how long it takes
                 fct = f.remaining_packets * PARAMS.packet_ttime
                 n_packets = f.size_packets
-
                 time_left = R.limit - R.time - PARAMS.reconf_cache
+
+                # Update book-keeping
                 self.active_flow[port_id] = f
 
+                # Make sure end-of-simulation gets handled gracefully
                 if fct > time_left:
                     n_packets = math.floor(time_left/fct * n_packets)
                     if n_packets < 0:
                         return
                     fct = n_packets * PARAMS.packet_ttime
 
+                # Get the packets from the flow
                 lump = f.pop_lump(n_packets)
 
+                # Come back when we're done
                 R.call_in(PARAMS.reconf_cache + fct, self.cache_flow_done, port_id = port_id, lump = lump)
 
                 return None # Still not simulating packet level
@@ -269,10 +275,14 @@ class ToRSwitch:
     def cache_flow_done(self, port_id, lump):
         vprint("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
 
+        # Figure out who was done
         flow_id, dst, n = lump
         FLOWS[flow_id].rx(n)
 
+        # Reset book-keeping
         self.active_flow[port_id] = None
+
+        # Release the cache
         self.switches[port_id].release_matching(self)
 
     def next_queue_rotor(self, port_id):
