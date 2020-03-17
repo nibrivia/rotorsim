@@ -34,7 +34,7 @@ class OpticalSwitch(Switch):
         self.available_up[tor.id] = False
         self.available_dn[dst_id] = False
 
-        self.dests[ tor.id] = self.tors[dst_id]
+        self.dests[ tor.id] = dst_id
         self.starts[tor.id] = R.time + 15#...
 
         return True

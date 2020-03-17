@@ -1,7 +1,51 @@
 from params import PARAMS
-from functools import partial
+from collections import deque
 
-class Empty:
+class QueueLink:
+    def __init__(self,
+            dst_recv,
+            name = "",
+            delay     = 0,
+            max_size_bytes = None,
+            bandwidth_bits = None,
+            ):
+        # ID
+        self.name = name
+
+        # Internal state
+        self._queue   = deque()
+        self._enabled = False
+
+        # Destination values
+        self.dst_recv = dst_recv
+
+        # Link params
+        self.delay = delay
+
+    def recv(self, packet):
+        self._queue.appendleft(packet)
+        self.send()
+
+    def _enable(self):
+        self._enabled = True
+        self.send()
+
+    def send(self):
+        # Currently sending something, or no packets to send
+        if not self._enabled or len(self._queue) == 0:
+            return
+
+        # Disable
+        self._enabled = False
+
+        # Check if there are packet
+        pkt = self._queue.pop()
+        self.dst_recv(pkt)
+
+        # Re-enable after a delay
+        delay = self.delay + pkt.size * 8 / self.bandwidth
+        R.call_in(delay, self._enable)
+
     def __str__(self):
         return self.name
 
@@ -10,8 +54,21 @@ class Switch:
         self.id = id
         self._disable()
 
+        # in and out links
+        self.rx    = [None for _ in range(PARAMS.n_tor)]
+        self.tx    = [None for _ in range(PARAMS.n_tor)]
+
+        # Mapping from in->out
         self.dests = [None for _ in range(PARAMS.n_tor)]
-        self.n_packets = [0 for _ in range(PARAMS.n_tor)]
+
+        # Create the in-links now
+        for tor_id in range(PARAMS.n_tor):
+            recv = self.make_recv(tor_id)
+            name = "%s:%-2d" % (self, tor_id)
+            handle = QueueLink(recv, name = name, delay = 0)
+
+            self.rx[tor_id] = handle
+
 
     def start(self):
         raise NotImplementedError
@@ -23,27 +80,25 @@ class Switch:
 
     def connect_tors(self, tors):
         """'Physically' connect the switch to its ports"""
-        self.tors = tors
-        for t_id, tor in enumerate(tors):
-            # This handle thing is essentially giving the illusion that
-            # each port has its own .recv function. That's annoying to
-            # do in practice, so we just give out an object with a partial
-            handle = Empty()
-            handle.recv = partial(self.recv, tor)
-            handle.name = str(self)
-            handle.id   = self.id
-            tor.connect_queue(port_id = self.id, switch = self, queue = handle)
+        for tor_id, tor in enumerate(tors):
+            # Tell the ToR about us
+            tor_rx = tor.connect_backbone(port_id = self.id, switch = self, queue = self.rx[tor_id])
 
-    def recv(self, tor, packet):
-        if not self.enabled:
-            assert False,\
-                    "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
+            # Give us a way to talk to the ToR
+            self.tx[tor_id] = tor_rx
 
-        # Get destination
-        dst = self.dests[tor.id]
+    def make_recv(self, port_id):
+        """Makes a dedicated function for this incoming port"""
 
-        #TODO track utilization
+        def recv(packet):
+            """Actually receives packets for `port_id`"""
+            if not self.enabled:
+                assert False,\
+                        "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
 
-        # Send to destination
-        dst.recv(packet)
+            # Forward to destination
+            dst_id = self.dests[port_id]
+            self.out[dst_id].recv(packet)
+
+        return recv
 

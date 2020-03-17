@@ -25,7 +25,8 @@ class ToRSwitch:
         self.switches = [None for _ in range(PARAMS.n_switches)]
 
         # receiving tor, queues
-        self.ports      = [[None, None] for _ in range(PARAMS.n_switches)]
+        self.port_rx    = [None for _ in range(PARAMS.n_switches)] # Just the queue
+        self.port_dst   = [None for _ in range(PARAMS.n_switches)] # Just the dest
         self.out_enable = [True for _ in range(PARAMS.n_switches)] # whether the NIC can send
 
         # ... about time
@@ -62,7 +63,7 @@ class ToRSwitch:
     # One-time setup
     ################
 
-    def connect_queue(self, port_id, switch, queue):
+    def connect_backbone(self, port_id, switch, queue):
         # queue is an object with a .recv that can be called with (packets)
         self.switches[port_id] = switch
 
@@ -70,6 +71,8 @@ class ToRSwitch:
             self.connections[port_id] = queue
 
         self.ports[port_id][1] = queue
+
+        return None
 
     def add_rotor_matchings(self, matchings_by_slot_rotor):
         self.matchings_by_slot_rotor = [[ None for _ in m] for m in matchings_by_slot_rotor]
