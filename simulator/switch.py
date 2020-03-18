@@ -102,7 +102,7 @@ class Switch:
 
             # Forward to destination
             dst_id = self.dests[port_id]
-            self.out[dst_id].recv(packet)
+            self.tx[dst_id].recv(packet)
 
         return recv
 

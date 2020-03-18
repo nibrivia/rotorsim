@@ -1,64 +1,54 @@
-import sys, math, heapq
-from buffer import *
+import math
+import heapq
+# from buffer import *
 from logger import LOG
-from helpers import *
+from helpers import get_port_type, rotor_ports, cache_ports, xpand_ports, vprint
 from event import Delay, R
 from functools import lru_cache
 from collections import deque
-from flow_generator import FLOWS, BYTES_PER_PACKET
+from flow_generator import FLOWS
 from params import PARAMS
 from switch import QueueLink
+
 
 class ToRSwitch:
     def __init__(self, name):
 
         # Stuff about me
-        self.id      = int(name)
-        self.name    = "Tor %d" % self.id
+        self.id   = int(name)
+        self.name = "Tor %d" % self.id
 
         # ... about others
         self.switches = [None for _ in range(PARAMS.n_switches)]
 
         # receiving tor, queues
         self.ports_rx  = [QueueLink(
-                                    self.make_recv(port_id),
-                                    name = "%s:%2d" % (self, port_id),
-                                    delay = 0,
-                                    ms_per_byte = 0,
+                                    self.recv,
+                                    name  = "%s:%2d" % (self, port_id),
+                                    delay = 0, #TODO
+                                    ms_per_byte = 0, # TODO
                                     max_size_bytes = None,
                                     )
                 for port_id in range(PARAMS.n_switches)] # Just the queue
-        self.ports_src = [None for _ in range(PARAMS.n_switches)] # Just the source
+        self.ports_src = [None for _ in range(PARAMS.n_switches)]  # Just the source
 
         # transmit queue
-        self.ports_tx  = [None for _ in range(PARAMS.n_switches)] # Just the queue
-        self.ports_dst = [None for _ in range(PARAMS.n_switches)] # Just the destination
+        self.ports_tx  = [None for _ in range(PARAMS.n_switches)]  # Just the queue
+        self.ports_dst = [None for _ in range(PARAMS.n_switches)]  # Just the destination
 
-        # Demand
-        #self.flows_cache = []
-        #self.flows_rotor = [[] for dst in range(PARAMS.n_tor)]
-        #self.flows_xpand = {port_id: [] for port_id in xpand_ports}
-        #self.lumps_ind   = [[] for dst in range(PARAMS.n_tor)] # holds indirected packets (rotor)
-        #self.lumps_ind_n = [0  for dst in range(PARAMS.n_tor)] # holds indirected packets (rotor)
-
-        # TODO cache
-        #self.active_flow = {port_id: None for port_id in cache_ports}
 
         # rotor
         self.capacities  = [0    for _ in range(PARAMS.n_tor)] # Capacities of destination
         self.capacity    = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
         self.out_queue_t = [-1 for rotor_id in rotor_ports]
+        self.rotor_queue = QueueLink(lambda p : None)
+        self.cache_queue = QueueLink(lambda p : None)
         #self.n_flows = 0
 
         # xpander
         self.connections = dict() # Destination ToRs
-        self.tor_to_port = dict() # the rotor to use to get the next destination
-        self.port_to_tor = dict()
-        self.buffers_fst = {port_id: Buffer(parent = self,
-                                   src = self.id, dst = None,
-                                   name = "fst[%s]" % port_id,
-                                   )
-                                for port_id in xpand_ports} # holds indirected packets (xpand)
+        self.dst_to_port = dict() # the rotor to use to get the next destination
+        #self.port_to_tor = dict()
 
 
     # One-time setup
@@ -125,8 +115,8 @@ class ToRSwitch:
         ##########
 
         # This only iterates over the very beginning of the connections: the rotors
-        for port_id, tor in self.xpand_matchings.items():
-            self.tor_to_port[tor.id] = port_id
+        # for port_id, tor in self.xpand_matchings.items():
+        #     self.tor_to_port[tor.id] = port_id
 
 
     # Every slice setup
@@ -155,7 +145,7 @@ class ToRSwitch:
         # If Rotor
         if PARAMS.slot_duration is not None:
             self.slot_id = self.slot_t % self.n_slots
-            vprint("%.6f %s switch to slot_id %d" % (R.time, self, self.slot_id))
+            #vprint("%.3f %s switch to slot_id %d" % (R.time, self, self.slot_id))
             matchings_in_effect = self.matchings_by_slot_rotor[self.slot_id]
             for rotor_id in rotor_ports:
                 dst = matchings_in_effect[rotor_id]
@@ -399,48 +389,55 @@ class ToRSwitch:
     # Actual packets moving
     ########################
 
-    @lru_cache(maxsize=None)
-    def packet_lag(self, p):
-        return PARAMS.packet_ttime / BYTES_PER_PACKET * p
+    #@lru_cache(maxsize=None)
+    #def packet_lag(self, p):
+        #return PARAMS.packet_ttime / BYTES_PER_PACKET * p
 
     def _enable_out(self, port_id):
         self.out_enable[port_id] = True
         # We're done transmitting, try again
         self._send(port_id)
 
+    def recv(self, packet):
+        """Receives packets for `port_id`"""
+        assert packet.intended_dest == self.id, \
+            "@%.3f %s received %s" % (R.time, self, packet)
 
-    def make_recv(self, port_id):
-        """Makes a dedicated function for this incoming port"""
-        port_type = get_port_type(port_id)
+        # Update hop count
+        packet.hop_count += 1
+        assert packet.hop_count < 1000, "Hop count >1000? %s" % packet
 
-        if True:
-            get_next_port = lambda p: 0
-        elif port_type == "xpand":
-            get_next_port = self.next_port_xpand
-        elif port_type == "rotor":
-            get_next_port = self.next_port_rotor
-        elif port_type == "cache":
-            get_next_port = self.next_port_cache
-        else:
-            raise NotImplementedError # TODO better error
+        # Switch packet around
+        next_port_id = -1
 
-        def recv(packet):
-            """Actually receives packets for `port_id`"""
-            assert packet.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
-            packet.hop_count += 1
-            assert packet.hop_count < 1000, "Hop count >1000? %s" % packet
+        # Deliver locally
+        if packet.dst in self.local_dests:
+            next_port_id = -1
 
-            # Get next hop
-            #path, _ = self.route[p.dst_id]
-            #next_hop = path[0]
-            #out_port_id = self.tor_to_port[next_hop]
+        # expander: use the routing table
+        if packet.tag == "xpand":
+            next_port_id = self.dst_to_port[packet.dst]  # Use routing table
 
-            next_port = self.get_next_port(packet)
+        # rotor: figure out 1st/2nd hop and adjust
+        if packet.tag == "rotor":
+            # Add to rotor queue
+            next_port_id = self.rotor_queue.enq(packet)
 
-            # Add to queue
-            self.ports_tx[next_port].enq(packet)
-        return recv
+        # cache: attempt to send it on cache, fallback on rotor
+        if packet.tag == "cache":
+            next_port_id = self.cache_queue.enq(packet)
 
+
+        # Get next hop
+        # path, _ = self.route[p.dst_id]
+        # next_hop = path[0]
+        # out_port_id = self.tor_to_port[next_hop]
+
+        next_port = self.get_next_port(packet)
+
+        # Add to queue
+        self.ports_tx[next_port].enq(packet)
+    '''
     # Useful only for pretty prints: what comes first, packets second
     def _send(self, port_id):
         """Called for every port, attempts to send"""
@@ -557,6 +554,7 @@ class ToRSwitch:
             self.flows_cache.append(flow)
             for cache_port in cache_ports:
                 self._send(cache_port)
+                '''
 
 
     # Printing stuffs

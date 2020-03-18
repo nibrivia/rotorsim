@@ -8,6 +8,8 @@ from rotor_switch import RotorSwitch
 from optical_switch import OpticalSwitch
 from event import Registry, Delay, stop_simulation, R
 from xpand_108 import xpand1
+from params import PARAMS
+from server import Server
 
 class RotorNet:
     def __init__(self):
@@ -36,12 +38,33 @@ class RotorNet:
         # ToRs
         self.tors = [ToRSwitch(name = i) for i in range(PARAMS.n_tor)]
 
+        # Servers
+        PARAMS.servers_per_rack = 5
+        self.servers = [Server("%s-%s" % (rack_id, rack_slot))
+                for rack_slot in range(PARAMS.servers_per_rack)
+                for rack_id   in range(PARAMS.n_tor)]
+
+        # "Physically" connect them up
+
+        # ToR <> backbone
+        for s in self.switches:
+            s.connect_tors(self.tors)
+
+        # ToR <> ToR? TODO check if needed
         for tor in self.tors:
             tor.set_tor_refs(self.tors)
 
-        # "Physically" connect them up
-        for s in self.switches:
-            s.connect_tors(self.tors)
+        # ToR <> servers
+        for rack_id, tor in enumerate(self.tors):
+            rack_offset = rack_id * PARAMS.servers_per_rack
+            for rack_slot in range(PARAMS.servers_per_rack):
+                server_ix = rack_offset + rack_slot
+                server = self.servers[server_ix]
+
+                server.connect_tor(tor.recv)
+
+
+
 
         # ROTORNET
         ##########
@@ -152,14 +175,14 @@ class RotorNet:
             R.limit = time_limit
         R.run_next()
 
-    def open_connection(self, flow):
-        if flow is not None:
-            self.tors[flow.src].recv_flow(flow)
+    def open_connection(self, flow_desc):
+        if flow_desc is not None:
+            self.servers[flow_desc.src].start_flow(flow_desc)
 
         try:
-            wait, flow = next(self.flow_gen)
+            wait, flow_desc = next(self.flow_gen)
             R.call_in(wait, priority = -1,
-                    fn = self.open_connection, flow = flow)
+                    fn = self.open_connection, flow_desc = flow_desc)
         except:
             pass
 

@@ -23,6 +23,7 @@ class Packet:
                 self.flow_id, self.src_id, self.dst_id, self.seq_num, self.intended_dest)
 
 class Flow:
+    """This runs on a server"""
     def __init__(self, arrival, flow_id, size, src, dst, ml_id = None):
         self.arrival = arrival
         self.id      = flow_id
@@ -50,6 +51,7 @@ class Flow:
         self.end = float("nan")
 
 
+    '''
     def pop_lump(self, n=1):
         #assert self.tag != "xpand", self
         assert self.remaining_packets >= n, \
@@ -109,6 +111,7 @@ class Flow:
 
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
+    '''
 
     def __str__(self):
         return "%s %4d[%3d->%3d]\033[00m" % (self.tag, self.id, self.src, self.dst)

@@ -22,23 +22,47 @@ class TCPFlow(Flow):
         super().__init__(flow_desc, receiver)
 
         # Init our TCP fields
-        self.cwnd = 1
-        self.rtt  = None
+        self.cwnd   = 1
+        self.rtt_ms = 1
 
         # TODO
         self.alpha = .5
         self.beta  = .5
 
         self.in_flight = []
+        self.n_sent    = 0
 
-    def recv(self, packet):
-        next_packet = None
-        self.receiver.recv(next_packet)
+    def get_sender(self):
+        def recv(ack_packet):
+            #assert ack_packet.is_ack
+
+            # Create packet
+            p = Packet(
+                    self.flow_desc.src,
+                    self.flow_desc.dst,
+                    self.n_sent,
+                    self.flow_desc.tag,
+                    self.flow_desc.id,
+                    self.remaining_packets == 1,)
+
+            # Send it
+            self.receiver.enq(p)
+            self.n_sent += 1
+
+            # Setup the timeout
+            R.call_in(self.rtt * 1.5, self.timeout, packet)
+
+        return recv
+
+    def get_receiver(self):
+        def recv(packet):
+            # TODO send ack
+            pass
+        return recv
 
     def timeout(self, packet):
         self.cwnd /= 2
         self.send(packet)
-        pass
 
 
 class Server:
@@ -46,7 +70,7 @@ class Server:
         self.id = server_id
         self.flows = dict()
 
-    def connect_tor(self, rack_port)
+    def connect_tor(self, rack_port):
         # We can just bypass the host queue and go straight to the rack
         # The rate limiting is done in the draining Queue
         self.out_queue = rack_port
@@ -63,8 +87,8 @@ class Server:
         del self.flows[flow_id]
 
     def start_flow(self, flow_desc):
-        flow = TCPFlow(flow, self.out_queue)
-        self.flows[flow_desc.flow_id] = flow
+        flow = TCPFlow(flow_desc, self.out_queue)
+        self.flows[flow_desc.id] = flow
 
         flow.set_callback_done(self.flow_done)
 
