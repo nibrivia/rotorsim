@@ -4,10 +4,10 @@ from collections import deque
 class QueueLink:
     def __init__(self,
             dst_recv,
-            name = "",
-            delay     = 0,
+            name  = "",
+            delay = 0,
+            ms_per_byte    = 0,
             max_size_bytes = None,
-            bandwidth_bits = None,
             ):
         # ID
         self.name = name
@@ -16,19 +16,23 @@ class QueueLink:
         self._queue   = deque()
         self._enabled = False
 
+        self.queue_size_bytes = 0
+        self.queue_size_max   = max_size_bytes
+        self.ms_per_byte      = ms_per_byte
+
         # Destination values
         self.dst_recv = dst_recv
 
         # Link params
         self.delay = delay
 
-    def recv(self, packet):
+    def enq(self, packet):
         self._queue.appendleft(packet)
         self.send()
 
     def _enable(self):
         self._enabled = True
-        self.send()
+        self._send()
 
     def send(self):
         # Currently sending something, or no packets to send
@@ -43,7 +47,7 @@ class QueueLink:
         self.dst_recv(pkt)
 
         # Re-enable after a delay
-        delay = self.delay + pkt.size * 8 / self.bandwidth
+        delay = self.delay + pkt.size * ms_per_byte
         R.call_in(delay, self._enable)
 
     def __str__(self):

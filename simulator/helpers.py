@@ -5,9 +5,9 @@ import sys
 from event import R
 from params import PARAMS
 
-def vprint(*args):
+def vprint(*args, **kwargs):
     if PARAMS.verbose:
-        print(*args)
+        print(*args, **kwargs)
 
 @lru_cache()
 def bound(lo, val, hi):
@@ -30,7 +30,7 @@ def pause():
         if user_str == "x":
             sys.exit()
 
-def port_type(port_id):
+def get_port_type(port_id):
     if port_id < PARAMS.n_rotor:
         return "rotor"
     if port_id < PARAMS.n_rotor + PARAMS.n_xpand:

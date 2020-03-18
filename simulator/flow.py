@@ -14,6 +14,8 @@ class Packet:
         self.is_last = is_last
         self.size    = size
 
+        self.hop_count = 0
+
         self.intended_dest = None
 
     def __str__(self):

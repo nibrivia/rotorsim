@@ -41,18 +41,18 @@ class OpticalSwitch(Switch):
 
     def release_matching(self, tor):
         self.available_up[tor.id] = True
-        dst = self.dests[tor.id]
-        self.available_dn[dst.id] = True
+        dst_id = self.dests[tor.id]
+        self.available_dn[dst_id] = True
 
         self.dests[tor.id] = None
 
-        self.n_packets[tor.id] += max(0, R.time - self.starts[tor.id])
+        #self.n_packets[tor.id] += max(0, R.time - self.starts[tor.id])
 
         # TODO notify
-        for tor in self.tors:
-            tor._send(self.id)
+        #for tor in self.tors:
+            #tor._send(self.id)
             # tor.cache_free(dst.id)
-            pass
+            #pass
 
 
     def __str__(self):
