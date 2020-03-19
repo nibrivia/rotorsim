@@ -18,7 +18,7 @@ class QueueLink:
         self._queue   = deque()
         self._enabled = True
 
-        self.queue_size_bytes = 0
+        self.q_size_B = 0
         self.queue_size_max   = max_size_bytes
         if bandwidth_Bms is None:
             self.ms_per_byte = 0
@@ -31,15 +31,21 @@ class QueueLink:
         # Link params
         self.prop_delay = delay
 
-    # Having a delay of 0 makes it so that even if we can send
-    # immediately, it waits until the caller is done, making 
-    # the behavior of enq consistent regardless of current queue
-    # size
-    @Delay(0)
     def enq(self, packet):
-        #vprint("%s enq %s" % (packet, self))
+        if packet.flow_id == 0:
+            vprint("%s enq %s" % (packet, self))
+        if self.queue_size_max is not None and \
+                self.q_size_B + packet.size_B > self.queue_size_max:
+            if packet.flow_id == 0:
+                vprint("%s drop %s" % (packet, self))
+            return
         self._queue.appendleft(packet)
-        self._send()
+        self.q_size_B += packet.size_B
+        # Having a delay of 0 makes it so that even if we can send
+        # immediately, it waits until the caller is done, making 
+        # the behavior of enq consistent regardless of current queue
+        # size
+        R.call_in(0, self._send)
 
     def _enable(self):
         self._enabled = True
@@ -55,14 +61,15 @@ class QueueLink:
 
         # Get packet and compute tx time
         pkt = self._queue.pop()
-        tx_delay = pkt.size * self.ms_per_byte
+        tx_delay = pkt.size_B * self.ms_per_byte
         #vprint("tx_delay", pkt, tx_delay)
 
         R.call_in(tx_delay, self._enable)
         R.call_in(self.prop_delay + tx_delay, self.dst_recv, pkt)
 
     def __str__(self):
-        return "%s [%2d]" % (self.name, len(self._queue))
+        frac_full = self.q_size_B / self.queue_size_max
+        return "%s [%2d%%]" % (self.name, frac_full*100)
 
 class Switch:
     def __init__(self, id):

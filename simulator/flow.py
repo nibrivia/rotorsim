@@ -3,18 +3,21 @@ from logger import LOG
 from helpers import vprint
 from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML_QUEUE
 from event import R
+from collections import deque
 
 class Packet:
     def __init__(self, src_id, dst_id, seq_num, tag, flow_id,
             #is_last,
-            size = BYTES_PER_PACKET):
+            sent_ms,
+            size_B = BYTES_PER_PACKET):
         self.src_id  = src_id
         self.dst_id  = dst_id
         self.seq_num = seq_num
         self.tag     = tag
         self.flow_id = flow_id
+        self.sent_ms = sent_ms
         #self.is_last = is_last
-        self.size    = size
+        self.size_B  = size_B
 
         self.hop_count = 0
 
@@ -68,8 +71,9 @@ class Flow:
                     dst_id = self.dst,
                     seq_num = seq_num,
                     tag = self.tag,
+                    sent_ms = R.time,
                     flow_id =self.id,
-                    size = p_size
+                    size_B = p_size
                     )
             seq_num += 1
 
@@ -115,7 +119,11 @@ class TCPFlow(Flow):
         self.alpha = .5
         self.beta  = .5
 
+        self.slow_start = True
+        self.timeout_lock = 0
+
         self.in_flight = set()
+        self.retransmit_q = deque()
 
     # Source
     def start(self):
@@ -124,28 +132,58 @@ class TCPFlow(Flow):
 
     def src_recv(self, packet):
         #assert ack_packet.is_ack
-        #vprint("%s acked" % (packet))
+        if self.id == 0:
+            vprint("%s acked" % (packet))
+
+        # Update rtt estimate
+        self.rtt_ms = R.time - packet.sent_ms
+        if self.id == 0:
+            vprint("rtt: %s" % (self.rtt_ms))
+
 
         # Remove from in-flight if necessary
         if packet.seq_num in self.in_flight:
             self.in_flight.remove(packet.seq_num)
-            self.cwnd += 1/self.cwnd
-            #vprint(self.cwnd)
+            if self.slow_start:
+                self.cwnd += 1
+            else:
+                self.cwnd += 1/self.cwnd
+            if self.id == 0:
+                vprint("cwnd", self.cwnd)
 
+        self._send_loop()
+
+    def _send_loop(self):
         # Get next packet, send it
         while len(self.in_flight) + 1 <= self.cwnd:
-            p = next(self.packets)
+            if len(self.retransmit_q) > 0:
+                p = self.retransmit_q.pop()
+                if self.id == 0:
+                    vprint("%s retransmit" % p)
+            else:
+                p = next(self.packets)
             self.src_send(p)
 
 
     def timeout(self, packet):
         if packet.seq_num in self.in_flight:
-            vprint("%s timeout" % packet)
-            self.cwnd /= 2
-            self.src_send(packet)
+            if self.id == 0:
+                vprint("%s \033[0;31mtimeout\033[0;00m" % packet)
+            self.slow_start = False
+            self.in_flight.remove(packet.seq_num)
+
+            if R.time > self.timeout_lock:
+                if self.id == 0:
+                    vprint("%s \033[0;31m MD!!\033[0;00m" % packet)
+                self.cwnd = max(1, self.cwnd/2)
+                self.timeout_lock = R.time + self.rtt_ms
+
+            self.retransmit_q.appendleft(packet)
+            self._send_loop()
 
     def src_send(self, packet):
-        #vprint("%s sent" % (packet))
+        if self.id == 0:
+            vprint("%s sent, cwnd: %s/%.1f" % (packet, len(self.in_flight)+1, self.cwnd))
 
         self.in_flight.add(packet.seq_num)
         self.src_send_q.enq(packet)

@@ -72,12 +72,14 @@ class RotorNet:
                         name = "%s->%s" % (server, tor),
                         delay = .0,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
+                        max_size_bytes = 40e6,
                         )
                 downlink = QueueLink(
                         server.recv,
                         name = "%s->%s" % (tor, server),
                         delay = .0,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
+                        max_size_bytes = 40e6,
                         )
 
                 server.connect_tor(uplink)
