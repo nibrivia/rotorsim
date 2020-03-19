@@ -1,12 +1,14 @@
+from helpers import vprint
 from params import PARAMS
 from collections import deque
+from event import R, Delay
 
 class QueueLink:
     def __init__(self,
             dst_recv,
             name  = "",
             delay = 0,
-            ms_per_byte    = 0,
+            bandwidth_Bms = None,
             max_size_bytes = None,
             ):
         # ID
@@ -14,27 +16,36 @@ class QueueLink:
 
         # Internal state
         self._queue   = deque()
-        self._enabled = False
+        self._enabled = True
 
         self.queue_size_bytes = 0
         self.queue_size_max   = max_size_bytes
-        self.ms_per_byte      = ms_per_byte
+        if bandwidth_Bms is None:
+            self.ms_per_byte = 0
+        else:
+            self.ms_per_byte = 1/bandwidth_Bms
 
         # Destination values
         self.dst_recv = dst_recv
 
         # Link params
-        self.delay = delay
+        self.prop_delay = delay
 
+    # Having a delay of 0 makes it so that even if we can send
+    # immediately, it waits until the caller is done, making 
+    # the behavior of enq consistent regardless of current queue
+    # size
+    @Delay(0)
     def enq(self, packet):
+        #vprint("%s enq %s" % (packet, self))
         self._queue.appendleft(packet)
-        self.send()
+        self._send()
 
     def _enable(self):
         self._enabled = True
         self._send()
 
-    def send(self):
+    def _send(self):
         # Currently sending something, or no packets to send
         if not self._enabled or len(self._queue) == 0:
             return
@@ -42,16 +53,16 @@ class QueueLink:
         # Disable
         self._enabled = False
 
-        # Check if there are packet
+        # Get packet and compute tx time
         pkt = self._queue.pop()
-        self.dst_recv(pkt)
+        tx_delay = pkt.size * self.ms_per_byte
+        #vprint("tx_delay", pkt, tx_delay)
 
-        # Re-enable after a delay
-        delay = self.delay + pkt.size * ms_per_byte
-        R.call_in(delay, self._enable)
+        R.call_in(tx_delay, self._enable)
+        R.call_in(self.prop_delay + tx_delay, self.dst_recv, pkt)
 
     def __str__(self):
-        return self.name
+        return "%s [%2d]" % (self.name, len(self._queue))
 
 class Switch:
     def __init__(self, id):

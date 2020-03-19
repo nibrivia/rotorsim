@@ -1,5 +1,6 @@
 import math
 from logger import LOG
+from helpers import vprint
 from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML_QUEUE
 from event import R
 
@@ -56,12 +57,11 @@ class Flow:
 
         self.packets = self.packet_gen()
 
-
     def packet_gen(self):
         bits_sent = 0
         seq_num = 0
         while bits_sent < self.size_bits:
-            # TODO UNITS!!
+            # FIXME UNITS!!
             p_size = min(BYTES_PER_PACKET, self.size_bits - bits_sent)
             yield Packet(
                     src_id = self.src,
@@ -109,33 +109,47 @@ class TCPFlow(Flow):
 
         # Init our TCP fields
         self.cwnd   = 1
-        self.rtt_ms = 1
+        self.rtt_ms = 2
 
         # TODO
         self.alpha = .5
         self.beta  = .5
 
-        self.in_flight = []
+        self.in_flight = set()
 
     # Source
     def start(self):
-        self.src_recv(None)
-
-
-    def src_recv(self, packet):
-        #assert ack_packet.is_ack
-
-        # Get next packet, send it
         p = next(self.packets)
         self.src_send(p)
 
+    def src_recv(self, packet):
+        #assert ack_packet.is_ack
+        #vprint("%s acked" % (packet))
+
+        # Remove from in-flight if necessary
+        if packet.seq_num in self.in_flight:
+            self.in_flight.remove(packet.seq_num)
+            self.cwnd += 1/self.cwnd
+            #vprint(self.cwnd)
+
+        # Get next packet, send it
+        while len(self.in_flight) + 1 <= self.cwnd:
+            p = next(self.packets)
+            self.src_send(p)
+
 
     def timeout(self, packet):
-        self.cwnd /= 2
-        self.src_send(packet)
+        if packet.seq_num in self.in_flight:
+            vprint("%s timeout" % packet)
+            self.cwnd /= 2
+            self.src_send(packet)
 
     def src_send(self, packet):
-        self.src_send_q.enq(p)
+        #vprint("%s sent" % (packet))
+
+        self.in_flight.add(packet.seq_num)
+        self.src_send_q.enq(packet)
+        #vprint(self, len(self.in_flight))
 
         # Setup the timeout
         R.call_in(self.rtt_ms * 1.5, self.timeout, packet)
@@ -143,9 +157,10 @@ class TCPFlow(Flow):
 
     # Destination
     def dst_recv(self, packet):
-        pass
+        # TODO Insta-ack
+        self.src_recv(packet)
 
-    '''
+'''
     def pop_lump(self, n=1):
         #assert self.tag != "xpand", self
         assert self.remaining_packets >= n, \

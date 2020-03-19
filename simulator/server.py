@@ -1,20 +1,22 @@
+from helpers import vprint
 from params import PARAMS
 from event import R
 from flow import Flow, Packet
 
 class Server:
-    def __init__(self, server_id):
+    def __init__(self, server_id, server_name = None):
         self.id = server_id
+        self.name = server_name
         self.flows = dict()
 
     def connect_tor(self, uplink):
-        # We can just bypass the host queue and go straight to the rack
-        # The rate limiting is done in the draining Queue
+        # Uplink should have the right delay and bandwidth
+        # This should be set by the network
         self.uplink = uplink
-        print(uplink)
 
     def recv(self, packet):
         """For reaveiving packets from the outside"""
+        #vprint("%s received at %s" % (packet, self))
         flow_id = packet.flow_id
 
         if flow_id in self.flows:
@@ -27,4 +29,7 @@ class Server:
     def add_flow(self, flow, receiver):
         self.flows[flow.id] = receiver
         flow.add_callback_done(self.flow_done)
+
+    def __str__(self):
+        return "%s  (%s)" % (self.name, self.id)
 

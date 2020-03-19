@@ -8,7 +8,7 @@ import sys, uuid
 import click
 import uuid as _uuid
 import math, sys
-from params import *
+from params import PARAMS
 from helpers import *
 
 
@@ -170,6 +170,7 @@ def main(
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
     slice_duration /= 1000 #divide to be in ms
     reconfiguration_time /= 1000 #divide to be in ms
+    bandwidth_Bms = bandwidth * 1e6
 
     random.seed(42) # TODO Just to make things reproducible
 
@@ -178,14 +179,14 @@ def main(
         assert n_xpand <= n_switches
         n_xpand = n_xpand
     else:
-        self.n_xpand = 1 #round(min(5, n_switches/3))
+        n_xpand = 0 #round(min(5, n_switches/3))
 
     if n_cache is not None:
         assert n_cache + n_xpand <= n_switches
         assert n_cache < n_switches
         n_cache = n_cache
     else:
-        n_cache = floor((n_switches - self.n_xpand) / 2)
+        n_cache = floor((n_switches - n_xpand) / 2)
 
     n_rotor = n_switches - n_xpand - n_cache
     print("%d xpander, %d rotor, %d cache. %d total" %
@@ -289,7 +290,7 @@ def main(
             divisor = max_packets
 
             for port_id, n in enumerate(s.n_packets):
-                print(",".join(str(x) for x in [s.id, s.tag, port_id, n, divisor]), file = f)
+                print(",".join(str(x) for x in [s.id, s.tag, port_id, n, divisor]), file = f)#
                 """
 
     # Done!
@@ -299,12 +300,17 @@ def main(
 
 
 def print_time(time_limit):
-    print("\x1b[2K\r\033[1;91m%dms of %dms \033[00m %d (%d)" % (
+    if PARAMS.verbose:
+        end = "\n"
+    else:
+        end = ""
+
+    print("\x1b[2K\r\033[1;91m%.3fms of %dms \033[00m %d (%d)" % (
         R.time, time_limit, len(FLOWS), N_FLOWS[0]),
-        end = "",
+        end = end,
         file = sys.stderr)
     #print("%dms of %dms \033[00m %d" % (R.time, time_limit, len(FLOWS)), end = "")
-    R.call_in(1, print_time, time_limit)
+    R.call_in(.1, print_time, time_limit)
 
 
 if __name__ == "__main__":

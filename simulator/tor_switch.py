@@ -27,20 +27,20 @@ class ToRSwitch:
                                     self.recv,
                                     name  = "%s:%2d" % (self, port_id),
                                     delay = 0, #TODO
-                                    ms_per_byte = 0, # TODO
+                                    bandwidth_Bms = None, # TODO
                                     max_size_bytes = None,
                                     )
                 for port_id in range(PARAMS.n_switches)] # Just the queue
-        self.ports_src = [None for _ in range(PARAMS.n_switches)]  # Just the source
+        self.ports_src = [None for _ in range(PARAMS.n_switches)]
 
-        # transmit queue
-        self.ports_tx  = [None for _ in range(PARAMS.n_switches)]  # Just the queue
-        self.ports_dst = [None for _ in range(PARAMS.n_switches)]  # Just the destination
+        # transmit queue an dest
+        self.ports_tx  = [None for _ in range(PARAMS.n_switches)]
+        self.ports_dst = [None for _ in range(PARAMS.n_switches)]
 
 
         # rotor
-        self.capacities  = [0    for _ in range(PARAMS.n_tor)] # Capacities of destination
-        self.capacity    = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
+        self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
+        self.capacity   = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
         self.out_queue_t = [-1 for rotor_id in rotor_ports]
         self.rotor_queue = QueueLink(lambda p : None)
         self.cache_queue = QueueLink(lambda p : None)
@@ -48,7 +48,7 @@ class ToRSwitch:
 
         # xpander
         self.connections = dict() # Destination ToRs
-        self.dst_to_port = dict() # the rotor to use to get the next destination
+        self.dst_to_port = dict() # routing table
         #self.port_to_tor = dict()
 
 
@@ -75,9 +75,12 @@ class ToRSwitch:
 
 
     def add_rotor_matchings(self, matchings_by_slot_rotor):
-        self.matchings_by_slot_rotor = [[ None for _ in m] for m in matchings_by_slot_rotor]
+        self.matchings_by_slot_rotor = [[ None for _ in m]
+                for m in matchings_by_slot_rotor]
         for slot, matchings_by_rotor in enumerate(matchings_by_slot_rotor):
-            assert len(matchings_by_rotor) == PARAMS.n_rotor, "Got %s, expected %s" % (len(matchings_by_rotor), PARAMS.n_rotor)
+            assert len(matchings_by_rotor) == PARAMS.n_rotor, \
+                    "Got %s, expected %s" % (
+                            len(matchings_by_rotor), PARAMS.n_rotor)
             for rotor_id, matchings in enumerate(matchings_by_rotor):
                 for src, dst in matchings:
                     if src.id == self.id:
@@ -409,6 +412,9 @@ class ToRSwitch:
 
     def recv(self, packet):
         """Receives packets for `port_id`"""
+        #vprint("%s rx %s" % (self, packet))
+
+        # Sanity check
         if packet.intended_dest != None:
             assert packet.intended_dest == self.id, \
                 "@%.3f %s received %s" % (R.time, self, packet)
@@ -421,25 +427,26 @@ class ToRSwitch:
         next_port_id = -1
 
         # Deliver locally
+        #print(self.local_dests)
         if packet.dst_id in self.local_dests:
-            vprint("Local destination")
+            #vprint("%s %s Local destination" % (self, packet))
             next_port_id = self.local_dests[packet.dst_id]
 
         # expander: use the routing table
-        if packet.tag == "xpand" and PARAMS.n_xpand > 0:
-            vprint("xpand destination")
+        elif packet.tag == "xpand" and PARAMS.n_xpand > 0:
+            vprint("%s %s xpand destination" % (self, packet))
             next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
 
         # rotor: figure out 1st/2nd hop and adjust
-        if packet.tag == "rotor":
+        elif packet.tag == "rotor":
             # Add to rotor queue
-            vprint("rotor destination")
+            #vprint("%s %s rotor destination" % (self, packet))
             self.rotor_queue.enq(packet)
             return
 
         # cache: TODO attempt to send it on cache, fallback on rotor
-        if packet.tag == "cache":
-            vprint("Cache destination")
+        elif packet.tag == "cache":
+            vprint("%s %s Cache destination" % (self, packet))
             self.cache_queue.enq(packet)
             return
 

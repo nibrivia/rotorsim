@@ -42,7 +42,9 @@ class RotorNet:
 
         # Servers
         PARAMS.servers_per_rack = 5
-        self.servers = [Server("%s-%s" % (rack_id, rack_slot))
+        self.servers = [Server(
+            server_id = rack_id*PARAMS.servers_per_rack + rack_slot,
+            server_name = "%s.%s" % (rack_slot, rack_id))
                 for rack_slot in range(PARAMS.servers_per_rack)
                 for rack_id   in range(PARAMS.n_tor)]
 
@@ -63,10 +65,22 @@ class RotorNet:
                 server_ix = rack_offset + rack_slot
                 server = self.servers[server_ix]
 
-                # Each ToR has a single receive queue
-                uplink = QueueLink(tor.recv)
-                downlink = QueueLink(server.recv)
-                server.connect_tor(tor.recv)
+                # Create links
+                # TODO capacity, latency, bandwidth
+                uplink   = QueueLink(
+                        tor.recv,
+                        name = "%s->%s" % (server, tor),
+                        delay = .0,
+                        bandwidth_Bms = PARAMS.bandwidth_Bms,
+                        )
+                downlink = QueueLink(
+                        server.recv,
+                        name = "%s->%s" % (tor, server),
+                        delay = .0,
+                        bandwidth_Bms = PARAMS.bandwidth_Bms,
+                        )
+
+                server.connect_tor(uplink)
                 tor.connect_server(server, downlink)
 
 

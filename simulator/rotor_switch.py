@@ -1,7 +1,8 @@
-from helpers import *
+from helpers import vprint
 from logger import LOG
 from event import R, Delay
 from switch import Switch
+from params import PARAMS
 
 
 class RotorSwitch(Switch):
@@ -33,10 +34,10 @@ class RotorSwitch(Switch):
     def _new_slice(self):
         n_slots = len(self.matchings_by_slot)
         slot_id = self.slot_t % n_slots
-        vprint("%.6f %s              slot_id %d" % (R.time, self, slot_id))
+        #vprint("%.6f %s              slot_id %d" % (R.time, self, slot_id))
 
 
-        vprint("%.6f %s switching to slot_id %d" % (R.time, self, slot_id))
+        #vprint("%.6f %s switching to slot_id %d" % (R.time, self, slot_id))
         # Compute our new matching
         current_matchings = self.matchings_by_slot[self.slot_t % n_slots]
         self.install_matchings(current_matchings)
