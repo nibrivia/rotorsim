@@ -20,6 +20,7 @@ class ToRSwitch:
 
         # ... about others
         self.switches = [None for _ in range(PARAMS.n_switches)]
+        self.local_dests = dict()
 
         # receiving tor, queues
         self.ports_rx  = [QueueLink(
@@ -64,6 +65,14 @@ class ToRSwitch:
         self.ports_rx[port_id] = queue
 
         return None
+
+    def connect_server(self, server, queue):
+        # This will be the next port_id
+        self.local_dests[server.id] = len(self.ports_dst)
+
+        self.ports_dst.append(server)
+        self.ports_tx.append(queue)
+
 
     def add_rotor_matchings(self, matchings_by_slot_rotor):
         self.matchings_by_slot_rotor = [[ None for _ in m] for m in matchings_by_slot_rotor]
@@ -165,7 +174,7 @@ class ToRSwitch:
             self.capacities[port_id] = tor.capacity
 
         # Start sending
-        self._send(port_id)
+        #self._send(port_id)
 
 
     @property
@@ -400,8 +409,9 @@ class ToRSwitch:
 
     def recv(self, packet):
         """Receives packets for `port_id`"""
-        assert packet.intended_dest == self.id, \
-            "@%.3f %s received %s" % (R.time, self, packet)
+        if packet.intended_dest != None:
+            assert packet.intended_dest == self.id, \
+                "@%.3f %s received %s" % (R.time, self, packet)
 
         # Update hop count
         packet.hop_count += 1
@@ -411,21 +421,27 @@ class ToRSwitch:
         next_port_id = -1
 
         # Deliver locally
-        if packet.dst in self.local_dests:
-            next_port_id = -1
+        if packet.dst_id in self.local_dests:
+            vprint("Local destination")
+            next_port_id = self.local_dests[packet.dst_id]
 
         # expander: use the routing table
-        if packet.tag == "xpand":
-            next_port_id = self.dst_to_port[packet.dst]  # Use routing table
+        if packet.tag == "xpand" and PARAMS.n_xpand > 0:
+            vprint("xpand destination")
+            next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
 
         # rotor: figure out 1st/2nd hop and adjust
         if packet.tag == "rotor":
             # Add to rotor queue
-            next_port_id = self.rotor_queue.enq(packet)
+            vprint("rotor destination")
+            self.rotor_queue.enq(packet)
+            return
 
-        # cache: attempt to send it on cache, fallback on rotor
+        # cache: TODO attempt to send it on cache, fallback on rotor
         if packet.tag == "cache":
-            next_port_id = self.cache_queue.enq(packet)
+            vprint("Cache destination")
+            self.cache_queue.enq(packet)
+            return
 
 
         # Get next hop
@@ -433,10 +449,9 @@ class ToRSwitch:
         # next_hop = path[0]
         # out_port_id = self.tor_to_port[next_hop]
 
-        next_port = self.get_next_port(packet)
 
         # Add to queue
-        self.ports_tx[next_port].enq(packet)
+        self.ports_tx[next_port_id].enq(packet)
     '''
     # Useful only for pretty prints: what comes first, packets second
     def _send(self, port_id):

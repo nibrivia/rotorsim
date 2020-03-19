@@ -239,14 +239,15 @@ def main(
     # generate flows
     flow_gen = generate_flows(
             load = load,
-            bandwidth  = bandwidth,
-            num_tors   = n_tor,
-            num_switches = n_switches,
+            n_tor = n_tor,
+            bandwidth = bandwidth,
             time_limit = time_limit,
+            n_switches = n_switches,
+            workload_name = workload,
             arrive_at_start = arrive_at_start,
-            workload_name   = workload,
             skewed = skewed,
-            is_ml = is_ml)
+            #is_ml = is_ml
+            )
 
 
     # Start the log

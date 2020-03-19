@@ -4,14 +4,15 @@ from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML
 from event import R
 
 class Packet:
-    def __init__(self, src_id, dst_id, seq_num, tag, flow_id, is_last,
+    def __init__(self, src_id, dst_id, seq_num, tag, flow_id,
+            #is_last,
             size = BYTES_PER_PACKET):
         self.src_id  = src_id
         self.dst_id  = dst_id
         self.seq_num = seq_num
         self.tag     = tag
         self.flow_id = flow_id
-        self.is_last = is_last
+        #self.is_last = is_last
         self.size    = size
 
         self.hop_count = 0
@@ -24,32 +25,125 @@ class Packet:
 
 class Flow:
     """This runs on a server"""
-    def __init__(self, arrival, flow_id, size, src, dst, ml_id = None):
-        self.arrival = arrival
-        self.id      = flow_id
-        self.size    = size
-        self.src     = src
-        self.dst     = dst
-        self.ml_id   = ml_id
+    def __init__(self, arrival, flow_id, size_bits, src, dst):
+        self.id        = flow_id
+        self.src       = src
+        self.dst       = dst
+        #self.ml_id     = ml_id
+        self.arrival   = arrival
+        self.size_bits = size_bits
 
         #if size < 15e6*8:
-        if size < 1e6:
+        if size_bits < 1e6:
             self.tag = "xpand"
-        elif size < 1e9:
+        elif size_bits < 1e9:
             self.tag = "rotor"
         else:
             self.tag = "cache"
 
         self.bits_per_packet = BYTES_PER_PACKET*8
 
-        self.bits_left         = size
-        self.remaining_packets = math.ceil(size/self.bits_per_packet)
+        self.bits_left         = size_bits
+        self.remaining_packets = math.ceil(size_bits/self.bits_per_packet)
         self.size_packets      = self.remaining_packets
         self.n_sent = 0
         self.n_recv = 0
 
         self.end = float("nan")
 
+        # Let people know when we're done...
+        self.callback_done = []
+
+        self.packets = self.packet_gen()
+
+
+    def packet_gen(self):
+        bits_sent = 0
+        seq_num = 0
+        while bits_sent < self.size_bits:
+            # TODO UNITS!!
+            p_size = min(BYTES_PER_PACKET, self.size_bits - bits_sent)
+            yield Packet(
+                    src_id = self.src,
+                    dst_id = self.dst,
+                    seq_num = seq_num,
+                    tag = self.tag,
+                    flow_id =self.id,
+                    size = p_size
+                    )
+            seq_num += 1
+
+
+    # Functions for the congestion control class to take care of
+    def src_recv(self, packet):
+        raise NotImplementedError
+
+    def dst_recv(self, packet):
+        raise NotImplementedError
+
+    def start(self):
+        raise NotImplementedError
+
+    # Connect up to the host servers
+    def add_src_send(self, q):
+        self.src_send_q = q
+
+    def add_dst_send(self, q):
+        self.dst_send_q = q
+
+
+    def add_callback_done(self, fn):
+        self.callback_done.append(fn)
+
+    def _done(self):
+        """Call this when congestion control is done"""
+        for fn in self.callback_done:
+            fn(self.id)
+
+    def __str__(self):
+        return "%s %4d[%3d->%3d]\033[00m" % (self.tag, self.id, self.src, self.dst)
+
+class TCPFlow(Flow):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Init our TCP fields
+        self.cwnd   = 1
+        self.rtt_ms = 1
+
+        # TODO
+        self.alpha = .5
+        self.beta  = .5
+
+        self.in_flight = []
+
+    # Source
+    def start(self):
+        self.src_recv(None)
+
+
+    def src_recv(self, packet):
+        #assert ack_packet.is_ack
+
+        # Get next packet, send it
+        p = next(self.packets)
+        self.src_send(p)
+
+
+    def timeout(self, packet):
+        self.cwnd /= 2
+        self.src_send(packet)
+
+    def src_send(self, packet):
+        self.src_send_q.enq(p)
+
+        # Setup the timeout
+        R.call_in(self.rtt_ms * 1.5, self.timeout, packet)
+
+
+    # Destination
+    def dst_recv(self, packet):
+        pass
 
     '''
     def pop_lump(self, n=1):
@@ -112,6 +206,3 @@ class Flow:
     def send(self, n_packets):
         n_packets = min(n_packets, self.remaining_packets)
     '''
-
-    def __str__(self):
-        return "%s %4d[%3d->%3d]\033[00m" % (self.tag, self.id, self.src, self.dst)

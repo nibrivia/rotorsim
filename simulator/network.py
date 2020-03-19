@@ -3,6 +3,7 @@ import sys
 from logger import LOG
 from math import ceil, floor
 from helpers import *
+from switch import QueueLink
 from tor_switch import ToRSwitch
 from rotor_switch import RotorSwitch
 from optical_switch import OpticalSwitch
@@ -10,6 +11,7 @@ from event import Registry, Delay, stop_simulation, R
 from xpand_108 import xpand1
 from params import PARAMS
 from server import Server
+from flow_generator import FLOWS
 
 class RotorNet:
     def __init__(self):
@@ -61,7 +63,11 @@ class RotorNet:
                 server_ix = rack_offset + rack_slot
                 server = self.servers[server_ix]
 
+                # Each ToR has a single receive queue
+                uplink = QueueLink(tor.recv)
+                downlink = QueueLink(server.recv)
                 server.connect_tor(tor.recv)
+                tor.connect_server(server, downlink)
 
 
 
@@ -160,9 +166,9 @@ class RotorNet:
     def run(self, time_limit, flow_gen):
         """Run the simulation for n_cycles cycles"""
         self.flow_gen = flow_gen
-        wait, flow = next(flow_gen)
+        flow = next(flow_gen)
         # make sure this isn't the first thing we do
-        R.call_in(wait, self.open_connection, flow, priority=-1)
+        R.call_at(flow.arrival, self.open_connection, flow, priority=-1)
 
         # Register first events
         for s_id, s in enumerate(self.switches):
@@ -175,15 +181,35 @@ class RotorNet:
             R.limit = time_limit
         R.run_next()
 
-    def open_connection(self, flow_desc):
-        if flow_desc is not None:
-            self.servers[flow_desc.src].start_flow(flow_desc)
+    @staticmethod
+    def del_flow(flow_id):
+        global FLOWS
+        del FLOWS[flow_id]
+
+    def open_connection(self, flow):
+        if flow is not None:
+            # Server -> flow
+            self.servers[flow.src].add_flow(flow, flow.src_recv)
+            self.servers[flow.dst].add_flow(flow, flow.dst_recv)
+
+            # Flow -> server
+            flow.add_src_send(self.servers[flow.src].uplink)
+            flow.add_dst_send(self.servers[flow.dst].uplink)
+
+            # Global book-keeping
+            global FLOWS
+            FLOWS[flow.id] = flow
+            flow.add_callback_done(self.del_flow)
+
+            # Actually start things...
+            flow.start()
 
         try:
-            wait, flow_desc = next(self.flow_gen)
-            R.call_in(wait, priority = -1,
-                    fn = self.open_connection, flow_desc = flow_desc)
+            flow = next(self.flow_gen)
+            R.call_at(flow.arrival, priority = -1,
+                    fn = self.open_connection, flow = flow)
         except:
+            # No more flows
             pass
 
     def print_demand(self):
