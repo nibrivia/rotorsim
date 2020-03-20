@@ -50,6 +50,7 @@ class ToRSwitch:
         self.connections = dict() # Destination ToRs
         self.dst_to_port = dict() # routing table
         #self.port_to_tor = dict()
+        self.tor_to_port = dict()
 
 
     # One-time setup
@@ -62,7 +63,7 @@ class ToRSwitch:
         if get_port_type(port_id) == "xpand":
             self.connections[port_id] = queue
 
-        self.ports_rx[port_id] = queue
+        self.ports_tx[port_id] = queue
 
         return None
 
@@ -95,6 +96,7 @@ class ToRSwitch:
 
         for port_id, dst_tor in xpand_matchings.items():
             self.ports_dst[port_id] = dst_tor
+            self.tor_to_port[dst_tor.id] = port_id
 
 
     def set_tor_refs(self, tors):
@@ -145,6 +147,7 @@ class ToRSwitch:
         return round(R.time/(PARAMS.slot_duration + PARAMS.reconfiguration_time))
 
     def new_slice(self):
+        """Starts a new slice"""
         # Switch up relevant matching
         #if PARAMS.slice_duration is not None:
         #    slot_t = self.slice_t // PARAMS.n_rotor
@@ -194,25 +197,48 @@ class ToRSwitch:
     @Delay(0, priority = -10)
     def make_route(self, slice_id = None):
         """Builds a routing table"""
-        self.route = [(None, PARAMS.n_tor*1000) for _ in range(PARAMS.n_tor)]
-        self.route[self.id] = ([], 0)
+        self.route_tor = [(None, PARAMS.n_tor*1000) for _ in range(PARAMS.n_tor)]
+        self.route_tor[self.id] = ([], 0)
         queue = deque()
         queue.append(self)
 
         #This is a bastardized dijkstra - it assumes all cost are one
         while len(queue) > 0:
             tor    = queue.popleft()
-            path, cost = self.route[tor.id]
+            path, cost = self.route_tor[tor.id]
 
             # Take the new connection...
             for con_id in tor.link_state:
-                cur_path, cur_cost = self.route[con_id]
+                cur_path, cur_cost = self.route_tor[con_id]
                 con_tor = self.tors[con_id]
                 # see if it does better...
                 if cost+1 < cur_cost:
                     # update the cost and add back to the queue
-                    self.route[con_id] = (path + [con_id], cost+1)
+                    self.route_tor[con_id] = (path + [con_id], cost+1)
                     queue.append(con_tor)
+
+        self.route = dict()
+        for dst_tor_id, (path, _) in enumerate(self.route_tor):
+            # Local destination, skip
+            if dst_tor_id == self.id:
+                continue
+
+            # Figure out what the next path is...
+            next_tor = path[0]
+            next_port_id = self.tor_to_port[next_tor]
+
+            # Write that for each server at our destination
+            dst_tor = self.tors[dst_tor_id]
+            for dst in dst_tor.local_dests:
+                #self.route[dst] = route
+                self.dst_to_port[dst] = next_port_id
+
+        print()
+        print(self)
+        for dst, hop in self.dst_to_port.items():
+            print("%s: -> %s" % (dst, hop))
+
+
 
 
     # SENDING ALGORITHMS
@@ -420,6 +446,9 @@ class ToRSwitch:
         if packet.tag == "xpand" and PARAMS.n_xpand == 0:
             packet.tag = "rotor"
 
+        if packet.tag == "rotor" and PARAMS.n_rotor == 0:
+            packet.tag = "xpand"
+
 
         # Sanity check
         if packet.intended_dest != None:
@@ -431,7 +460,7 @@ class ToRSwitch:
         assert packet.hop_count < 1000, "Hop count >1000? %s" % packet
 
         # Switch packet around
-        next_port_id = -1
+        next_port_id = None
 
         # Deliver locally
         #print(self.local_dests)
@@ -451,6 +480,7 @@ class ToRSwitch:
             # Add to rotor queue
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s rotor destination" % (self, packet))
+            return
             self.rotor_queue.enq(packet)
             return
 
@@ -469,6 +499,8 @@ class ToRSwitch:
 
 
         # Add to queue
+        if next_port_id is None or self.ports_tx[next_port_id] is None:
+            print("%s: %s has no next port[%s]" % (self, packet, next_port_id))
         self.ports_tx[next_port_id].enq(packet)
     '''
     # Useful only for pretty prints: what comes first, packets second

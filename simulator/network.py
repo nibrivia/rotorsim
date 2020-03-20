@@ -53,7 +53,25 @@ class RotorNet:
 
         # ToR <> backbone
         for s in self.switches:
-            s.connect_tors(self.tors)
+            for t in self.tors:
+                uplink   = QueueLink(
+                        s.make_recv(t.id),
+                        name = "%s->%s" % (t, s),
+                        delay = .001,
+                        bandwidth_Bms = PARAMS.bandwidth_Bms,
+                        max_size_bytes = 40e6,
+                        )
+                t.connect_backbone(s.id, s, uplink)
+            downlinks = [QueueLink(
+                    t.recv,
+                    name = "%s->%s" % (s, t),
+                    delay = .001,
+                    bandwidth_Bms = PARAMS.bandwidth_Bms,
+                    max_size_bytes = 40e6,
+                    )
+                    for t in self.tors]
+
+            s.connect_tors(downlinks)
 
         # ToR <> ToR? TODO check if needed
         for tor in self.tors:
@@ -79,7 +97,7 @@ class RotorNet:
                         server.recv,
                         name = "%s->%s" % (tor, server),
                         delay = .001,
-                        bandwidth_Bms = 10*PARAMS.bandwidth_Bms,
+                        bandwidth_Bms = PARAMS.bandwidth_Bms,
                         max_size_bytes = 40e6,
                         )
 
@@ -201,7 +219,7 @@ class RotorNet:
     @staticmethod
     def del_flow(flow_id):
         global FLOWS, N_DONE
-        #vprint("%s done!" % (FLOWS[flow_id]))
+        vprint("%s done!" % (FLOWS[flow_id]))
 
         N_DONE[0] += 1
         del FLOWS[flow_id]

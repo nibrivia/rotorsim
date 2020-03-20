@@ -167,7 +167,8 @@ def main(
     ):
 
     # Set parameters
-    packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8)) # (Mb/s)*us/8 works out to (B/s)*s
+    # (Mb/s)*us/8 works out to (B/s)*s
+    packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8))
     slice_duration /= 1000 #divide to be in ms
     reconfiguration_time /= 1000 #divide to be in ms
     bandwidth_Bms = bandwidth * 1e6 / 1e3

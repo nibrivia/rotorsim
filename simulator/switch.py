@@ -109,27 +109,28 @@ class Switch:
     def _disable(self):
         self.enabled = False
 
-    def connect_tors(self, tors):
+    def connect_tors(self, links):
         """'Physically' connect the switch to its ports"""
-        for tor_id, tor in enumerate(tors):
-            # Tell the ToR about us
-            tor_rx = tor.connect_backbone(port_id = self.id, switch = self, queue = self.rx[tor_id])
-
-            # Give us a way to talk to the ToR
-            self.tx[tor_id] = tor_rx
+        self.tx = links
+        #for tor_id, link in enumerate(links):
+            ## Give us a way to talk to the ToR
+            #self.tx[tor_id] = tor.recv
 
     def make_recv(self, port_id):
         """Makes a dedicated function for this incoming port"""
 
         def recv(packet):
             """Actually receives packets for `port_id`"""
+            if packet.flow_id == PARAMS.flow_print:
+                vprint("swtch: %s recv %s" % (packet, self))
+
             if not self.enabled:
                 assert False,\
                         "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
 
             # Forward to destination
             dst_id = self.dests[port_id]
-            self.tx[dst_id].recv(packet)
+            self.tx[dst_id].enq(packet)
 
         return recv
 
