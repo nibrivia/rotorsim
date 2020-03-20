@@ -446,6 +446,8 @@ class ToRSwitch:
         if packet.tag == "xpand" and PARAMS.n_xpand == 0:
             packet.tag = "rotor"
 
+        if packet.tag == "cache" and PARAMS.n_cache == 0:
+            packet.tag = "xpand"
         if packet.tag == "rotor" and PARAMS.n_rotor == 0:
             packet.tag = "xpand"
 

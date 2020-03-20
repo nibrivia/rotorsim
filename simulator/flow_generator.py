@@ -123,12 +123,12 @@ def generate_flows(
     if skewed:
         # Load servers are active
         link_load = 1
-        n_active = round(n_servers * load)
+        n_active_tor = round(n_tor * load)
     else:
         link_load = load
-        n_active = n_servers
+        n_active_tor = n_tor
 
-    n_active_links = n_active * n_switches
+    n_active_links = n_active_tor * n_switches
     effective_load = n_active_links * link_load
 
     # SIZE
@@ -136,7 +136,7 @@ def generate_flows(
     size_dist = workload.gen_sizes()
 
     # PAIRS
-    pair_dist = pair_uniform(n_active)
+    pair_dist = pair_uniform(n_active_tor * PARAMS.servers_per_rack)
 
     # TIME
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
