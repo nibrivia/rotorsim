@@ -147,7 +147,7 @@ class TCPFlow(Flow):
     def src_recv(self, packet):
         #assert ack_packet.is_ack
         if self.id == 0:
-            vprint("%s acked" % (packet))
+            vprint("flow : %s acked" % (packet))
 
         # Mark the ack
         self.acked.add(packet.seq_num)
@@ -183,7 +183,7 @@ class TCPFlow(Flow):
             if len(self.retransmit_q) > 0:
                 p = self.retransmit_q.pop()
                 if self.id == 0:
-                    vprint("%s retransmit" % p)
+                    vprint("flow : %s retransmit" % p)
             else:
                 try:
                     p = next(self.packets)
@@ -196,7 +196,7 @@ class TCPFlow(Flow):
                 continue
 
             if self.id == 0:
-                vprint("%s sent, cwnd: %s/%.1f" % (p, len(self.in_flight)+1, self.cwnd))
+                vprint("flow : %s sent, cwnd: %s/%.1f" % (p, len(self.in_flight)+1, self.cwnd))
 
             self.in_flight.add(p.seq_num)
             self.src_send_q.enq(p)
@@ -209,13 +209,13 @@ class TCPFlow(Flow):
     def timeout(self, packet, rto = 0):
         if packet.seq_num in self.in_flight:
             if self.id == 0:
-                vprint("%s \033[0;31mtimeout after %.3f\033[0;00m" % (
+                vprint("flow : %s \033[0;31mtimeout after %.3f\033[0;00m" % (
                     packet, rto))
             self.in_flight.remove(packet.seq_num)
 
             if R.time > self.timeout_lock:
                 if self.id == 0:
-                    vprint("%s \033[0;31m MD!!\033[0;00m" % packet)
+                    vprint("flow : %s \033[0;31m MD!!\033[0;00m" % packet)
                 self.cwnd = max(1, self.cwnd/2)
                 self.sthresh = self.cwnd
                 self.timeout_lock = R.time + self.rtt_ms

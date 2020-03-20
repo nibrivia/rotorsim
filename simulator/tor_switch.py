@@ -429,24 +429,28 @@ class ToRSwitch:
         # Deliver locally
         #print(self.local_dests)
         if packet.dst_id in self.local_dests:
-            #vprint("%s %s Local destination" % (self, packet))
+            if packet.flow_id == 0:
+                vprint("%s: %s Local destination" % (self, packet))
             next_port_id = self.local_dests[packet.dst_id]
 
         # expander: use the routing table
         elif packet.tag == "xpand" and PARAMS.n_xpand > 0:
-            vprint("%s %s xpand destination" % (self, packet))
+            if packet.flow_id == 0:
+                vprint("%s: %s xpand destination" % (self, packet))
             next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
 
         # rotor: figure out 1st/2nd hop and adjust
         elif packet.tag == "rotor":
             # Add to rotor queue
-            #vprint("%s %s rotor destination" % (self, packet))
+            if packet.flow_id == 0:
+                vprint("%s: %s rotor destination" % (self, packet))
             self.rotor_queue.enq(packet)
             return
 
         # cache: TODO attempt to send it on cache, fallback on rotor
         elif packet.tag == "cache":
-            vprint("%s %s Cache destination" % (self, packet))
+            if packet.flow_id == 0:
+                vprint("%s: %s Cache destination" % (self, packet))
             self.cache_queue.enq(packet)
             return
 

@@ -33,7 +33,7 @@ class QueueLink:
 
     def enq(self, packet):
         if packet.flow_id == 0:
-            vprint("%s enq %s" % (packet, self))
+            vprint("queue: %s enq %s" % (packet, self))
         if self.queue_size_max is not None and \
                 self.q_size_B + packet.size_B > self.queue_size_max:
             if packet.flow_id == 0:
@@ -63,7 +63,7 @@ class QueueLink:
         pkt = self._queue.pop()
         self.q_size_B -= pkt.size_B
         if pkt.flow_id == 0:
-            vprint("%s sending %s" % (self, pkt))
+            vprint("queue: %s sent %s" % (pkt, self))
         tx_delay = pkt.size_B * self.ms_per_byte
         #vprint("tx_delay", pkt, tx_delay)
 

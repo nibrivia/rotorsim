@@ -21,7 +21,11 @@ class Server:
 
         if flow_id in self.flows:
             # This is okay, maybe a flow is over and stragglers are coming
+            if flow_id == 0:
+                vprint("srvr : %s recv on %s" % (packet, self))
             self.flows[flow_id](packet)
+        else:
+            vprint("srvr : %s this flow doesn't exist..." % packet)
 
     def flow_done(self, flow_id):
         if flow_id in self.flows:
