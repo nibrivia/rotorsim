@@ -51,7 +51,7 @@ class RotorSwitch(Switch):
     def install_matchings(self, matchings):
         assert not self.enabled, "@%.3f" % R.time
         for src, dst in matchings:
-            self.dests[src.id] = dst
+            self.dests[src.id] = dst.id
 
     def recv(self, tor, packet):
         if not self.enabled:

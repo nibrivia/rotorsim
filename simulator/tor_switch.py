@@ -197,6 +197,9 @@ class ToRSwitch:
     @Delay(0, priority = -10)
     def make_route(self, slice_id = None):
         """Builds a routing table"""
+        if PARAMS.n_xpand == 0:
+            return
+
         self.route_tor = [(None, PARAMS.n_tor*1000) for _ in range(PARAMS.n_tor)]
         self.route_tor[self.id] = ([], 0)
         queue = deque()
@@ -243,7 +246,6 @@ class ToRSwitch:
 
     # SENDING ALGORITHMS
     ####################
-
     def next_queue(self, port_id):
         p_type = get_port_type(port_id)
         if p_type == "rotor":
@@ -423,13 +425,8 @@ class ToRSwitch:
 
             return f
 
-
     # Actual packets moving
     ########################
-
-    #@lru_cache(maxsize=None)
-    #def packet_lag(self, p):
-        #return PARAMS.packet_ttime / BYTES_PER_PACKET * p
 
     def _enable_out(self, port_id):
         self.out_enable[port_id] = True
@@ -445,10 +442,9 @@ class ToRSwitch:
 
         if packet.tag == "xpand" and PARAMS.n_xpand == 0:
             packet.tag = "rotor"
-
-        if packet.tag == "cache" and PARAMS.n_cache == 0:
-            packet.tag = "xpand"
         if packet.tag == "rotor" and PARAMS.n_rotor == 0:
+            packet.tag = "xpand"
+        if packet.tag == "cache" and PARAMS.n_cache == 0:
             packet.tag = "xpand"
 
 
@@ -482,8 +478,8 @@ class ToRSwitch:
             # Add to rotor queue
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s rotor destination" % (self, packet))
-            return
-            self.rotor_queue.enq(packet)
+            #self.rotor_queue.enq(packet)
+            self.port_tx[0].enq(packet)
             return
 
         # cache: TODO attempt to send it on cache, fallback on rotor
@@ -504,125 +500,6 @@ class ToRSwitch:
         if next_port_id is None or self.ports_tx[next_port_id] is None:
             print("%s: %s has no next port[%s]" % (self, packet, next_port_id))
         self.ports_tx[next_port_id].enq(packet)
-    '''
-    # Useful only for pretty prints: what comes first, packets second
-    def _send(self, port_id):
-        """Called for every port, attempts to send"""
-        # If we're still transmitting, stop
-        if not self.out_enable[port_id]:
-            return
-
-        queue = self.next_queue(port_id)
-        dst_q   = self.ports_rx[port_id]
-        dst_tor = self.ports_dst[port_id]
-
-        # Nothing to do, return
-        if queue is None:
-            return
-
-        # Get the packet
-        p = queue.pop()
-        p.intended_dest = dst_tor.id
-        if get_port_type(port_id) == "rotor":
-            self.capacity[p.dst_id] += 1
-            #self.capacities[port_id][p.dst_id] -= 1
-
-        if LOG is not None:
-            LOG.log(src = self, dst = dst_tor,
-                    rotor = self.switches[port_id], packet = p)
-
-        if PARAMS.verbose:
-            if p.tag == "xpand":
-                vprint("\033[0;31m", end = "")
-            if p.tag == "rotor":
-                vprint("\033[0;32m", end = "")
-            if p.tag == "cache":
-                vprint("\033[0;33m", end = "")
-            vprint("@%.3f   %s %d:%d->%d %s\033[00m"
-                    % (R.time, p.tag, self.id, port_id, dst_tor.id, p))
-
-        # Send the packet
-        dst_q.enq(p)
-
-        # We're back to being busy, and come back when we're done
-        self.out_enable[port_id] = False
-        packet_ttime = self.packet_lag(p.size)
-        R.call_in(delay = packet_ttime, fn = self._enable_out, port_id = port_id)
-
-    def _recv(self, p):
-        assert p.intended_dest == self.id, "@%.3f %s received %s" % (R.time, self, p)
-
-        # You have arrived :)
-        if p.dst_id == self.id:
-            FLOWS[p.flow_id].rx()
-            return
-
-        if p.tag == "cache" and PARAMS.n_cache > 0:
-            assert False, "Cache should always hit home..."
-
-        # Get next hop
-        path, _ = self.route[p.dst_id]
-        next_hop = path[0]
-        port_id = self.tor_to_port[next_hop]
-
-        # Add to queue
-        self.buffers_fst[port_id].recv(p)
-
-        # Attempt to send now
-        self._send(port_id)
-
-    def recv(self, p):
-        packet_ttime = self.packet_lag(p.size) 
-        R.call_in(packet_ttime, fn = self._recv, p=p)
-
-    def recv_flow(self, flow, add_to = None):
-        """Receives a new flow to serve"""
-        # Add the flow, and then attempt to send
-        if add_to is None:
-            add_to = flow.tag
-
-        if add_to == "xpand":
-            if PARAMS.n_xpand == 0:
-                return self.recv_flow(flow, add_to = "rotor")
-
-            #path, _ = self.route[flow.dst]
-            #n_tor   = path[0]
-            #port_id = self.tor_to_port[n_tor]
-
-            port_id = random.choice(xpand_ports)
-
-            heapq.heappush(self.flows_xpand[port_id], (flow.remaining_packets, flow.id, flow))
-            self._send(port_id)
-            return
-
-        if add_to == "rotor":
-            if PARAMS.n_rotor == 0:
-                return self.recv_flow(flow, add_to = "xpand")
-            self.flows_rotor[flow.dst].append(flow)
-            self.capacity[flow.dst] -= flow.remaining_packets
-            self.n_flows += 1
-            return
-
-        if add_to == "cache":
-            if PARAMS.n_cache == 0:
-                return self.recv_flow(flow, add_to = "rotor")
-
-            # If all cache links are busy, route to rotor
-            if PARAMS.cache_policy == "rotor":
-                free = False
-                for p in cache_ports:
-                    if self.active_flow[p] is None:
-                        free = True
-                        break
-                if not free:
-                    return self.recv_flow(flow, add_to = "rotor")
-
-
-            self.flows_cache.append(flow)
-            for cache_port in cache_ports:
-                self._send(cache_port)
-                '''
-
 
     # Printing stuffs
     ################
