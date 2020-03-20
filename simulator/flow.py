@@ -61,12 +61,12 @@ class Flow:
         self.packets = self.packet_gen()
 
     def packet_gen(self):
-        bits_sent = 0
+        size_B = self.size_bits / 8
+        bytes_sent = 0
         seq_num = 0
-        while bits_sent < self.size_bits:
-            # FIXME UNITS!!
-            p_size = min(BYTES_PER_PACKET, self.size_bits - bits_sent)
-            yield Packet(
+        while bytes_sent < size_B:
+            p_size = min(BYTES_PER_PACKET, size_B - bytes_sent)
+            p = Packet(
                     src_id = self.src,
                     dst_id = self.dst,
                     seq_num = seq_num,
@@ -76,6 +76,11 @@ class Flow:
                     size_B = p_size
                     )
             seq_num += 1
+            bytes_sent += p_size
+
+            if True or self.id == 0:
+                vprint("%s generated (%d/%d)" % (p, bytes_sent, size_B))
+            yield p
 
 
     # Functions for the congestion control class to take care of
@@ -117,9 +122,14 @@ class TCPFlow(Flow):
         self.rtt_ms = 2
         self.rtt_dev_ms = 0
 
-        # TODO reno setting of alpha and beta
-        self.alpha = .1
-        self.beta  = .2
+        self.alpha = .25
+        self.beta  = .25
+
+        self.sthresh = float("inf")
+
+        self.k = 4
+        self.rto_min = .1
+        self.rto_max = 10
 
         self.slow_start = True
         self.timeout_lock = 0
@@ -128,6 +138,10 @@ class TCPFlow(Flow):
         self.acked = set()
         self.retransmit_q = deque()
 
+    @property
+    def rto(self):
+        rto =  self.rtt_ms + self.k*self.rtt_dev_ms
+        return max(self.rto_min, min(rto, self.rto_max))
     # Source
     def start(self):
         self._send_loop()
@@ -142,18 +156,17 @@ class TCPFlow(Flow):
 
         # Update rtt estimate
         rtt_sample = R.time - packet.sent_ms
-        self.rtt_ms = self.alpha*rtt_sample + (1-self.alpha) * self.rtt_ms
-
-        dev_sample = abs(self.rtt_ms - rtt_sample)
-        self.rtt_dev_ms = self.beta*dev_sample + (1-self.beta) * self.rtt_dev_ms
+        rtt_err = rtt_sample - self.rtt_ms
+        self.rtt_ms     += self.alpha * rtt_err
+        self.rtt_dev_ms += self.beta  * (abs(rtt_err) - self.rtt_dev_ms)
         if self.id == 0:
-            vprint("rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rtt_ms + 4*self.rtt_dev_ms))
+            vprint("rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto))
 
 
         # Remove from in-flight if necessary
         if packet.seq_num in self.in_flight:
             self.in_flight.remove(packet.seq_num)
-            if self.slow_start:
+            if self.cwnd < self.sthresh:
                 self.cwnd += 1
             else:
                 self.cwnd += 1/self.cwnd
@@ -171,7 +184,11 @@ class TCPFlow(Flow):
                 if self.id == 0:
                     vprint("%s retransmit" % p)
             else:
-                p = next(self.packets)
+                try:
+                    p = next(self.packets)
+                except:
+                    # no more packets!
+                    break
 
             # Check it's not gotten acked...
             if p.seq_num in self.acked:
@@ -185,20 +202,21 @@ class TCPFlow(Flow):
             #vprint(self, len(self.in_flight))
 
             # Setup the timeout
-            R.call_in(self.rtt_ms + 4*self.rtt_dev_ms, self.timeout, p)
+            R.call_in(self.rto, self.timeout, p, rto = self.rto)
 
 
-    def timeout(self, packet):
+    def timeout(self, packet, rto = 0):
         if packet.seq_num in self.in_flight:
             if self.id == 0:
-                vprint("%s \033[0;31mtimeout\033[0;00m" % packet)
-            self.slow_start = False
+                vprint("%s \033[0;31mtimeout after %.3f\033[0;00m" % (
+                    packet, rto))
             self.in_flight.remove(packet.seq_num)
 
             if R.time > self.timeout_lock:
                 if self.id == 0:
                     vprint("%s \033[0;31m MD!!\033[0;00m" % packet)
                 self.cwnd = max(1, self.cwnd/2)
+                self.sthresh = self.cwnd
                 self.timeout_lock = R.time + self.rtt_ms
 
             self.retransmit_q.appendleft(packet)
