@@ -1,6 +1,6 @@
 import math
 from logger import LOG
-from helpers import vprint
+from helpers import vprint, color_str_
 from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML_QUEUE
 from event import R
 from collections import deque
@@ -23,6 +23,7 @@ class Packet:
 
         self.intended_dest = None
 
+    @color_str_
     def __str__(self):
         return "%3d[%s->%s]#%d >%s" % (
                 self.flow_id, self.src_id, self.dst_id, self.seq_num, self.intended_dest)
@@ -54,6 +55,7 @@ class Flow:
         self.n_recv = 0
 
         self.end = float("nan")
+        self.is_done = False
 
         # Let people know when we're done...
         self.callback_done = []
@@ -104,11 +106,13 @@ class Flow:
 
     def _done(self):
         """Call this when congestion control is done"""
+        self.is_done = True
         for fn in self.callback_done:
             fn(self.id)
 
+    @color_str_
     def __str__(self):
-        return "%s %4d[%3d->%3d]\033[00m" % (self.tag, self.id, self.src, self.dst)
+        return "%s %4d[%d->%d]\033[00m" % (self.tag, self.id, self.src, self.dst)
 
 class TCPFlow(Flow):
     def __init__(self, *args, **kwargs):
@@ -146,6 +150,9 @@ class TCPFlow(Flow):
 
     def src_recv(self, packet):
         #assert ack_packet.is_ack
+        if self.is_done:
+            return
+
         if self.id == 0:
             vprint("flow : %s acked" % (packet))
 
@@ -177,6 +184,9 @@ class TCPFlow(Flow):
         self._send_loop()
 
     def _send_loop(self):
+        if self.is_done:
+            return
+
         # Get next packet, send it
         while len(self.in_flight) + 1 <= self.cwnd:
             # What packet?
@@ -207,6 +217,9 @@ class TCPFlow(Flow):
 
 
     def timeout(self, packet, rto = 0):
+        if self.is_done:
+            return
+
         if packet.seq_num in self.in_flight:
             if self.id == 0:
                 vprint("flow : %s \033[0;31mtimeout after %.3f\033[0;00m" % (

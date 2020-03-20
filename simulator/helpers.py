@@ -21,6 +21,19 @@ def print_demand(tors, prefix = "", print_buffer = False):
     for tor in tors:
         print("%s%s" % (prefix, tor.buffer_str()))
 
+def color(obj, s = None):
+    color = hash(obj) % 6 + 31
+    if s == None:
+        s = str(obj)
+    return "\033[1;%dm%s\033[0;00m" % (color, s)
+
+def color_str_(fn):
+    def wrapped(obj):
+        s = fn(obj)
+        return color(obj, s)
+    return wrapped
+
+
 _pause_enabled = True
 def pause():
     global _pause_enabled

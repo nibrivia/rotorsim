@@ -2,7 +2,7 @@ import math
 import heapq
 # from buffer import *
 from logger import LOG
-from helpers import get_port_type, rotor_ports, cache_ports, xpand_ports, vprint
+from helpers import get_port_type, rotor_ports, cache_ports, xpand_ports, vprint, color_str_
 from event import Delay, R
 from functools import lru_cache
 from collections import deque
@@ -586,6 +586,7 @@ class ToRSwitch:
     # Printing stuffs
     ################
 
+    @color_str_
     def __str__(self):
         return self.name
 

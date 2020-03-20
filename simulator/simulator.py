@@ -172,7 +172,7 @@ def main(
     reconfiguration_time /= 1000 #divide to be in ms
     bandwidth_Bms = bandwidth * 1e6 / 1e3
 
-    random.seed(43) # TODO Just to make things reproducible
+    random.seed(42) # TODO Just to make things reproducible
 
     # Compute switch counts
     if n_xpand is not None:

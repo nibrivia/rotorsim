@@ -1,4 +1,4 @@
-from helpers import vprint
+from helpers import vprint, color_str_
 from params import PARAMS
 from event import R
 from flow import Flow, Packet
@@ -18,9 +18,12 @@ class Server:
         """For reaveiving packets from the outside"""
         #vprint("%s received at %s" % (packet, self))
         flow_id = packet.flow_id
+        if flow_id == 0:
+            vprint("srvr : %s recv on %s" % (packet, self))
 
         if flow_id in self.flows:
-            # This is okay, maybe a flow is over and stragglers are coming
+            # This is okay:
+            # maybe a flow is over and stragglers are coming
             if flow_id == 0:
                 vprint("srvr : %s recv on %s" % (packet, self))
             self.flows[flow_id](packet)
@@ -28,13 +31,15 @@ class Server:
             vprint("srvr : %s this flow doesn't exist..." % packet)
 
     def flow_done(self, flow_id):
-        if flow_id in self.flows:
-            del self.flows[flow_id]
+        del self.flows[flow_id]
 
     def add_flow(self, flow, receiver):
+        if flow.id == 0:
+            vprint("server: %s received at %s" % (flow, self))
         self.flows[flow.id] = receiver
         flow.add_callback_done(self.flow_done)
 
+    @color_str_
     def __str__(self):
         return "%s  (%s)" % (self.name, self.id)
 

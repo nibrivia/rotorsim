@@ -43,10 +43,11 @@ class RotorNet:
         # Servers
         PARAMS.servers_per_rack = 5
         self.servers = [Server(
-            server_id = rack_id*PARAMS.servers_per_rack + rack_slot,
-            server_name = "%s.%s" % (rack_slot, rack_id))
+                    server_id = rack_id*PARAMS.servers_per_rack + rack_slot,
+                    server_name = "tor%s.%s" % (rack_id, rack_slot))
+                for rack_id   in range(PARAMS.n_tor)
                 for rack_slot in range(PARAMS.servers_per_rack)
-                for rack_id   in range(PARAMS.n_tor)]
+                ]
 
         # "Physically" connect them up
 

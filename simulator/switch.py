@@ -1,4 +1,4 @@
-from helpers import vprint
+from helpers import vprint, color_str_
 from params import PARAMS
 from collections import deque
 from event import R, Delay
@@ -13,6 +13,8 @@ class QueueLink:
             ):
         # ID
         self.name = name
+        if name is None:
+            self.name = "{}"
 
         # Internal state
         self._queue   = deque()
@@ -33,7 +35,7 @@ class QueueLink:
 
     def enq(self, packet):
         if packet.flow_id == 0:
-            vprint("queue: %s enq %s" % (packet, self))
+            vprint("queue: %s enq  %s" % (packet, self))
         if self.queue_size_max is not None and \
                 self.q_size_B + packet.size_B > self.queue_size_max:
             if packet.flow_id == 0:
@@ -70,6 +72,7 @@ class QueueLink:
         R.call_in(tx_delay, self._enable)
         R.call_in(self.prop_delay + tx_delay, self.dst_recv, pkt)
 
+    @color_str_
     def __str__(self):
         if self.queue_size_max is None:
             frac_full = self.q_size_B

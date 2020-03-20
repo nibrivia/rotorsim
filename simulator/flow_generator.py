@@ -94,7 +94,9 @@ def time_arrive_at_start():
 
 # PAIR --------------------------------
 def pair_uniform(n_servers):
-    all_pairs = [(src, dst) for src in range(n_servers) for dst in range(n_servers)]
+    all_pairs = [(src, dst)
+            for src in range(n_servers)
+            for dst in range(n_servers) if src != dst]
     while True:
         yield random.choice(all_pairs)
 
