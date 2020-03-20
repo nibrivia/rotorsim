@@ -39,7 +39,7 @@ class Log:
 
     def log_flow_done(self, flow):
         msg = "%d,%s,%d,%d,%.3f,%.3f,%d,%d,%.3f\n" % (
-                flow.id, flow.tag, flow.src, flow.dst, flow.arrival, flow.end, flow.size, flow.size_bits-flow.bits_left, flow.end - flow.arrival)
+                flow.id, flow.tag, flow.src, flow.dst, flow.arrival, flow.end, flow.size_bits, flow.size_bits-flow.bits_left, flow.end - flow.arrival)
         self.cache.append(msg)
         if len(self.cache) > 100:
             self._flush()

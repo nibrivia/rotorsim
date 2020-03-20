@@ -24,7 +24,8 @@ class Server:
             self.flows[flow_id](packet)
 
     def flow_done(self, flow_id):
-        del self.flows[flow_id]
+        if flow_id in self.flows:
+            del self.flows[flow_id]
 
     def add_flow(self, flow, receiver):
         self.flows[flow.id] = receiver

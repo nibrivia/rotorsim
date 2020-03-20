@@ -78,8 +78,6 @@ class Flow:
             seq_num += 1
             bytes_sent += p_size
 
-            if True or self.id == 0:
-                vprint("%s generated (%d/%d)" % (p, bytes_sent, size_B))
             yield p
 
 
@@ -153,6 +151,9 @@ class TCPFlow(Flow):
 
         # Mark the ack
         self.acked.add(packet.seq_num)
+        if len(self.acked) == self.size_packets:
+            self._done()
+            return
 
         # Update rtt estimate
         rtt_sample = R.time - packet.sent_ms

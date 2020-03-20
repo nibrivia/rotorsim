@@ -2,7 +2,7 @@ import random
 import sys
 from logger import LOG
 from math import ceil, floor
-from helpers import *
+from helpers import vprint, xpand_ports, rotor_ports, cache_ports
 from switch import QueueLink
 from tor_switch import ToRSwitch
 from rotor_switch import RotorSwitch
@@ -11,7 +11,7 @@ from event import Registry, Delay, stop_simulation, R
 from xpand_108 import xpand1
 from params import PARAMS
 from server import Server
-from flow_generator import FLOWS
+from flow_generator import FLOWS, N_DONE, N_FLOWS
 
 class RotorNet:
     def __init__(self):
@@ -199,7 +199,10 @@ class RotorNet:
 
     @staticmethod
     def del_flow(flow_id):
-        global FLOWS
+        global FLOWS, N_DONE
+        vprint("%s done!" % (FLOWS[flow_id]))
+
+        N_DONE[0] += 1
         del FLOWS[flow_id]
 
     def open_connection(self, flow):
@@ -213,8 +216,9 @@ class RotorNet:
             flow.add_dst_send(self.servers[flow.dst].uplink)
 
             # Global book-keeping
-            global FLOWS
+            global FLOWS, N_FLOWS
             FLOWS[flow.id] = flow
+            N_FLOWS[0] += 1
             flow.add_callback_done(self.del_flow)
 
             # Actually start things...
@@ -228,6 +232,6 @@ class RotorNet:
             # No more flows
             pass
 
-    def print_demand(self):
-        if PARAMS.verbose:
-            print_demand(self.tors)
+    #def print_demand(self):
+    #    if PARAMS.verbose:
+    #        print_demand(self.tors)
