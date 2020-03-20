@@ -61,6 +61,9 @@ class QueueLink:
 
         # Get packet and compute tx time
         pkt = self._queue.pop()
+        self.q_size_B -= pkt.size_B
+        if pkt.flow_id == 0:
+            vprint("%s sending %s" % (self, pkt))
         tx_delay = pkt.size_B * self.ms_per_byte
         #vprint("tx_delay", pkt, tx_delay)
 
@@ -68,7 +71,10 @@ class QueueLink:
         R.call_in(self.prop_delay + tx_delay, self.dst_recv, pkt)
 
     def __str__(self):
-        frac_full = self.q_size_B / self.queue_size_max
+        if self.queue_size_max is None:
+            frac_full = self.q_size_B
+        else:
+            frac_full = self.q_size_B / self.queue_size_max
         return "%s [%2d%%]" % (self.name, frac_full*100)
 
 class Switch:

@@ -113,32 +113,41 @@ class TCPFlow(Flow):
 
         # Init our TCP fields
         self.cwnd   = 1
-        self.rtt_ms = 2
 
-        # TODO
-        self.alpha = .5
-        self.beta  = .5
+        self.rtt_ms = 2
+        self.rtt_dev_ms = 0
+
+        # TODO reno setting of alpha and beta
+        self.alpha = .1
+        self.beta  = .2
 
         self.slow_start = True
         self.timeout_lock = 0
 
         self.in_flight = set()
+        self.acked = set()
         self.retransmit_q = deque()
 
     # Source
     def start(self):
-        p = next(self.packets)
-        self.src_send(p)
+        self._send_loop()
 
     def src_recv(self, packet):
         #assert ack_packet.is_ack
         if self.id == 0:
             vprint("%s acked" % (packet))
 
+        # Mark the ack
+        self.acked.add(packet.seq_num)
+
         # Update rtt estimate
-        self.rtt_ms = R.time - packet.sent_ms
+        rtt_sample = R.time - packet.sent_ms
+        self.rtt_ms = self.alpha*rtt_sample + (1-self.alpha) * self.rtt_ms
+
+        dev_sample = abs(self.rtt_ms - rtt_sample)
+        self.rtt_dev_ms = self.beta*dev_sample + (1-self.beta) * self.rtt_dev_ms
         if self.id == 0:
-            vprint("rtt: %s" % (self.rtt_ms))
+            vprint("rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rtt_ms + 4*self.rtt_dev_ms))
 
 
         # Remove from in-flight if necessary
@@ -156,13 +165,27 @@ class TCPFlow(Flow):
     def _send_loop(self):
         # Get next packet, send it
         while len(self.in_flight) + 1 <= self.cwnd:
+            # What packet?
             if len(self.retransmit_q) > 0:
                 p = self.retransmit_q.pop()
                 if self.id == 0:
                     vprint("%s retransmit" % p)
             else:
                 p = next(self.packets)
-            self.src_send(p)
+
+            # Check it's not gotten acked...
+            if p.seq_num in self.acked:
+                continue
+
+            if self.id == 0:
+                vprint("%s sent, cwnd: %s/%.1f" % (p, len(self.in_flight)+1, self.cwnd))
+
+            self.in_flight.add(p.seq_num)
+            self.src_send_q.enq(p)
+            #vprint(self, len(self.in_flight))
+
+            # Setup the timeout
+            R.call_in(self.rtt_ms + 4*self.rtt_dev_ms, self.timeout, p)
 
 
     def timeout(self, packet):
@@ -180,17 +203,6 @@ class TCPFlow(Flow):
 
             self.retransmit_q.appendleft(packet)
             self._send_loop()
-
-    def src_send(self, packet):
-        if self.id == 0:
-            vprint("%s sent, cwnd: %s/%.1f" % (packet, len(self.in_flight)+1, self.cwnd))
-
-        self.in_flight.add(packet.seq_num)
-        self.src_send_q.enq(packet)
-        #vprint(self, len(self.in_flight))
-
-        # Setup the timeout
-        R.call_in(self.rtt_ms * 1.5, self.timeout, packet)
 
 
     # Destination
