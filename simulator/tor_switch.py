@@ -414,6 +414,13 @@ class ToRSwitch:
         """Receives packets for `port_id`"""
         #vprint("%s rx %s" % (self, packet))
 
+        if packet.flow_id == PARAMS.flow_print:
+            vprint("%s: %s recv" % (self, packet))
+
+        if packet.tag == "xpand" and PARAMS.n_xpand == 0:
+            packet.tag = "rotor"
+
+
         # Sanity check
         if packet.intended_dest != None:
             assert packet.intended_dest == self.id, \
@@ -429,27 +436,27 @@ class ToRSwitch:
         # Deliver locally
         #print(self.local_dests)
         if packet.dst_id in self.local_dests:
-            if packet.flow_id == 0:
+            if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Local destination" % (self, packet))
             next_port_id = self.local_dests[packet.dst_id]
 
         # expander: use the routing table
         elif packet.tag == "xpand" and PARAMS.n_xpand > 0:
-            if packet.flow_id == 0:
+            if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s xpand destination" % (self, packet))
             next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
 
         # rotor: figure out 1st/2nd hop and adjust
         elif packet.tag == "rotor":
             # Add to rotor queue
-            if packet.flow_id == 0:
+            if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s rotor destination" % (self, packet))
             self.rotor_queue.enq(packet)
             return
 
         # cache: TODO attempt to send it on cache, fallback on rotor
         elif packet.tag == "cache":
-            if packet.flow_id == 0:
+            if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Cache destination" % (self, packet))
             self.cache_queue.enq(packet)
             return

@@ -123,10 +123,10 @@ def generate_flows(
     if skewed:
         # Load servers are active
         link_load = 1
-        n_active = round(n_tor * load)
+        n_active = round(n_servers * load)
     else:
         link_load = load
-        n_active = n_tor
+        n_active = n_servers
 
     n_active_links = n_active * n_switches
     effective_load = n_active_links * link_load

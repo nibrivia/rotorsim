@@ -18,28 +18,29 @@ class Server:
         """For reaveiving packets from the outside"""
         #vprint("%s received at %s" % (packet, self))
         flow_id = packet.flow_id
-        if flow_id == 0:
+        if flow_id == PARAMS.flow_print:
             vprint("srvr : %s recv on %s" % (packet, self))
 
         if flow_id in self.flows:
             # This is okay:
             # maybe a flow is over and stragglers are coming
-            if flow_id == 0:
+            if flow_id == PARAMS.flow_print:
                 vprint("srvr : %s recv on %s" % (packet, self))
             self.flows[flow_id](packet)
         else:
-            vprint("srvr : %s this flow doesn't exist..." % packet)
+            vprint("srvr : %s this flow doesn't exist on %s..." % (
+                packet, self))
 
     def flow_done(self, flow_id):
         del self.flows[flow_id]
 
     def add_flow(self, flow, receiver):
-        if flow.id == 0:
+        if flow.id == PARAMS.flow_print:
             vprint("server: %s received at %s" % (flow, self))
         self.flows[flow.id] = receiver
         flow.add_callback_done(self.flow_done)
 
     @color_str_
     def __str__(self):
-        return "%s  (%s)" % (self.name, self.id)
+        return "#%d %s" % (self.id, self.name)
 

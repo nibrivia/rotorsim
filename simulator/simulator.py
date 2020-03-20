@@ -172,7 +172,7 @@ def main(
     reconfiguration_time /= 1000 #divide to be in ms
     bandwidth_Bms = bandwidth * 1e6 / 1e3
 
-    random.seed(42) # TODO Just to make things reproducible
+    random.seed(40) # TODO Just to make things reproducible
 
     # Compute switch counts
     if n_xpand is not None:
@@ -200,6 +200,7 @@ def main(
 
     del slice_duration
     PARAMS.set_many(locals())
+    PARAMS.flow_print = 0
     print(PARAMS)
     gen_ports()
     print("Setting up network...")
