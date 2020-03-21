@@ -38,6 +38,7 @@ class ToRSwitch:
         self.ports_dst = [None for _ in range(PARAMS.n_switches)]
 
 
+        self.dst_tor_buffers = [deque() for _ in range(PARAMS.n_tor)]
         # rotor
         self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
         self.capacity   = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
@@ -49,6 +50,7 @@ class ToRSwitch:
         # xpander
         self.connections = dict() # Destination ToRs
         self.dst_to_port = dict() # routing table
+        self.dst_to_tor  = dict()
         #self.port_to_tor = dict()
         self.tor_to_port = dict()
 
@@ -197,6 +199,10 @@ class ToRSwitch:
     @Delay(0, priority = -10)
     def make_route(self, slice_id = None):
         """Builds a routing table"""
+        for t in self.tors:
+            for dst_id in t.local_dests:
+                self.dst_to_tor[dst_id] = t.id
+
         if PARAMS.n_xpand == 0:
             return
 
@@ -233,8 +239,9 @@ class ToRSwitch:
             # Write that for each server at our destination
             dst_tor = self.tors[dst_tor_id]
             for dst in dst_tor.local_dests:
-                #self.route[dst] = route
+                # This is just for expander
                 self.dst_to_port[dst] = next_port_id
+
 
         print()
         print(self)
@@ -302,7 +309,9 @@ class ToRSwitch:
                 lump = f.pop_lump(n_packets)
 
                 # Come back when we're done
-                R.call_in(PARAMS.reconf_cache + fct, self.cache_flow_done, port_id = port_id, lump = lump)
+                R.call_in(PARAMS.reconf_cache + fct,
+                        self.cache_flow_done,
+                        port_id = port_id, lump = lump)
 
                 return None # Still not simulating packet level
 
@@ -466,40 +475,37 @@ class ToRSwitch:
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Local destination" % (self, packet))
             next_port_id = self.local_dests[packet.dst_id]
+            self.ports_tx[next_port_id].enq(packet)
+        else:
+            next_tor_id = self.dst_to_tor[packet.dst_id]
+            self.dst_tor_buffers[next_tor_id].append(packet)
+
+
+
 
         # expander: use the routing table
-        elif packet.tag == "xpand" and PARAMS.n_xpand > 0:
-            if packet.flow_id == PARAMS.flow_print:
-                vprint("%s: %s xpand destination" % (self, packet))
-            next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
+        #elif packet.tag == "xpand" and PARAMS.n_xpand > 0:
+        #    if packet.flow_id == PARAMS.flow_print:
+        #        vprint("%s: %s xpand destination" % (self, packet))
+        #    next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
 
-        # rotor: figure out 1st/2nd hop and adjust
-        elif packet.tag == "rotor":
-            # Add to rotor queue
-            if packet.flow_id == PARAMS.flow_print:
-                vprint("%s: %s rotor destination" % (self, packet))
-            #self.rotor_queue.enq(packet)
-            self.port_tx[0].enq(packet)
-            return
+        ## rotor: figure out 1st/2nd hop and adjust
+        #elif packet.tag == "rotor":
+        #    # Add to rotor queue
+        #    if packet.flow_id == PARAMS.flow_print:
+        #        vprint("%s: %s rotor destination" % (self, packet))
+        #    #self.rotor_queue.enq(packet)
+        #    self.port_tx[0].enq(packet)
+        #    return
 
-        # cache: TODO attempt to send it on cache, fallback on rotor
-        elif packet.tag == "cache":
-            if packet.flow_id == PARAMS.flow_print:
-                vprint("%s: %s Cache destination" % (self, packet))
-            self.cache_queue.enq(packet)
-            return
-
-
-        # Get next hop
-        # path, _ = self.route[p.dst_id]
-        # next_hop = path[0]
-        # out_port_id = self.tor_to_port[next_hop]
+        ## cache: TODO attempt to send it on cache, fallback on rotor
+        #elif packet.tag == "cache":
+        #    if packet.flow_id == PARAMS.flow_print:
+        #        vprint("%s: %s Cache destination" % (self, packet))
+        #    self.cache_queue.enq(packet)
+        #    return
 
 
-        # Add to queue
-        if next_port_id is None or self.ports_tx[next_port_id] is None:
-            print("%s: %s has no next port[%s]" % (self, packet, next_port_id))
-        self.ports_tx[next_port_id].enq(packet)
 
     # Printing stuffs
     ################
