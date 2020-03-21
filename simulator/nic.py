@@ -12,15 +12,19 @@ class NIC:
             ):
         # ID
         self.name = name
-        if name is None:
+        if name is None or name == "":
             self.name = "{}"
 
         # Internal state
         self._queue   = deque()
         self._enabled = True
+        self._paused  = False
 
         self.q_size_B = 0
-        self.queue_size_max   = max_size_bytes
+        self.queue_size_max = max_size_bytes
+
+        # Link params
+        self.prop_delay = delay
         if bandwidth_Bms is None:
             self.ms_per_byte = 0
         else:
@@ -29,8 +33,6 @@ class NIC:
         # Destination values
         self.dst_recv = dst_recv
 
-        # Link params
-        self.prop_delay = delay
 
     def enq(self, packet):
         if packet.flow_id == 0:
@@ -42,19 +44,26 @@ class NIC:
             return
         self._queue.appendleft(packet)
         self.q_size_B += packet.size_B
-        # Having a delay of 0 makes it so that even if we can send
-        # immediately, it waits until the caller is done, making 
-        # the behavior of enq consistent regardless of current queue
-        # size
+        # Having a delay of 0 makes it so that even if we can send immediately,
+        # it waits until the caller is done, making the behavior of enq
+        # consistent regardless of current queue size
         R.call_in(0, self._send)
 
+    def pause(self):
+        self._paused = True
+
+    def resume(self):
+        self._paused = False
+        self._enable()
+
     def _enable(self):
-        self._enabled = True
-        self._send()
+        if not self._paused:
+            self._enabled = True
+            self._send()
 
     def _send(self):
-        # Currently sending something, or no packets to send
-        if not self._enabled or len(self._queue) == 0:
+        # Currently sending something, or paused, or no packets to send
+        if not self._enabled or self._paused or len(self._queue) == 0:
             return
 
         # Disable
