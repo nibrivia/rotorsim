@@ -8,7 +8,7 @@ from functools import lru_cache
 from collections import deque
 from flow_generator import FLOWS
 from params import PARAMS
-from switch import QueueLink
+#from switch import QueueLink
 
 
 class ToRSwitch:
@@ -23,14 +23,14 @@ class ToRSwitch:
         self.local_dests = dict()
 
         # receiving tor, queues
-        self.ports_rx  = [QueueLink(
-                                    self.recv,
-                                    name  = "%s:%2d" % (self, port_id),
-                                    delay = 0, #TODO
-                                    bandwidth_Bms = None, # TODO
-                                    max_size_bytes = None,
-                                    )
-                for port_id in range(PARAMS.n_switches)] # Just the queue
+        # self.ports_rx  = [QueueLink(
+        #                             self.recv,
+        #                             name  = "%s:%2d" % (self, port_id),
+        #                             delay = 0, #TODO
+        #                             bandwidth_Bms = None, # TODO
+        #                             max_size_bytes = None,
+        #                             )
+        #         for port_id in range(PARAMS.n_switches)] # Just the queue
         self.ports_src = [None for _ in range(PARAMS.n_switches)]
 
         # transmit queue an dest
@@ -43,8 +43,8 @@ class ToRSwitch:
         self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
         self.capacity   = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
         self.out_queue_t = [-1 for rotor_id in rotor_ports]
-        self.rotor_queue = QueueLink(lambda p : None)
-        self.cache_queue = QueueLink(lambda p : None)
+        #self.rotor_queue = QueueLink(lambda p : None)
+        #self.cache_queue = QueueLink(lambda p : None)
         #self.n_flows = 0
 
         # xpander

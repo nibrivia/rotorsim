@@ -3,7 +3,7 @@ import sys
 from logger import LOG
 from math import ceil, floor
 from helpers import vprint, xpand_ports, rotor_ports, cache_ports
-from switch import QueueLink
+from switch import NIC
 from tor_switch import ToRSwitch
 from rotor_switch import RotorSwitch
 from optical_switch import OpticalSwitch
@@ -54,7 +54,7 @@ class RotorNet:
         # ToR <> backbone
         for s in self.switches:
             for t in self.tors:
-                uplink   = QueueLink(
+                uplink   = NIC(
                         s.make_recv(t.id),
                         name = "%s->%s" % (t, s),
                         delay = .001,
@@ -62,7 +62,7 @@ class RotorNet:
                         max_size_bytes = 40e6,
                         )
                 t.connect_backbone(s.id, s, uplink)
-            downlinks = [QueueLink(
+            downlinks = [NIC(
                     t.recv,
                     name = "%s->%s" % (s, t),
                     delay = .001,
@@ -86,14 +86,14 @@ class RotorNet:
 
                 # Create links
                 # TODO capacity, latency, bandwidth
-                uplink   = QueueLink(
+                uplink   = NIC(
                         tor.recv,
                         name = "%s->%s" % (server, tor),
                         delay = .001,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
                         max_size_bytes = 40e6,
                         )
-                downlink = QueueLink(
+                downlink = NIC(
                         server.recv,
                         name = "%s->%s" % (tor, server),
                         delay = .001,
