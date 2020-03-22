@@ -20,6 +20,7 @@ class Registry:
         #if self.has_run:
             #assert delay >= 0, "Event <%s> has to be in the future, not %f" % (fn, delay)
         # Not threadsafe
+        assert callable(fn), "%s not callable" % fn
         self.count += 1
         heapq.heappush(self.queue, (time, priority, self.count, fn, args, kwargs))
         return count
@@ -45,7 +46,7 @@ class Registry:
 
             # Also not threadsafe
             self.time, _, _, fn, args, kwargs = heapq.heappop(self.queue)
-            #print(" %.2f> #%d %s %s, %s" % (self.time, count, fn.__name__, args, kwargs))
+            print("%.3f>>>  %s  %s" % (self.time, fn.__name__, fn))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
 #@dataclass if python3 > 3.7
