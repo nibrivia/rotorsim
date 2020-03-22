@@ -46,7 +46,7 @@ class Registry:
 
             # Also not threadsafe
             self.time, _, _, fn, args, kwargs = heapq.heappop(self.queue)
-            print("\n%.3f>>>  %s  %s" % (self.time, fn.__name__, fn))
+            #print("\n%.3f>>>  %s  %s" % (self.time, fn.__name__, fn))
             fn(*args, **kwargs) # Call fn (it may register more events!)
 
 #@dataclass if python3 > 3.7

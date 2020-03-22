@@ -1,6 +1,7 @@
 from collections import deque
 from helpers import vprint, color_str_
 from event import R
+from params import PARAMS
 
 class NIC:
     def __init__(self,
@@ -38,8 +39,8 @@ class NIC:
 
 
     def enq(self, packet):
-        if packet.flow_id == 0:
-            vprint("queue: %s enq  %s" % (packet, self))
+        if packet.flow_id == PARAMS.flow_print:
+            vprint("nic  : %s enq  %s" % (packet, self))
         if self.queue_size_max is not None and \
                 self.q_size_B + packet.size_B > self.queue_size_max:
             if packet.flow_id == 0:
@@ -81,7 +82,7 @@ class NIC:
         # Get packet and compute tx time
         pkt = self._queue.pop()
         self.q_size_B -= pkt.size_B
-        if pkt.flow_id == 0:
+        if pkt.flow_id == PARAMS.flow_print:
             vprint("queue: %s sent %s" % (pkt, self))
         tx_delay = pkt.size_B * self.ms_per_byte
 

@@ -4,6 +4,7 @@ from helpers import vprint, color_str_
 from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML_QUEUE
 from event import R
 from collections import deque
+from params import PARAMS
 
 class Packet:
     def __init__(self, src_id, dst_id, seq_num, tag, flow_id,
@@ -22,6 +23,16 @@ class Packet:
         self.hop_count = 0
 
         self.intended_dest = None
+
+    def copy(self):
+        return Packet(
+                src_id = self.src_id,
+                dst_id = self.dst_id,
+                seq_num = self.seq_num,
+                tag = self.tag,
+                flow_id = self.flow_id,
+                sent_ms = None,
+                size_B = self.size_B)
 
     @color_str_
     def __str__(self):
@@ -153,7 +164,7 @@ class TCPFlow(Flow):
         if self.is_done:
             return
 
-        if self.id == 0:
+        if self.id == PARAMS.flow_print:
             vprint("flow : %s acked" % (packet))
 
         # Mark the ack
@@ -167,8 +178,8 @@ class TCPFlow(Flow):
         rtt_err = rtt_sample - self.rtt_ms
         self.rtt_ms     += self.alpha * rtt_err
         self.rtt_dev_ms += self.beta  * (abs(rtt_err) - self.rtt_dev_ms)
-        if self.id == 0:
-            vprint("rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto))
+        if self.id == PARAMS.flow_print:
+            vprint("flow : rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto))
 
 
         # Remove from in-flight if necessary
@@ -178,8 +189,8 @@ class TCPFlow(Flow):
                 self.cwnd += 1
             else:
                 self.cwnd += 1/self.cwnd
-            if self.id == 0:
-                vprint("cwnd", self.cwnd)
+            if self.id == PARAMS.flow_print:
+                vprint("flow : cwnd", self.cwnd)
 
         self._send_loop()
 
@@ -192,7 +203,7 @@ class TCPFlow(Flow):
             # What packet?
             if len(self.retransmit_q) > 0:
                 p = self.retransmit_q.pop()
-                if self.id == 0:
+                if self.id == PARAMS.flow_print:
                     vprint("flow : %s retransmit" % p)
             else:
                 try:
@@ -205,10 +216,11 @@ class TCPFlow(Flow):
             if p.seq_num in self.acked:
                 continue
 
-            if self.id == 0:
+            if self.id == PARAMS.flow_print:
                 vprint("flow : %s sent, cwnd: %s/%.1f" % (p, len(self.in_flight)+1, self.cwnd))
 
             self.in_flight.add(p.seq_num)
+            p.sent_ms = R.time
             self.src_send_q.enq(p)
             #vprint(self, len(self.in_flight))
 
@@ -221,19 +233,19 @@ class TCPFlow(Flow):
             return
 
         if packet.seq_num in self.in_flight:
-            if self.id == 0:
+            if self.id == PARAMS.flow_print:
                 vprint("flow : %s \033[0;31mtimeout after %.3f\033[0;00m" % (
                     packet, rto))
             self.in_flight.remove(packet.seq_num)
 
             if R.time > self.timeout_lock:
-                if self.id == 0:
+                if self.id == PARAMS.flow_print:
                     vprint("flow : %s \033[0;31m MD!!\033[0;00m" % packet)
                 self.cwnd = max(1, self.cwnd/2)
                 self.sthresh = self.cwnd
                 self.timeout_lock = R.time + self.rtt_ms
 
-            self.retransmit_q.appendleft(packet)
+            self.retransmit_q.appendleft(packet.copy())
             self._send_loop()
 
 

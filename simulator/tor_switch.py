@@ -443,7 +443,7 @@ class ToRSwitch:
     def make_pull(self, port_id):
         port_type = get_port_type(port_id)
         def pull():
-            vprint("pull from port %s", port_id)
+            vprint("%s: pull from port %s" % (self, port_id))
             self.available_ports.add(port_id)
             self.available_types[port_type] += 1
             self._send()
@@ -491,7 +491,7 @@ class ToRSwitch:
 
 
     def _send(self):
-        vprint("_send()")
+        vprint("%s: _send()" % self)
         priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
                 rotor = ["rotor", "xpand", "cache"],
