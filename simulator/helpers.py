@@ -7,7 +7,8 @@ from params import PARAMS
 
 def vprint(*args, **kwargs):
     if PARAMS.verbose:
-        print("%.3f " % R.time, end = "")
+        print("%.3f     " % R.time,
+                end = "")
         print(*args, **kwargs)
 
 @lru_cache()

@@ -170,6 +170,7 @@ class ToRSwitch:
         vprint("%s:%d -> %s" % (self, port_id, tor))
         self.ports_dst[port_id] = tor
         self.ports_tx[port_id].resume()
+        R.call_in(PARAMS.slot_duration -.002, self.disconnect_from, port_id, priority = -1)
 
         # Get capacities for indirection if rotor
         if port_id < PARAMS.n_rotor:
@@ -177,6 +178,14 @@ class ToRSwitch:
 
         # Start sending
         #self._send(port_id)
+
+    def disconnect_from(self, port_id):
+        self.ports_tx[port_id].pause()
+        if port_id in self.available_ports:
+            self.available_ports.remove(port_id)
+            self.available_types["rotor"] -= 1
+        vprint("%s: available ports: %s" % (self, self.available_ports))
+
 
 
     @property
@@ -434,7 +443,7 @@ class ToRSwitch:
     def make_pull(self, port_id):
         port_type = get_port_type(port_id)
         def pull():
-            print("pull from port %s", port_id)
+            vprint("pull from port %s", port_id)
             self.available_ports.add(port_id)
             self.available_types[port_type] += 1
             self._send()
@@ -489,6 +498,7 @@ class ToRSwitch:
                 cache = ["cache", "rotor", "xpand"],
                 )
 
+        vprint("%s: available ports: %s" % (self, self.available_ports))
         for free_port in list(self.available_ports):
             port_type = get_port_type(free_port)
             port_dst  = self.ports_dst[free_port].id

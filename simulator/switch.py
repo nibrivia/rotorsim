@@ -51,7 +51,7 @@ class Switch:
 
             if not self.enabled:
                 assert False,\
-                        "@%.3f%s: Dropping packets from port %s" % (R.time, self, port_id)
+                        "@%.3f%s: %s drop from :%s" % (R.time, self, packet, port_id)
 
             # Forward to destination
             dst_id = self.dests[port_id]

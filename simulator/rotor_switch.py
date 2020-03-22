@@ -22,7 +22,7 @@ class RotorSwitch(Switch):
 
         # Create a recursive call
         self.new_slice = Delay(PARAMS.slot_duration + PARAMS.reconfiguration_time,
-                priority = 2)(self._new_slice)
+                priority = 2)(self._new_slice) 
         R.call_in(PARAMS.slot_duration, priority = 1, fn = self._disable)
 
         self._new_slice()
@@ -56,7 +56,7 @@ class RotorSwitch(Switch):
     def recv(self, tor, packet):
         if not self.enabled:
             assert False,\
-                    "@%.3f%s: Dropping packets from tor %s" % (R.time, self, tor)
+                    "@%.3f%s: %s drop from tor %s" % (R.time, self, packet, tor)
 
         # Get destination
         dst = self.dests[tor.id]

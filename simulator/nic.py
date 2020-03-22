@@ -72,7 +72,6 @@ class NIC:
             return
         if len(self._queue) == 0:
             if self.empty_callback is not None:
-                print("ULLLL")
                 self.empty_callback()
             return
 
