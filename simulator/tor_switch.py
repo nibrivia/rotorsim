@@ -169,7 +169,7 @@ class ToRSwitch:
         # Set the connection
         vprint("%s:%d -> %s" % (self, port_id, tor))
         self.ports_dst[port_id] = tor
-        self.ports_tx[port_id].resume()
+        R.call_in(0, self.ports_tx[port_id].resume)
         R.call_in(PARAMS.slot_duration -.002, self.disconnect_from, port_id, priority = -1)
 
         # Get capacities for indirection if rotor
