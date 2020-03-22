@@ -33,6 +33,9 @@ class NIC:
         # Destination values
         self.dst_recv = dst_recv
 
+        # Pull hook
+        self.empty_callback = None
+
 
     def enq(self, packet):
         if packet.flow_id == 0:
@@ -49,21 +52,28 @@ class NIC:
         # consistent regardless of current queue size
         R.call_in(0, self._send)
 
+    # FIXME There's a bug here where pause and resume will make this send
+    # FIXME faster than it should...
     def pause(self):
         self._paused = True
 
     def resume(self):
         self._paused = False
-        self._enable()
+        self._enabled = True 
+        self._send()
 
     def _enable(self):
-        if not self._paused:
-            self._enabled = True
-            self._send()
+        self._enabled = True
+        self._send()
 
     def _send(self):
         # Currently sending something, or paused, or no packets to send
-        if not self._enabled or self._paused or len(self._queue) == 0:
+        if not self._enabled or self._paused:
+            return
+        if len(self._queue) == 0:
+            if self.empty_callback is not None:
+                print("ULLLL")
+                self.empty_callback()
             return
 
         # Disable
@@ -75,7 +85,7 @@ class NIC:
         if pkt.flow_id == 0:
             vprint("queue: %s sent %s" % (pkt, self))
         tx_delay = pkt.size_B * self.ms_per_byte
-        #vprint("tx_delay", pkt, tx_delay)
+
 
         R.call_in(tx_delay, self._enable)
         R.call_in(self.prop_delay + tx_delay, self.dst_recv, pkt)

@@ -36,7 +36,7 @@ class Server:
 
     def add_flow(self, flow, receiver):
         if flow.id == PARAMS.flow_print:
-            vprint("server: %s received at %s" % (flow, self))
+            vprint("server: flow %s installed at %s" % (flow, self))
         self.flows[flow.id] = receiver
         flow.add_callback_done(self.flow_done)
 
