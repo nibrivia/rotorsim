@@ -207,7 +207,7 @@ class ToRSwitch:
                 self.dst_to_tor[dst_id] = t.id
 
         if PARAMS.n_xpand == 0:
-            returrint()
+            #returrint()
             print(self)
             for dst, hop in self.dst_to_port.items():
                 print("%s: -> %s" % (dst, hop))
