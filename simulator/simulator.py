@@ -171,7 +171,7 @@ def main(
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8))
     slice_duration /= 1000 #divide to be in ms
     reconfiguration_time /= 1000 #divide to be in ms
-    bandwidth_Bms = bandwidth * 1e6 / 1e3
+    bandwidth_Bms = bandwidth * 1e6 / 1e3 / 8
 
     random.seed(40) # TODO Just to make things reproducible
 
@@ -201,7 +201,7 @@ def main(
 
     del slice_duration
     PARAMS.set_many(locals())
-    PARAMS.flow_print = 302
+    PARAMS.flow_print = 1
     print(PARAMS)
     gen_ports()
     print("Setting up network...")
