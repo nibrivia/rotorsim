@@ -7,7 +7,7 @@ from workloads.websearch import websearch_distribution, websearch_size
 from workloads.chen import chen_distribution, chen_size
 from workloads.uniform import log_uniform_distribution, log_uniform_size
 
-BYTES_PER_PACKET = 10000
+BYTES_PER_PACKET = 1500
 global FLOWS, N_FLOWS, N_DONE
 FLOWS = dict()
 ML_JOBS = []
