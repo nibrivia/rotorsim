@@ -455,8 +455,8 @@ class ToRSwitch:
         #vprint("%s: _send()" % self)
         priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
-                rotor = ["rotor", "xpand", "cache"],
-                cache = ["cache", "rotor", "xpand"],
+                rotor = ["xpand", "rotor", "cache"],
+                cache = ["xpand", "cache", "rotor"],
                 )
 
         #vprint("%s: available ports: %s" % (self, self.available_ports))
