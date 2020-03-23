@@ -28,8 +28,9 @@ class Server:
                 vprint("srvr : %s recv on %s" % (packet, self))
             self.flows[flow_id](packet)
         else:
-            vprint("srvr : %s doesn't exist on %s..." % (
-                packet, self))
+            pass
+            #vprint("srvr : %s doesn't exist on %s..." % (
+            #    packet, self))
 
     def flow_done(self, flow_id):
         del self.flows[flow_id]

@@ -184,7 +184,7 @@ class ToRSwitch:
         if port_id in self.available_ports:
             self.available_ports.remove(port_id)
             self.available_types["rotor"] -= 1
-        vprint("%s: available ports: %s" % (self, self.available_ports))
+        #vprint("%s: available ports: %s" % (self, self.available_ports))
 
 
 
@@ -207,49 +207,10 @@ class ToRSwitch:
                 self.dst_to_tor[dst_id] = t.id
 
         if PARAMS.n_xpand == 0:
-            return
-
-        self.route_tor = [(None, PARAMS.n_tor*1000) for _ in range(PARAMS.n_tor)]
-        self.route_tor[self.id] = ([], 0)
-        queue = deque()
-        queue.append(self)
-
-        #This is a bastardized dijkstra - it assumes all cost are one
-        while len(queue) > 0:
-            tor    = queue.popleft()
-            path, cost = self.route_tor[tor.id]
-
-            # Take the new connection...
-            for con_id in tor.link_state:
-                cur_path, cur_cost = self.route_tor[con_id]
-                con_tor = self.tors[con_id]
-                # see if it does better...
-                if cost+1 < cur_cost:
-                    # update the cost and add back to the queue
-                    self.route_tor[con_id] = (path + [con_id], cost+1)
-                    queue.append(con_tor)
-
-        self.route = dict()
-        for dst_tor_id, (path, _) in enumerate(self.route_tor):
-            # Local destination, skip
-            if dst_tor_id == self.id:
-                continue
-
-            # Figure out what the next path is...
-            next_tor = path[0]
-            next_port_id = self.tor_to_port[next_tor]
-
-            # Write that for each server at our destination
-            dst_tor = self.tors[dst_tor_id]
-            for dst in dst_tor.local_dests:
-                # This is just for expander
-                self.dst_to_port[dst] = next_port_id
-
-
-        print()
-        print(self)
-        for dst, hop in self.dst_to_port.items():
-            print("%s: -> %s" % (dst, hop))
+            returrint()
+            print(self)
+            for dst, hop in self.dst_to_port.items():
+                print("%s: -> %s" % (dst, hop))
 
 
 
@@ -443,7 +404,7 @@ class ToRSwitch:
     def make_pull(self, port_id):
         port_type = get_port_type(port_id)
         def pull():
-            vprint("%s: pull from port %s" % (self, port_id))
+            #vprint("%s: pull from port %s" % (self, port_id))
             self.available_ports.add(port_id)
             self.available_types[port_type] += 1
             self._send()
@@ -491,14 +452,14 @@ class ToRSwitch:
 
 
     def _send(self):
-        vprint("%s: _send()" % self)
+        #vprint("%s: _send()" % self)
         priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
                 rotor = ["rotor", "xpand", "cache"],
                 cache = ["cache", "rotor", "xpand"],
                 )
 
-        vprint("%s: available ports: %s" % (self, self.available_ports))
+        #vprint("%s: available ports: %s" % (self, self.available_ports))
         for free_port in list(self.available_ports):
             port_type = get_port_type(free_port)
             port_dst  = self.ports_dst[free_port].id

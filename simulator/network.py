@@ -220,6 +220,9 @@ class RotorNet:
     def del_flow(flow_id):
         global FLOWS, N_DONE
         vprint("%s done!" % (FLOWS[flow_id]))
+        flow = FLOWS[flow_id]
+        flow.end = R.time
+        LOG.log_flow_done(FLOWS[flow_id])
 
         N_DONE[0] += 1
         del FLOWS[flow_id]
