@@ -427,8 +427,6 @@ class ToRSwitch:
         packet.hop_count += 1
         assert packet.hop_count < 1000, "Hop count >1000? %s" % packet
 
-        # Switch packet around
-        next_port_id = None
 
         # Deliver locally
         #print(self.local_dests)

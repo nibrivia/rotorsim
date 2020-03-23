@@ -29,6 +29,7 @@ class NIC:
         if bandwidth_Bms is None:
             self.ms_per_byte = 0
         else:
+            print(bandwidth_Bms)
             self.ms_per_byte = 1/bandwidth_Bms
 
         # Destination values
@@ -82,11 +83,11 @@ class NIC:
         # Get packet and compute tx time
         pkt = self._queue.pop()
         self.q_size_B -= pkt.size_B
-        if pkt.flow_id == PARAMS.flow_print:
-            vprint("queue: %s sent %s" % (pkt, self))
         tx_delay = pkt.size_B * self.ms_per_byte
 
 
+        if pkt.flow_id == PARAMS.flow_print:
+            vprint("queue: %s sent %s tx %.6f lat %.6f" % (pkt, self, tx_delay, self.prop_delay))
         R.call_in(tx_delay, self._enable)
         R.call_in(self.prop_delay + tx_delay, self.dst_recv, pkt)
 

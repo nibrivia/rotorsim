@@ -4,10 +4,14 @@ import click
 import sys
 from event import R
 from params import PARAMS
+import math
 
 def vprint(*args, **kwargs):
     if PARAMS.verbose:
-        print("%.3f     " % R.time,
+        ms = math.floor(R.time)
+        us = math.floor((R.time % 1) * 1000)
+        ns = math.floor((R.time % .001) * 1e6)
+        print("%d.%03d.%03d     " % (ms, us, ns),
                 end = "")
         print(*args, **kwargs)
 
