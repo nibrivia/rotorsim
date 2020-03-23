@@ -7,7 +7,7 @@ class NIC:
     def __init__(self,
             dst_recv,
             name  = "",
-            delay = 0,
+            delay_ns = 0,
             bandwidth_Bms = None,
             max_size_bytes = None,
             ):
@@ -25,7 +25,7 @@ class NIC:
         self.queue_size_max = max_size_bytes
 
         # Link params
-        self.prop_delay = delay
+        self.prop_delay = delay_ns / 1e6
         if bandwidth_Bms is None:
             self.ms_per_byte = 0
         else:

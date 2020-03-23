@@ -21,7 +21,7 @@ class Switch:
         for tor_id in range(PARAMS.n_tor):
             recv = self.make_recv(tor_id)
             name = "%s:%-2d" % (self, tor_id)
-            handle = NIC(recv, name = name, delay = 0)
+            handle = NIC(recv, name = name)
 
             self.rx[tor_id] = handle
 

@@ -57,7 +57,7 @@ class RotorNet:
                 uplink   = NIC(
                         s.make_recv(t.id),
                         name = "%s->%s" % (t, s),
-                        delay = .001,
+                        delay_ns = 500,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
                         max_size_bytes = 40e6,
                         )
@@ -65,7 +65,7 @@ class RotorNet:
             downlinks = [NIC(
                     t.recv,
                     name = "%s->%s" % (s, t),
-                    delay = .001,
+                    delay_ns = 500,
                     bandwidth_Bms = PARAMS.bandwidth_Bms,
                     max_size_bytes = 40e6,
                     )
@@ -89,14 +89,14 @@ class RotorNet:
                 uplink   = NIC(
                         tor.recv,
                         name = "%s->%s" % (server, tor),
-                        delay = .001,
+                        delay_ns = 10,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
                         max_size_bytes = 40e6,
                         )
                 downlink = NIC(
                         server.recv,
                         name = "%s->%s" % (tor, server),
-                        delay = .001,
+                        delay_ns = 10,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
                         max_size_bytes = 40e6,
                         )
