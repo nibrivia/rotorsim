@@ -132,7 +132,7 @@ class TCPFlow(Flow):
         # Init our TCP fields
         self.cwnd   = 1
 
-        self.rtt_ms = 2
+        self.rtt_ms = .2
         self.rtt_dev_ms = 0
 
         self.alpha = .25
