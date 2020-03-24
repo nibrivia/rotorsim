@@ -207,7 +207,50 @@ class ToRSwitch:
                 self.dst_to_tor[dst_id] = t.id
 
         if PARAMS.n_xpand == 0:
-            #returrint()
+            return
+
+        self.route_tor = [(None, PARAMS.n_tor*1000) for _ in range(PARAMS.n_tor)]
+        self.route_tor[self.id] = ([], 0)
+        queue = deque()
+        queue.append(self)
+
+        #This is a bastardized dijkstra - it assumes all cost are one
+        while len(queue) > 0:
+            tor    = queue.popleft()
+            path, cost = self.route_tor[tor.id]
+
+            # Take the new connection...
+            for con_id in tor.link_state:
+                cur_path, cur_cost = self.route_tor[con_id]
+                con_tor = self.tors[con_id]
+                # see if it does better...
+                if cost+1 < cur_cost:
+                    # update the cost and add back to the queue
+                    self.route_tor[con_id] = (path + [con_id], cost+1)
+                    queue.append(con_tor)
+
+        self.route = dict()
+        for dst_tor_id, (path, _) in enumerate(self.route_tor):
+            # Local destination, skip
+            if dst_tor_id == self.id:
+                continue
+
+            # Figure out what the next path is...
+            next_tor = path[0]
+            next_port_id = self.tor_to_port[next_tor]
+
+            # Write that for each server at our destination
+            dst_tor = self.tors[dst_tor_id]
+            for dst in dst_tor.local_dests:
+                # This is just for expander
+                self.dst_to_port[dst] = next_port_id
+
+
+        print()
+        print(self)
+        for dst, hop in self.dst_to_port.items():
+            print("%s: -> %s" % (dst, hop))
+
             print(self)
             for dst, hop in self.dst_to_port.items():
                 print("%s: -> %s" % (dst, hop))
@@ -367,36 +410,43 @@ class ToRSwitch:
         self.out_queue_t[port_id] = self.slot_id
         dst_q.recv((dst.id, port_id, self.slot_t, q))
 
-    @Delay(0, priority = 100) #do last
-    def rx_rotor(self, lumps):
-        t = R.time
-        for l in lumps:
-            flow, dst, n = l
-            t += n*PARAMS.packet_ttime
+    #@Delay(0, priority = 100) #do last
+    #def rx_rotor(self, lumps):
+    #    t = R.time
+    #    for l in lumps:
+    #        flow, dst, n = l
+    #        t += n*PARAMS.packet_ttime
 
-            if self.id == dst:
-                FLOWS[flow].rx(n=n, t=t)
-            else:
-                self.lumps_ind[dst].append(l)
-                self.lumps_ind_n[dst] += n
+    #        if self.id == dst:
+    #            FLOWS[flow].rx(n=n, t=t)
+    #        else:
+    #            self.lumps_ind[dst].append(l)
+    #            self.lumps_ind_n[dst] += n
 
-    def next_queue_xpand(self, port_id):
-        """Gets the next queue for xpander"""
+    def next_packet_xpand(self, port_id, dst_id):
+        # TODO this whole thing is grossly inefficient...
 
-        # If there are already packets waiting
-        if self.buffers_fst[port_id].size > 0:
-            return self.buffers_fst[port_id]
+        assert self.ports_dst[port_id].id == dst_id 
 
-        # If we have flows waiting
-        flows = self.flows_xpand[port_id]
-        if len(flows) > 0:
-            _, _, f = flows[0]
+        # Get destinations that go that way
+        possible_tor_dsts = [self.dst_to_tor[dst] for dst, p in self.dst_to_port.items() if p == port_id]
+        vprint(possible_tor_dsts)
 
-            # Remove if we're done
-            if f.remaining_packets == 1:
-                heapq.heappop(self.flows_xpand[port_id])
+        # Get all packets that wanna go that way
+        possible_pkts = []
+        for d in possible_tor_dsts:
+            if len(self.buffers_dst_type[d]["xpand"]) > 0:
+                possible_pkts.append(self.buffers_dst_type[d]["xpand"][0])
 
-            return f
+        # Find the earliest one
+        if len(possible_pkts) > 0:
+            return min(possible_pkts, key = lambda p: p._tor_arrival)
+
+
+
+
+
+
 
     # Actual packets moving
     ########################
@@ -412,7 +462,6 @@ class ToRSwitch:
 
     def recv(self, packet):
         """Receives packets for `port_id`"""
-        #vprint("%s rx %s" % (self, packet))
 
         if packet.flow_id == PARAMS.flow_print:
             vprint("%s: %s recv" % (self, packet))
@@ -436,6 +485,7 @@ class ToRSwitch:
             next_port_id = self.local_dests[packet.dst_id]
             self.ports_tx[next_port_id].enq(packet)
         else:
+            packet._tor_arrival = R.time
             next_tor_id = self.dst_to_tor[packet.dst_id]
             self.buffers_dst_type[next_tor_id][packet.tag].append(packet)
             if packet.flow_id == PARAMS.flow_print:
@@ -462,15 +512,21 @@ class ToRSwitch:
 
             for priority_type in priorities[port_type]:
                 vprint("%s:   considering %s:%s (%d)..." % (
-                    self, port_dst, priority_type,
-                    len(buffers_type[priority_type])),
-                    end = "")
-                if len(buffers_type[priority_type]) > 0:
+                            self, port_dst, priority_type,
+                            len(buffers_type[priority_type])),
+                            end = "")
+
+                if priority_type == "xpand":
+                    vprint(" xpand")
+                    pkt = self.next_packet_xpand(port_id = free_port, dst_id = port_dst)
+
+                elif len(buffers_type[priority_type]) > 0:
                     vprint(" has packets!")
                     pkt = buffers_type[priority_type].pop()
+
+                if pkt is not None:
                     pkt.intended_dest = port_dst
                     self.ports_tx[free_port].enq(pkt)
-
                     self.available_ports.remove(free_port)
                     self.available_types[port_type] -= 1
                     break
