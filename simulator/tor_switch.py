@@ -438,6 +438,10 @@ class ToRSwitch:
         else:
             next_tor_id = self.dst_to_tor[packet.dst_id]
             self.buffers_dst_type[next_tor_id][packet.tag].append(packet)
+            if packet.flow_id == PARAMS.flow_print:
+                vprint("%s: %s Outer destination %s:%s (%d)" % (
+                    self, packet, next_tor_id, packet.tag,
+                    len(self.buffers_dst_type[next_tor_id][packet.tag])))
             self._send()
 
 
@@ -457,7 +461,12 @@ class ToRSwitch:
             buffers_type = self.buffers_dst_type[port_dst]
 
             for priority_type in priorities[port_type]:
+                vprint("%s:   considering %s:%s (%d)..." % (
+                    self, port_dst, priority_type,
+                    len(buffers_type[priority_type])),
+                    end = "")
                 if len(buffers_type[priority_type]) > 0:
+                    vprint(" has packets!")
                     pkt = buffers_type[priority_type].pop()
                     pkt.intended_dest = port_dst
                     self.ports_tx[free_port].enq(pkt)
@@ -465,6 +474,8 @@ class ToRSwitch:
                     self.available_ports.remove(free_port)
                     self.available_types[port_type] -= 1
                     break
+                else:
+                    vprint(" empty")
 
 
 

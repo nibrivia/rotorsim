@@ -45,7 +45,7 @@ class NIC:
         if self.queue_size_max is not None and \
                 self.q_size_B + packet.size_B > self.queue_size_max:
             if packet.flow_id == 0:
-                vprint("%s drop %s" % (packet, self))
+                vprint("%s dropped, full queue %s" % (packet, self))
             return
         self._queue.appendleft(packet)
         self.q_size_B += packet.size_B
@@ -97,4 +97,4 @@ class NIC:
             frac_full = self.q_size_B
         else:
             frac_full = self.q_size_B / self.queue_size_max
-        return "%s [%2d%%]" % (self.name, frac_full*100)
+        return "%s [%2d%% / %d pkt]" % (self.name, frac_full*100, len(self._queue))
