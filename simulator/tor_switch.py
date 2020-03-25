@@ -8,9 +8,10 @@ from functools import lru_cache
 from collections import deque
 from flow_generator import FLOWS
 from params import PARAMS
+from debuglog import DebugLog
 
 
-class ToRSwitch:
+class ToRSwitch(DebugLog):
     def __init__(self, name):
 
         # Stuff about me
@@ -46,6 +47,8 @@ class ToRSwitch:
         self.dst_to_tor  = dict() # for virtual queue purposes
         self.tor_to_port = dict() # for individual moment decisions
         #self.port_to_tor = dict()
+
+        self.t = [0]
 
 
     # One-time setup
@@ -425,8 +428,11 @@ class ToRSwitch:
         assert self.ports_dst[port_id].id == dst_id 
 
         # Get destinations that go that way
-        possible_tor_dsts = set(self.dst_to_tor[dst]
-                for dst, p in self.dst_to_port.items() if p == port_id)
+        if PARAMS.n_xpand > 0:
+            possible_tor_dsts = set(self.dst_to_tor[dst]
+                    for dst, p in self.dst_to_port.items() if p == port_id)
+        else:
+            possible_tor_dsts = set(t for t in range(PARAMS.n_tor))
         vprint(possible_tor_dsts)
 
         # Get all packets that wanna go that way
@@ -488,7 +494,7 @@ class ToRSwitch:
             next_tor_id = self.dst_to_tor[packet.dst_id]
             self.buffers_dst_type[next_tor_id][packet.tag].append(packet)
             if packet.flow_id == PARAMS.flow_print:
-                vprint("%s: %s Outer destination %s:%s (%d)" % (
+                vprint("%s: %s Outer destination %s/%s (%d)" % (
                     self, packet, next_tor_id, packet.tag,
                     len(self.buffers_dst_type[next_tor_id][packet.tag])))
             self._send()
@@ -510,8 +516,10 @@ class ToRSwitch:
             buffers_type = self.buffers_dst_type[port_dst]
 
             for priority_type in priorities[port_type]:
-                vprint("%s:   considering %s:%s (%d)..." % (
-                            self, port_dst, priority_type,
+                vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
+                            self,
+                            free_port, port_type,
+                            port_dst, priority_type,
                             len(buffers_type[priority_type])),
                             end = "")
 
@@ -564,6 +572,8 @@ class ToRSwitch:
 
     @color_str_
     def __str__(self):
+        self.t[0] = 1
+
         return self.name
 
     def buffer_str(self):

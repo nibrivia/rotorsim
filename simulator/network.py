@@ -12,8 +12,9 @@ from xpand_108 import xpand1
 from params import PARAMS
 from server import Server
 from flow_generator import FLOWS, N_DONE, N_FLOWS
+from debuglog import DebugLog
 
-class RotorNet:
+class RotorNet(DebugLog):
     def __init__(self):
         # Matchings need to be done early to get constants
         self.generate_matchings()
@@ -32,10 +33,11 @@ class RotorNet:
             PARAMS.packet_ttime   = PARAMS.slot_duration  / PARAMS.packets_per_slot
 
         # Switches
-        self.switches = []
-        self.switches.extend([  RotorSwitch(id = r_id) for r_id in rotor_ports])
-        self.switches.extend([OpticalSwitch(id = x_id) for x_id in xpand_ports])
-        self.switches.extend([OpticalSwitch(id = c_id) for c_id in cache_ports])
+        switches = []
+        switches.extend([  RotorSwitch(id = r_id) for r_id in rotor_ports])
+        switches.extend([OpticalSwitch(id = x_id) for x_id in xpand_ports])
+        switches.extend([OpticalSwitch(id = c_id) for c_id in cache_ports])
+        self.switches = switches
 
         # ToRs
         self.tors = [ToRSwitch(name = i) for i in range(PARAMS.n_tor)]

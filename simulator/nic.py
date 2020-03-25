@@ -2,8 +2,9 @@ from collections import deque
 from helpers import vprint, color_str_
 from event import R
 from params import PARAMS
+from debuglog import DebugLog
 
-class NIC:
+class NIC(DebugLog):
     def __init__(self,
             dst_recv,
             name  = "",
@@ -29,7 +30,6 @@ class NIC:
         if bandwidth_Bms is None:
             self.ms_per_byte = 0
         else:
-            print(bandwidth_Bms)
             self.ms_per_byte = 1/bandwidth_Bms
 
         # Destination values
@@ -93,6 +93,7 @@ class NIC:
 
     @color_str_
     def __str__(self):
+        return str(self.name)
         if self.queue_size_max is None:
             frac_full = self.q_size_B
         else:

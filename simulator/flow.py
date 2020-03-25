@@ -5,8 +5,9 @@ from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML
 from event import R
 from collections import deque
 from params import PARAMS
+from debuglog import DebugLog
 
-class Packet:
+class Packet(DebugLog):
     def __init__(self, src_id, dst_id, seq_num, tag, flow_id,
             #is_last,
             sent_ms,
@@ -39,7 +40,7 @@ class Packet:
         return "%3d[%s->%s]#%d >%s" % (
                 self.flow_id, self.src_id, self.dst_id, self.seq_num, self.intended_dest)
 
-class Flow:
+class Flow(DebugLog):
     """This runs on a server"""
     def __init__(self, arrival, flow_id, size_bits, src, dst):
         self.id        = flow_id

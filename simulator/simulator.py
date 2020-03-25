@@ -201,7 +201,7 @@ def main(
 
     del slice_duration
     PARAMS.set_many(locals())
-    PARAMS.flow_print = 2
+    PARAMS.flow_print = 0
     print(PARAMS)
     gen_ports()
     print("Setting up network...")
@@ -310,7 +310,7 @@ def print_time(time_limit):
     print("\x1b[2K\r\033[1;91m%.3fms of %dms \033[00m %d (%d)" % (
         R.time, time_limit, len(FLOWS), N_FLOWS[0]),
         end = end,
-        file = sys.stderr)
+        )
     #print("%dms of %dms \033[00m %d" % (R.time, time_limit, len(FLOWS)), end = "")
     R.call_in(.1, print_time, time_limit)
 

@@ -2,8 +2,9 @@ from helpers import vprint, color_str_
 from params import PARAMS
 from event import R
 from flow import Flow, Packet
+from debuglog import DebugLog
 
-class Server:
+class Server(DebugLog):
     def __init__(self, server_id, server_name = None):
         self.id = server_id
         self.name = server_name
