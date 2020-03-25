@@ -251,10 +251,6 @@ class ToRSwitch:
         for dst, hop in self.dst_to_port.items():
             print("%s: -> %s" % (dst, hop))
 
-            print(self)
-            for dst, hop in self.dst_to_port.items():
-                print("%s: -> %s" % (dst, hop))
-
 
 
 
@@ -429,18 +425,21 @@ class ToRSwitch:
         assert self.ports_dst[port_id].id == dst_id 
 
         # Get destinations that go that way
-        possible_tor_dsts = [self.dst_to_tor[dst] for dst, p in self.dst_to_port.items() if p == port_id]
+        possible_tor_dsts = set(self.dst_to_tor[dst]
+                for dst, p in self.dst_to_port.items() if p == port_id)
         vprint(possible_tor_dsts)
 
         # Get all packets that wanna go that way
         possible_pkts = []
         for d in possible_tor_dsts:
             if len(self.buffers_dst_type[d]["xpand"]) > 0:
-                possible_pkts.append(self.buffers_dst_type[d]["xpand"][0])
+                possible_pkts.append((d, self.buffers_dst_type[d]["xpand"][0]))
 
         # Find the earliest one
         if len(possible_pkts) > 0:
-            return min(possible_pkts, key = lambda p: p._tor_arrival)
+            dst, pkt = min(possible_pkts, key = lambda t: t[1]._tor_arrival)
+            pkt = self.buffers_dst_type[dst]["xpand"].pop()
+            return pkt
 
 
 

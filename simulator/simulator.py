@@ -201,7 +201,7 @@ def main(
 
     del slice_duration
     PARAMS.set_many(locals())
-    PARAMS.flow_print = 0
+    PARAMS.flow_print = 2
     print(PARAMS)
     gen_ports()
     print("Setting up network...")
