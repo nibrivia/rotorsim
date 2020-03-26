@@ -11,19 +11,10 @@ class Switch:
         self._disable()
 
         # in and out links
-        self.rx    = [None for _ in range(PARAMS.n_tor)]
         self.tx    = [None for _ in range(PARAMS.n_tor)]
 
         # Mapping from in->out
         self.dests = [None for _ in range(PARAMS.n_tor)]
-
-        # Create the in-links now
-        for tor_id in range(PARAMS.n_tor):
-            recv = self.make_recv(tor_id)
-            name = "%s:%-2d" % (self, tor_id)
-            handle = NIC(recv, name = name)
-
-            self.rx[tor_id] = handle
 
 
     def start(self):
