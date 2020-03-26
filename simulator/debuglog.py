@@ -54,10 +54,10 @@ class DebugList:
         print("set %s[%s] = %s")
         self._obj[key] = value
 
+ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 def event(obj, event_type, key, value):
     try:
         obj_name = str(obj)
-        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
         obj_name = ansi_escape.sub('', obj_name)
     except:
         obj_name = "'" + repr(obj) + "'"
@@ -68,9 +68,18 @@ def event(obj, event_type, key, value):
                 key, value),
             file = sys.stderr)
 
+def str_repr(x):
+    try:
+        s = str(x)
+    except:
+        s = repr(x)
+    return ansi_escape.sub('', s)
+
 def logfn(obj, fn):
     def log(*args, **kwargs):
-        event(obj, "call", fn.__name__, (args, kwargs))
+        pretty_args = ", ".join([str_repr(x) for x in args]) + " "
+        pretty_kwargs = ", ".join(["%s = %s" % (k, str_repr(v)) for k, v in kwargs.items()])
+        event(obj, "call", fn.__qualname__, pretty_args+ pretty_kwargs)
         return fn(*args, **kwargs)
     return log
 
@@ -83,6 +92,15 @@ class DebugLog:
         return self.__dict__[key]
 
     def __setattr__(self, key, value):
+        if "_infected" not in self.__dict__:
+            self.__dict__["_infected"] = True
+            for k in dir(self):
+                if "__" in k or "rtt_ms" in k:
+                    continue
+                v = getattr(self, k)
+                if callable(v) and "log" not in v.__name__:
+                    setattr(self, k, logfn(self, v))
+
         if callable(value):
             value = logfn(self, value)
 

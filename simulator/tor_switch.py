@@ -133,10 +133,10 @@ class ToRSwitch(DebugLog):
     # Every slice setup
     ###################
 
-    @property
-    def slice_t(self):
-        assert PARAMS.slice_duration is not None
-        return round(R.time/(PARAMS.slice_duration + PARAMS.reconfiguration_time))
+    #@property
+    #def slice_t(self):
+        #assert PARAMS.slice_duration is not None
+        #return round(R.time/(PARAMS.slice_duration + PARAMS.reconfiguration_time))
 
     @property
     def slot_t(self):

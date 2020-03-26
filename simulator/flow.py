@@ -37,8 +37,8 @@ class Packet(DebugLog):
 
     @color_str_
     def __str__(self):
-        return "%3d[%s->%s]#%d >%s" % (
-                self.flow_id, self.src_id, self.dst_id, self.seq_num, self.intended_dest)
+        return "%3d[%s->%s]#%d $%s" % (
+                self.flow_id, self.src_id, self.dst_id, self.seq_num, id(self))
 
 class Flow(DebugLog):
     """This runs on a server"""
@@ -152,7 +152,6 @@ class TCPFlow(Flow):
         self.acked = set()
         self.retransmit_q = deque()
 
-    @property
     def rto(self):
         rto =  self.rtt_ms + self.k*self.rtt_dev_ms
         return max(self.rto_min, min(rto, self.rto_max))
@@ -180,7 +179,7 @@ class TCPFlow(Flow):
         self.rtt_ms     += self.alpha * rtt_err
         self.rtt_dev_ms += self.beta  * (abs(rtt_err) - self.rtt_dev_ms)
         if self.id == PARAMS.flow_print:
-            vprint("flow : rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto))
+            vprint("flow : rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto()))
 
 
         # Remove from in-flight if necessary
@@ -226,7 +225,7 @@ class TCPFlow(Flow):
             #vprint(self, len(self.in_flight))
 
             # Setup the timeout
-            R.call_in(self.rto, self.timeout, p, rto = self.rto)
+            R.call_in(self.rto(), self.timeout, p, rto = self.rto())
 
 
     def timeout(self, packet, rto = 0):
