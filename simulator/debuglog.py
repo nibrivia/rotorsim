@@ -77,6 +77,9 @@ def str_repr(x):
     return ansi_escape.sub('', s)
 
 def logfn(obj, fn):
+    if "logfn" in fn.__qualname__:
+        return fn
+
     def log(*args, **kwargs):
         pretty_args = ", ".join([str_repr(x) for x in args]) + " "
         pretty_kwargs = ", ".join(["%s = %s" % (k, str_repr(v)) for k, v in kwargs.items()])
@@ -96,10 +99,17 @@ class DebugLog:
         if "_infected" not in self.__dict__:
             self.__dict__["_infected"] = True
             for k in dir(self):
-                if "__" in k or "rtt_ms" in k:
+                # skip dunders
+                if "__" in k:
                     continue
+
+                # make sure not to call properties...
+                class_v = getattr(type(self), k, None)
+                if isinstance(class_v, property):
+                    continue
+
                 v = getattr(self, k)
-                if callable(v) and "log" not in v.__name__:
+                if callable(v) and "log" not in v.__qualname__:
                     setattr(self, k, logfn(self, v))
 
         if callable(value):

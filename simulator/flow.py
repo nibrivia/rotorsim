@@ -152,6 +152,7 @@ class TCPFlow(Flow):
         self.acked = set()
         self.retransmit_q = deque()
 
+    @property
     def rto(self):
         return .2
         #rto =  self.rtt_ms + self.k*self.rtt_dev_ms
@@ -180,7 +181,7 @@ class TCPFlow(Flow):
         self.rtt_ms     += self.alpha * rtt_err
         self.rtt_dev_ms += self.beta  * (abs(rtt_err) - self.rtt_dev_ms)
         if self.id == PARAMS.flow_print:
-            vprint("flow : rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto()))
+            vprint("flow : rtt/timeout: %.3f/%.3f" % (rtt_sample, self.rto))
 
 
         # Remove from in-flight if necessary
@@ -226,7 +227,7 @@ class TCPFlow(Flow):
             #vprint(self, len(self.in_flight))
 
             # Setup the timeout
-            R.call_in(self.rto(), self.timeout, p, rto = self.rto())
+            R.call_in(self.rto, self.timeout, p, rto = self.rto)
 
 
     def timeout(self, packet, rto = 0):
