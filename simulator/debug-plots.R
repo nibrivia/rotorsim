@@ -5,12 +5,14 @@ debug_log <- read_csv("debug.csv", col_names = c("time", "event", "class", "obj_
 # CWNDs
 debug_log %>%
     filter(key == "cwnd",
-           time < .4, str_detect(obj_name, "rotor")) %>%
+           #time < .4,
+           str_detect(obj_name, "rotor")) %>%
     ggplot(aes(x = time,
-               y = as.numeric(value)*1500/1e6,
+               y = as.numeric(value),
                color = obj_name)) +
     geom_point() +
     geom_line() +
+    scale_y_log10() +
     guides(color = F)
 
 packet_str <- "1\\[8->20\\]#0"
@@ -57,7 +59,7 @@ debug_log %>%
         mutate(value = as.numeric(value),
                max_size = max(value)) %>%
         ungroup() %>%
-    filter(time >= 0, time <= 2) %>%
+    filter(max_size > 100) %>%
 
     ggplot(aes(x = time,
                y = value/1500,
@@ -103,4 +105,28 @@ debug_log %>%
     guides(color = F) +
     hrbrthemes::theme_ipsum_rc()
 
+# Link utilization
+queue_utilization <- debug_log %>%
+    filter(class == "NIC",
+           str_detect(key, "enq"), event == "call") %>%
+
+    separate(value, c("pkt", "id"), " \\$") %>%
+    group_by(obj_name, pkt) %>%
+        mutate(n_transmit = dense_rank(id),
+               is_good = n_transmit == 1) %>%
+
+    group_by(obj_name, is_good) %>%
+        summarize(n = n()) %>%
+    group_by(obj_name) %>%
+        mutate(n_obj = sum(n)) %>%
+    separate(obj_name, c("src", "dst"), "->")
+
+queue_utilization %>%
+    ggplot(aes(x = reorder(paste(src, dst, sep = " -> "), n_obj),
+               y = n*1500*8/5e-3/1e9,
+               fill = is_good)) +
+    geom_col(position = "stack") +
+    coord_flip() +
+    labs(x = NULL,
+         y = "BW (Gb/s)")
 
