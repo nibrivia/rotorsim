@@ -153,8 +153,9 @@ class TCPFlow(Flow):
         self.retransmit_q = deque()
 
     def rto(self):
-        rto =  self.rtt_ms + self.k*self.rtt_dev_ms
-        return max(self.rto_min, min(rto, self.rto_max))
+        return .2
+        #rto =  self.rtt_ms + self.k*self.rtt_dev_ms
+        #return max(self.rto_min, min(rto, self.rto_max))
     # Source
     def start(self):
         self._send_loop()
