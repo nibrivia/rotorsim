@@ -11,7 +11,7 @@ from event import Registry, Delay, stop_simulation, R
 from xpand_108 import xpand1
 from params import PARAMS
 from server import Server
-from flow_generator import FLOWS, N_DONE, N_FLOWS
+from flow_generator import FLOWS, N_DONE, N_FLOWS, BYTES_PER_PACKET
 from debuglog import DebugLog
 
 class RotorNet(DebugLog):
@@ -43,7 +43,7 @@ class RotorNet(DebugLog):
         self.tors = [ToRSwitch(name = i) for i in range(PARAMS.n_tor)]
 
         # Servers
-        PARAMS.servers_per_rack = 5
+        PARAMS.servers_per_rack = PARAMS.n_switches
         self.servers = [Server(
                     server_id = rack_id*PARAMS.servers_per_rack + rack_slot,
                     server_name = "tor%s.%s" % (rack_id, rack_slot))
@@ -93,7 +93,7 @@ class RotorNet(DebugLog):
                         name = "%s->%s" % (server, tor),
                         delay_ns = 10,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
-                        max_size_bytes = 40e6,
+                        max_size_bytes = 1000*BYTES_PER_PACKET,
                         )
                 downlink = NIC(
                         server.recv,
