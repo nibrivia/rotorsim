@@ -529,7 +529,7 @@ class ToRSwitch(DebugLog):
 
                 elif len(buffers_type[priority_type]) > 0:
                     vprint(" has packets!")
-                    pkt = buffers_type[priority_type].pop()
+                    pkt = buffers_type[priority_type].popleft()
 
                 if pkt is not None:
                     pkt.intended_dest = port_dst
