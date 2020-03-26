@@ -423,17 +423,27 @@ class ToRSwitch(DebugLog):
     #            self.lumps_ind_n[dst] += n
 
     def next_packet_xpand(self, port_id, dst_id):
+        """Given a connection to a certain destination, give a packet
+        that we can either shortcut, or is equivalent, to something we'd
+        normally do on expander..."""
         # TODO this whole thing is grossly inefficient...
 
         assert self.ports_dst[port_id].id == dst_id 
 
         # Get destinations that go that way
+        #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_id))
+        #vprint(self.route_tor)
         if PARAMS.n_xpand > 0:
-            possible_tor_dsts = set(self.dst_to_tor[dst]
-                    for dst, p in self.dst_to_port.items() if p == port_id)
+            possible_tor_dsts = set(
+                    tor_id
+                    for tor_id, (path, _) in enumerate(self.route_tor)
+                            if dst_id in path)
+            #possible_tor_dsts = set(self.dst_to_tor[dst]
+                    #for dst, p in self.dst_to_port.items() if p == port_id)
         else:
+            # No expander, literally anything is better...
             possible_tor_dsts = set(t for t in range(PARAMS.n_tor))
-        vprint(possible_tor_dsts)
+        #vprint(possible_tor_dsts)
 
         # Get all packets that wanna go that way
         possible_pkts = []
@@ -516,7 +526,8 @@ class ToRSwitch(DebugLog):
             buffers_type = self.buffers_dst_type[port_dst]
 
             for priority_type in priorities[port_type]:
-                vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
+                if False:
+                    vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
                             port_dst, priority_type,
@@ -524,11 +535,11 @@ class ToRSwitch(DebugLog):
                             end = "")
 
                 if priority_type == "xpand":
-                    vprint(" xpand")
+                    #vprint(" xpand")
                     pkt = self.next_packet_xpand(port_id = free_port, dst_id = port_dst)
 
                 elif len(buffers_type[priority_type]) > 0:
-                    vprint(" has packets!")
+                    #vprint(" has packets!")
                     pkt = buffers_type[priority_type].popleft()
 
                 if pkt is not None:
@@ -538,7 +549,8 @@ class ToRSwitch(DebugLog):
                     self.available_types[port_type] -= 1
                     break
                 else:
-                    vprint(" empty")
+                    # vprint(" empty")
+                    pass
 
 
 
