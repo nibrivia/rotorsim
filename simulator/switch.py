@@ -3,9 +3,10 @@ from params import PARAMS
 from collections import deque
 from event import R, Delay
 from nic import NIC
+from debuglog import DebugLog
 
 
-class Switch:
+class Switch(DebugLog):
     def __init__(self, id):
         self.id = id
         self._disable()
@@ -15,6 +16,9 @@ class Switch:
 
         # Mapping from in->out
         self.dests = [None for _ in range(PARAMS.n_tor)]
+
+        # Statistics
+        self.packets_by_port = [0 for _ in range(PARAMS.n_tor)]
 
 
     def start(self):
@@ -47,6 +51,8 @@ class Switch:
             # Forward to destination
             dst_id = self.dests[port_id]
             self.tx[dst_id].enq(packet)
+
+            self.packets_by_port[port_id] += 1
 
         return recv
 
