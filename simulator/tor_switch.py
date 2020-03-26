@@ -518,6 +518,11 @@ class ToRSwitch(DebugLog):
                 rotor = ["xpand", "rotor", "cache"],
                 cache = ["xpand", "cache", "rotor"],
                 )
+        pull_fns = dict(
+                xpand = self.next_packet_xpand,
+                #rotor = self.next_packet_rotor,
+                #cache = self.next_packet_cache
+                )
 
         #vprint("%s: available ports: %s" % (self, self.available_ports))
         for free_port in list(self.available_ports):
@@ -534,10 +539,9 @@ class ToRSwitch(DebugLog):
                             len(buffers_type[priority_type])),
                             end = "")
 
-                if priority_type == "xpand":
-                    #vprint(" xpand")
-                    pkt = self.next_packet_xpand(port_id = free_port, dst_id = port_dst)
-
+                if priority_type in pull_fns:
+                    # Eventually should all be here, for now, not all implemented...
+                    pkt = pull_fns[priority_type](port_id = free_port, dst_id = port_dst)
                 elif len(buffers_type[priority_type]) > 0:
                     #vprint(" has packets!")
                     pkt = buffers_type[priority_type].popleft()
@@ -548,9 +552,6 @@ class ToRSwitch(DebugLog):
                     self.available_ports.remove(free_port)
                     self.available_types[port_type] -= 1
                     break
-                else:
-                    # vprint(" empty")
-                    pass
 
 
 
