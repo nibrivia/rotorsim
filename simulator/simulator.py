@@ -118,6 +118,10 @@ def load_flows(slot_duration):
         type=str,
         default=None
 )
+#@click.option(
+#        "--debug",
+#        is_flag=True
+#)
 @click.option(
         "--verbose",
         is_flag=True
@@ -163,7 +167,8 @@ def main(
         no_pause,
         skewed,
         cache_policy,
-        is_ml
+        is_ml,
+        #debug
     ):
 
     # Set parameters

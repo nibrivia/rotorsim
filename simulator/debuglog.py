@@ -2,6 +2,7 @@ import sys
 import re
 import traceback
 from event import R
+from params import PARAMS
 
 list_objs = (list, set, dict, tuple)
 def infect(obj):
@@ -107,3 +108,5 @@ class DebugLog:
         event(self, "set", key, value)
         self.__dict__[key] = value
 
+if False:
+    DebugLog = object
