@@ -31,7 +31,7 @@ class ToRSwitch(DebugLog):
 
 
         # TODO parametrize types of traffic
-        tags = ["xpand", "rotor", "cache"]
+        tags = ["xpand", "rotor", "rotor-old", "cache"]
         self.buffers_dst_type = [{t: deque() for t in tags} for _ in range(PARAMS.n_tor)]
         self.available_ports = set()
         self.available_types = {t: 0 for t in tags}
@@ -39,7 +39,7 @@ class ToRSwitch(DebugLog):
         # rotor
         self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
         self.capacity   = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
-        self.out_queue_t = [-1 for rotor_id in rotor_ports]
+        #self.out_queue_t = [-1 for rotor_id in rotor_ports]
 
         # xpander
         #self.connections = dict() # Destination ToRs
@@ -334,70 +334,92 @@ class ToRSwitch(DebugLog):
         # Release the cache
         self.switches[port_id].release_matching(self)
 
-    def next_queue_rotor(self, port_id):
+    def next_packet_rotor(self, port_id, dst_tor_id):
         """Sends over a lump"""
         # Check if we've computed this before
-        queue_t  = self.out_queue_t[port_id]
-        if queue_t == self.slot_id:
-            return None
+        #queue_t  = self.out_queue_t[port_id]
+        #if queue_t == self.slot_id:
+            #return None
 
         # Get connection info
-        rotor_id = port_id # TODO translate this
-        dst_q = self.ports_rx[rotor_id]
-        dst   = self.ports_dst[rotor_id]
+        #rotor_id = port_id # TODO translate this
+        #dst_q = self.ports_rx[rotor_id]
+        dst   = self.tors[dst_tor_id]
 
         # Old indirect traffic goes first
-        q = self.lumps_ind[dst.id]
-        remaining = PARAMS.packets_per_slot - self.lumps_ind_n[dst.id]
-        self.capacity[dst.id] += self.lumps_ind_n[dst.id]
-        self.lumps_ind[dst.id]   = []
-        self.lumps_ind_n[dst.id] = 0
+        
+        old_queue = self.buffers_dst_type[dst_tor_id]["rotor-old"]
+        if len(old_queue) > 0:
+            self.capacity[dst_tor_id] += 1
+            return old_queue.popleft()
+        #q = self.lumps_ind[dst_id]
+        #remaining = PARAMS.packets_per_slot - self.lumps_ind_n[dst_id]
+        #self.capacity[dst_id] += self.lumps_ind_n[dst_id]
+        #self.lumps_ind[dst_id]   = []
+        #self.lumps_ind_n[dst_id] = 0
 
-        #assert self.buffers_ind[dst.id].size == 0
-        assert remaining >= 0, "@%.3f %s:%d->%s: %s remaining, q: %s (capacity %s)" % (
-                R.time, self, port_id, dst, remaining, q, str(self.capacity))
+        #assert self.buffers_ind[dst_id].size == 0
+        #assert remaining >= 0, "@%.3f %s:%d->%s: %s remaining, q: %s (capacity %s)" % (
+        #        R.time, self, port_id, dst, remaining, q, str(self.capacity))
 
         # Direct traffic
-        to_pop = 0
-        for f in self.flows_rotor[dst.id]:
-            if remaining < f.remaining_packets:
-                p = f.pop_lump(remaining)
-                q.append(p)
-                remaining = 0
-                break
-            else:
-                p = f.pop_lump(f.remaining_packets)
-                q.append(p)
-                to_pop += 1
+        #to_pop = 0
 
-        self.n_flows -= to_pop
-        for _ in range(to_pop):
-            self.flows_rotor[dst.id].pop(0)
-        #self.flows_rotor[dst.id] = [f for f in self.flows_rotor[dst.id] if f.remaining_packets > 0]
+        dir_queue = self.buffers_dst_type[dst_tor_id]["rotor"]
+        if len(dir_queue) > 0:
+            self.capacity[dst_tor_id] += 1
+            return dir_queue.popleft()
 
+        for ind_target in range(PARAMS.n_tor):
+            new_queue = self.buffers_dst_type[ind_target]["rotor"]
+            if ind_target == dst_tor_id: # Should already be empty if we're here...
+                assert len(new_queue) == 0
+
+            if len(new_queue) > 0 and dst.capacity[ind_target] > 0:
+                #vprint("%s: sending indirect %s.capacity[%s] = %s" % 
+                        #(self, dst_tor_id, dst.capacity)
+                return new_queue.popleft()
+
+        #for f in self.flows_rotor[dst_id]:
+        #    if remaining < f.remaining_packets:
+        #        p = f.pop_lump(remaining)
+        #        q.append(p)
+        #        remaining = 0
+        #        break
+        #    else:
+        #        p = f.pop_lump(f.remaining_packets)
+        #        q.append(p)
+        #        to_pop += 1
+
+        #self.n_flows -= to_pop
+        #for _ in range(to_pop):
+        #    self.flows_rotor[dst_id].pop(0)
+        #self.flows_rotor[dst_id] = [f for f in self.flows_rotor[dst_id] if f.remaining_packets > 0]
+
+        return None
         # New indirect traffic
         # TODO should actually load balance
         delta = 1
         aggregate = dict()
         while remaining > 0 and delta > 0 and self.n_flows > 0:
             delta = 0
-            for flow_dst_id, tor in enumerate(self.tors):
-                if dst.capacity[flow_dst_id] <= 0:
+            for final_dst_tor_id, tor in enumerate(self.tors):
+                if dst.capacity[final_dst_tor_id] <= 0:
                     continue
-                if len(self.flows_rotor[flow_dst_id]) == 0:
+                if len(self.flows_rotor[final_dst_tor_id]) == 0:
                     continue
 
-                f = self.flows_rotor[flow_dst_id][0]
+                f = self.flows_rotor[final_dst_tor_id][0]
 
                 cur_n = aggregate.get(f.id, 0)
                 aggregate[f.id] = cur_n+1
                 remaining -= 1
                 delta += 1
-                dst.capacity[flow_dst_id] -= 1
-                self.capacity[flow_dst_id] += 1
+                dst.capacity[final_dst_tor_id] -= 1
+                self.capacity[final_dst_tor_id] += 1
 
                 if cur_n+1 == f.remaining_packets:
-                    self.flows_rotor[flow_dst_id].pop(0)
+                    self.flows_rotor[final_dst_tor_id].pop(0)
                     self.n_flows -= 1
                 if remaining == 0:
                     break
@@ -407,7 +429,7 @@ class ToRSwitch(DebugLog):
             q.append(lump)
 
         self.out_queue_t[port_id] = self.slot_id
-        dst_q.recv((dst.id, port_id, self.slot_t, q))
+        #dst_q.recv((dst_id, port_id, self.slot_t, q))
 
     #@Delay(0, priority = 100) #do last
     #def rx_rotor(self, lumps):
@@ -422,13 +444,13 @@ class ToRSwitch(DebugLog):
     #            self.lumps_ind[dst].append(l)
     #            self.lumps_ind_n[dst] += n
 
-    def next_packet_xpand(self, port_id, dst_id):
+    def next_packet_xpand(self, port_id, dst_tor_id):
         """Given a connection to a certain destination, give a packet
         that we can either shortcut, or is equivalent, to something we'd
         normally do on expander..."""
         # TODO this whole thing is grossly inefficient...
 
-        assert self.ports_dst[port_id].id == dst_id 
+        assert self.ports_dst[port_id].id == dst_tor_id 
 
         # Get destinations that go that way
         #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_id))
@@ -437,7 +459,7 @@ class ToRSwitch(DebugLog):
             possible_tor_dsts = set(
                     tor_id
                     for tor_id, (path, _) in enumerate(self.route_tor)
-                            if dst_id in path)
+                            if dst_tor_id in path)
             #possible_tor_dsts = set(self.dst_to_tor[dst]
                     #for dst, p in self.dst_to_port.items() if p == port_id)
         else:
@@ -497,16 +519,31 @@ class ToRSwitch(DebugLog):
         if packet.dst_id in self.local_dests:
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Local destination" % (self, packet))
+
             next_port_id = self.local_dests[packet.dst_id]
             self.ports_tx[next_port_id].enq(packet)
         else:
             packet._tor_arrival = R.time
             next_tor_id = self.dst_to_tor[packet.dst_id]
-            self.buffers_dst_type[next_tor_id][packet.tag].append(packet)
+
+            # ROTOR requires some handling...
+            # ...adapt our capacity on rx
+            if packet.tag == "rotor":
+                self.capacity[next_tor_id] -= 1
+
+            # ... if indirect, put it in higher queue...
+            if packet.tag == "rotor" and packet.src_id not in self.local_dests:
+                self.buffers_dst_type[next_tor_id]["rotor-old"].append(packet)
+            else:
+                self.buffers_dst_type[next_tor_id][packet.tag].append(packet)
+
+            # debug print
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Outer destination %s/%s (%d)" % (
                     self, packet, next_tor_id, packet.tag,
                     len(self.buffers_dst_type[next_tor_id][packet.tag])))
+
+            # trigger send loop
             self._send()
 
 
@@ -515,12 +552,12 @@ class ToRSwitch(DebugLog):
         #vprint("%s: _send()" % self)
         priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
-                rotor = ["xpand", "rotor", "cache"],
+                rotor = ["rotor", "xpand", "cache"],
                 cache = ["xpand", "cache", "rotor"],
                 )
         pull_fns = dict(
                 xpand = self.next_packet_xpand,
-                #rotor = self.next_packet_rotor,
+                rotor = self.next_packet_rotor,
                 #cache = self.next_packet_cache
                 )
 
@@ -541,7 +578,7 @@ class ToRSwitch(DebugLog):
 
                 if priority_type in pull_fns:
                     # Eventually should all be here, for now, not all implemented...
-                    pkt = pull_fns[priority_type](port_id = free_port, dst_id = port_dst)
+                    pkt = pull_fns[priority_type](port_id = free_port, dst_tor_id = port_dst)
                 elif len(buffers_type[priority_type]) > 0:
                     #vprint(" has packets!")
                     pkt = buffers_type[priority_type].popleft()
