@@ -1,6 +1,8 @@
 library(tidyverse)
 
-debug_log <- read_csv("debug.csv", col_names = c("time", "event", "class", "obj_id", "obj_name", "key", "value"), col_types = "dcccccc")
+debug_log <- read_csv("debug.csv",
+                      col_names = c("time", "event", "class", "obj_id", "obj_name", "key", "value"),
+                      col_types = "dcccccc")
 
 # CWNDs
 debug_log %>%
@@ -59,43 +61,95 @@ debug_log %>%
         mutate(value = as.numeric(value),
                max_size = max(value)) %>%
         ungroup() %>%
-    filter(max_size > 100) %>%
+    mutate(queue_rank = dense_rank(-max_size)) %>%
+    filter(queue_rank <= 10) %>%
+
 
     ggplot(aes(x = time,
                y = value/1500,
-               color = obj_name)) +
-    geom_step()
+               color = reorder(obj_name, queue_rank))) +
+    geom_step() +
+    hrbrthemes::theme_ipsum_rc() +
+    labs(x = NULL, y = "Queue size (packets)",
+         title = "Top 10 largest queues (by max size)",
+         color = "Largest queues")
 
 # Ongoing flows
 flows <- debug_log %>%
     filter(class == "TCPFlow", str_detect(obj_name, "TCPFlow object", negate = TRUE)) %>%
     group_by(obj_id, obj_name) %>%
-    summarize(arrival = min(time),
-              end = max(time),
-              n_size = sum(key == "size_packets"),
-              size_packets = as.numeric(value[key == "size_packets"]),
-              is_done = "Flow._done" %in% key)
+        summarize(arrival = min(time),
+                  n_size = sum(key == "size_packets"),
+                  size_packets = as.numeric(value[key == "size_packets"]),
+                  is_done = "Flow._done" %in% key,
+                  end = ifelse(is_done, as.numeric(time[key == "Flow._done"]), max(time))
+                  ) %>%
+    separate(obj_name, c("tag", "id"), sep = " +")
 
-flow_str <- "3\\[0->4\\]"
-flow_str_not <- "43\\[0->4\\]"
+# General flows
+flows %>%
+    ggplot(aes(x = arrival,
+               y = end-arrival,
+               color = is_done)) +
+    geom_point() +
+    geom_segment(aes(xend = arrival, yend = 0),
+                 size = .2) +
+    hrbrthemes::theme_ipsum_rc() +
+    labs(x = NULL, y = "FCT")
+
+flows %>%
+    filter(is_done) %>%
+    ggplot(aes(x = arrival,
+               y = (size_packets*1500*8)/1e9/((end-arrival)/1000),
+               color = tag)) +
+    geom_point() +
+    hrbrthemes::theme_ipsum_rc() +
+    labs(x = "Flow start (ms)",
+         y = "Effective rate-ish (Gb/s)",
+         title = "Effective rate of done flows")
+
+# Specific flow
+flow_str <- "[0-9]+\\[[0-9]+->[0-9]+\\]"
 #flow_str <- "1\\[9->0\\]"
-debug_log %>%
+flow_details <-
+    debug_log %>%
     filter(str_detect(obj_name, flow_str) | str_detect(value, flow_str),
-           str_detect(obj_name, flow_str_not, negate = TRUE),
-           str_detect(value,    flow_str_not, negate = TRUE),
            !class %in% c("RotorNet", ""),
            str_detect(key, "log|rto|rtt|cwnd", negate = TRUE),
            event == "call"
            #time > .6, time < 1
            ) %>%
-    mutate(packet_id = ifelse(class == "Packet", paste0("$", obj_id), str_extract(value, "\\$\\d+"))) %>%
-    filter(!is.na(packet_id)) %>%
+    mutate(packet = ifelse(class == "Packet", obj_name, str_replace(value, ",.*$", "") )) %>%
+    filter(str_detect(packet, paste0(flow_str, "#"))) %>%
+    separate(packet, c("packet_seq", "packet_id"), sep = " \\$") %>%
+    separate(packet_seq, c("flow", "seq_num"), sep = "#") %>%
+    separate(flow, c("flow_id", "srcdst"), sep = "\\[") %>%
+    mutate(srcdst = str_replace(srcdst, "\\]", "")) %>%
+    separate(srcdst, c("src", "dst"), sep = "->") %>%
+    mutate(flow_id = as.integer(flow_id),
+           src     = as.integer(src),
+           dst     = as.integer(dst),
+           seq_num = as.integer(seq_num)
+           ) %>%
+    group_by(flow_id, seq_num, packet_id) %>%
+        mutate(creation = min(time),
+               timeout_n = str(time[str_detect(key, "timeout")]),
+               #timeout_t = time[str_detect(key, "timeout")],
+               srcrecv_n = str(time[str_detect(key, "src_recv")]),
+               #srcrecv_t = time[str_detect(key, "src_recv")],
+               #timedout = timeout_t < srcrect_t,
+               ) %>%
+    group_by(flow_id, seq_num) %>%
+        mutate(retransmit_n = dense_rank(creation))
 
+flow_details %>%
+    #mutate(time = dense_rank(time)) %>%
+    filter(flow_id == 79) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), as.integer(factor(obj_id, levels = unique(obj_id)))),
                #y = obj_name,
                label = key,
-               group = packet_id,
+               group = paste(packet_id, class == "TCPFlow"),
                color = packet_id)) +
     geom_point() +
     geom_line() +
@@ -127,6 +181,7 @@ queue_utilization %>%
                fill = is_good)) +
     geom_col(position = "stack") +
     coord_flip() +
-    labs(x = NULL,
-         y = "BW (Gb/s)")
+    hrbrthemes::theme_ipsum_rc() +
+    labs(x = NULL, y = "BW (Gb/s)",
+         fill = "good?")
 
