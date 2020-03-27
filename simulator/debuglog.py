@@ -81,9 +81,10 @@ def logfn(obj, fn):
         return fn
 
     def log(*args, **kwargs):
-        pretty_args = ", ".join([str_repr(x) for x in args]) + " "
+        pretty_args = ", ".join([str_repr(x) for x in args])
         pretty_kwargs = ", ".join(["%s = %s" % (k, str_repr(v)) for k, v in kwargs.items()])
-        event(obj, "call", fn.__qualname__, pretty_args+ pretty_kwargs)
+        pretty = ", ".join([pretty_args, pretty_kwargs])
+        event(obj, "call", fn.__qualname__, pretty)
         return fn(*args, **kwargs)
     return log
 
