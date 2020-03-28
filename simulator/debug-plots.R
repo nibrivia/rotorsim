@@ -1,5 +1,6 @@
 library(tidyverse)
 
+setwd("~/rotorsim/simulator/")
 debug_log <- read_csv("debug.csv",
                       col_names = c("time", "event", "class", "obj_id", "obj_name", "key", "value"),
                       col_types = "dcccccc")
@@ -81,6 +82,7 @@ flows <- debug_log %>%
         summarize(arrival = min(time),
                   n_size = sum(key == "size_packets"),
                   size_packets = as.numeric(value[key == "size_packets"]),
+                  size_bits    = as.numeric(value[key == "size_bits"]),
                   is_done = "Flow._done" %in% key,
                   end = ifelse(is_done, as.numeric(time[key == "Flow._done"]), max(time))
                   ) %>%
