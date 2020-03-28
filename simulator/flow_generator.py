@@ -33,7 +33,7 @@ class SizeDistribution:
         self.cdf = [(0,0)] + cdf
         self.pdf = [(p-self.cdf[i-1][0], size) for i, (p, size) in enumerate(self.cdf) if i >= 1]
         self.probs, self.sizes = zip(*self.pdf)
-        self.size = sum(p*size for p, size in self.pdf) # in bits
+        self.size_B = sum(p*size for p, size in self.pdf) # in bits
 
     def get_flows(self, n=1):
         return random.choices(self.sizes, k = n, weights = self.probs)
@@ -141,12 +141,12 @@ def generate_flows(
     # TIME
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
     full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
-    n_flows = effective_load*full_capacity/workload.size
+    n_flows = effective_load*full_capacity/(workload.size_B*8)
     if arrive_at_start:
         time_dist = time_arrive_at_start
     else:
         full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
-        n_flows = effective_load*full_capacity/workload.size
+        n_flows = effective_load*full_capacity/(workload.size_B*8)
         iflow_wait = time_limit/n_flows
         time_dist = time_uniform(iflow_wait)
 
