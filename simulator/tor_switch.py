@@ -155,6 +155,7 @@ class ToRSwitch(DebugLog):
         #    self.connect_to(rotor_id, dst)
 
         # If Rotor
+        vprint("%s: capacity %s" % (self, self.capacity))
         if PARAMS.slot_duration is not None:
             self.slot_id = self.slot_t % self.n_slots
             #vprint("%.3f %s switch to slot_id %d" % (R.time, self, self.slot_id))
@@ -173,7 +174,8 @@ class ToRSwitch(DebugLog):
         vprint("%s:%d -> %s" % (self, port_id, tor))
         self.ports_dst[port_id] = tor
         R.call_in(0, self.ports_tx[port_id].resume)
-        R.call_in(PARAMS.slot_duration -.002, self.disconnect_from, port_id, priority = -1)
+        R.call_in(PARAMS.slot_duration - .002,
+                self.disconnect_from, port_id, priority = -1)
 
         # Get capacities for indirection if rotor
         if port_id < PARAMS.n_rotor:
@@ -378,6 +380,7 @@ class ToRSwitch(DebugLog):
             if len(new_queue) > 0 and dst.capacity[ind_target] > 0:
                 #vprint("%s: sending indirect %s.capacity[%s] = %s" % 
                         #(self, dst_tor_id, dst.capacity)
+                self.capacity[ind_target] += 1
                 return new_queue.popleft()
 
         #for f in self.flows_rotor[dst_id]:
