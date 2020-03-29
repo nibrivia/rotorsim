@@ -34,7 +34,6 @@ class ToRSwitch(DebugLog):
         tags = ["xpand", "rotor", "rotor-old", "cache"]
         self.buffers_dst_type = [{t: deque() for t in tags} for _ in range(PARAMS.n_tor)]
         self.buffers_dst_type_sizes = [{t: 0 for t in tags} for _ in range(PARAMS.n_tor)]
-        self.nonempty_rotor_dst = set() # optimization
         self.available_ports = set()
         self.available_types = {t: 0 for t in tags}
 
@@ -50,7 +49,11 @@ class ToRSwitch(DebugLog):
         self.tor_to_port = dict() # for individual moment decisions
         #self.port_to_tor = dict()
 
-        self.t = [0]
+        #self.t = [0]
+
+        # optimizations
+        self.nonempty_rotor_dst = set() # non-empty rotor queues
+        self.possible_tor_dsts = dict() # "shortcut" map
 
 
     # One-time setup
@@ -238,7 +241,6 @@ class ToRSwitch(DebugLog):
                     queue.append(con_tor)
 
         self.route = dict()
-        self.possible_tor_dsts = dict()
         for dst_tor_id, (path, _) in enumerate(self.route_tor):
             # Local destination, skip
             if dst_tor_id == self.id:
@@ -584,7 +586,5 @@ class ToRSwitch(DebugLog):
 
     @color_str_
     def __str__(self):
-        self.t[0] = 1
-
         return self.name
 
