@@ -34,6 +34,7 @@ class ToRSwitch(DebugLog):
         tags = ["xpand", "rotor", "rotor-old", "cache"]
         self.buffers_dst_type = [{t: deque() for t in tags} for _ in range(PARAMS.n_tor)]
         self.buffers_dst_type_sizes = [{t: 0 for t in tags} for _ in range(PARAMS.n_tor)]
+        self.nonempty_rotor_dst = set() # optimization
         self.available_ports = set()
         self.available_types = {t: 0 for t in tags}
 
@@ -335,28 +336,54 @@ class ToRSwitch(DebugLog):
         """Sends over a lump"""
         dst   = self.tors[dst_tor_id]
 
+
+        for _dst_tor_id in range(PARAMS.n_tor):
+            if _dst_tor_id in self.nonempty_rotor_dst:
+                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
+                    "%s: %s should be >0 %s" % (self,
+                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+            else:
+                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
+                    "%s: %s should be ==0 %s" % (self,
+                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+
+
         # Old indirect traffic goes first
-        old_queue = self.buffers_dst_type[dst_tor_id]["rotor-old"]
-        if self.buffers_dst_type_sizes[dst_tor_id]["rotor-old"] > 0:
+        old_queue    = self.buffers_dst_type[dst_tor_id]["rotor-old"]
+        old_queue_sz = self.buffers_dst_type_sizes[dst_tor_id]["rotor-old"]
+        if old_queue_sz > 0:
             self.capacity[dst_tor_id] += 1
+            self.buffers_dst_type_sizes[dst_tor_id]["rotor-old"] -= 1
             return old_queue.popleft()
 
         # Direct traffic
-        dir_queue = self.buffers_dst_type[dst_tor_id]["rotor"]
-        if self.buffers_dst_type_sizes[dst_tor_id]["rotor"] > 0:
+        dir_queue    = self.buffers_dst_type[dst_tor_id]["rotor"]
+        dir_queue_sz = self.buffers_dst_type_sizes[dst_tor_id]["rotor"]
+        if dir_queue_sz > 0:
             self.capacity[dst_tor_id] += 1
+            if dir_queue_sz == 1:
+                #vprint("%s: direct to %s" % (self, dst_tor_id))
+                self.nonempty_rotor_dst.remove(dst_tor_id)
+            self.buffers_dst_type_sizes[dst_tor_id]["rotor"] -= 1
             return dir_queue.popleft()
 
         # New indirect
-        for ind_target in range(PARAMS.n_tor):
-            new_queue = self.buffers_dst_type[ind_target]["rotor"]
+        for ind_target in self.nonempty_rotor_dst:
+            new_queue    = self.buffers_dst_type[ind_target]["rotor"]
+            new_queue_sz = self.buffers_dst_type_sizes[ind_target]["rotor"]
             #if ind_target == dst_tor_id: # Should already be empty if we're here...
             #    assert len(new_queue) == 0
 
-            if self.buffers_dst_type_sizes[dst_tor_id]["rotor"] > 0 and dst.capacity[ind_target] > 0:
+            if new_queue_sz > 0 and dst.capacity[ind_target] > 0:
                 #vprint("%s: sending indirect %s.capacity[%s] = %s" % 
                         #(self, dst_tor_id, dst.capacity)
+                #print("%s: indirect to %s (%s)" % (self, ind_target, new_queue_sz))
                 self.capacity[ind_target] += 1
+                if new_queue_sz == 1:
+                    self.nonempty_rotor_dst.remove(ind_target)
+                    #print("%s: %s removed -> %s" % (self, ind_target, self.nonempty_rotor_dst))
+
+                self.buffers_dst_type_sizes[ind_target]["rotor"] -= 1
                 return new_queue.popleft()
 
         return None
@@ -400,6 +427,7 @@ class ToRSwitch(DebugLog):
         if len(possible_pkts) > 0:
             dst, pkt = min(possible_pkts, key = lambda t: t[1]._tor_arrival)
             pkt = self.buffers_dst_type[dst]["xpand"].popleft()
+            self.buffers_dst_type_sizes[dst]["xpand"] -= 1
             return pkt
 
 
@@ -470,6 +498,9 @@ class ToRSwitch(DebugLog):
             if packet.tag == "rotor" and packet.src_id not in self.local_dests:
                 dst_tag = "rotor-old"
 
+            if dst_tag == "rotor":
+                self.nonempty_rotor_dst.add(next_tor_id)
+
             self.buffers_dst_type[next_tor_id][dst_tag].append(packet)
             self.buffers_dst_type_sizes[next_tor_id][dst_tag] += 1
 
@@ -531,6 +562,7 @@ class ToRSwitch(DebugLog):
                 elif sz > 0:
                     #vprint(" has packets!")
                     pkt = buf.popleft()
+                    self.buffers_dst_type_sizes[port_dst][pkt.tag] -= 1
 
                 if pkt is not None:
                     pkt.intended_dest = port_dst
@@ -540,7 +572,8 @@ class ToRSwitch(DebugLog):
                     self.available_ports.remove(free_port)
                     self.available_types[port_type] -= 1
                     pkt_tor_dst = self.dst_to_tor[pkt.dst_id]
-                    self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
+                    #self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
+
                     break
 
 
