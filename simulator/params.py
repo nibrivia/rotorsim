@@ -24,7 +24,7 @@ class Params(object):
 
     def __str__(self):
         s = "PARAMS\n"
-        for k, v in self._keys.items():
+        for k, v in sorted(self._keys.items()):
             s += "   %s: %s\n" % (k, v)
         return s
 
