@@ -33,6 +33,7 @@ class ToRSwitch(DebugLog):
         # TODO parametrize types of traffic
         tags = ["xpand", "rotor", "rotor-old", "cache"]
         self.buffers_dst_type = [{t: deque() for t in tags} for _ in range(PARAMS.n_tor)]
+        self.buffers_dst_type_sizes = [{t: 0 for t in tags} for _ in range(PARAMS.n_tor)]
         self.available_ports = set()
         self.available_types = {t: 0 for t in tags}
 
@@ -353,7 +354,7 @@ class ToRSwitch(DebugLog):
         # Old indirect traffic goes first
         
         old_queue = self.buffers_dst_type[dst_tor_id]["rotor-old"]
-        if len(old_queue) > 0:
+        if self.buffers_dst_type_sizes[dst_tor_id]["rotor-old"] > 0:
             self.capacity[dst_tor_id] += 1
             return old_queue.popleft()
         #q = self.lumps_ind[dst_id]
@@ -370,16 +371,16 @@ class ToRSwitch(DebugLog):
         #to_pop = 0
 
         dir_queue = self.buffers_dst_type[dst_tor_id]["rotor"]
-        if len(dir_queue) > 0:
+        if self.buffers_dst_type_sizes[dst_tor_id]["rotor"] > 0:
             self.capacity[dst_tor_id] += 1
             return dir_queue.popleft()
 
         for ind_target in range(PARAMS.n_tor):
             new_queue = self.buffers_dst_type[ind_target]["rotor"]
-            if ind_target == dst_tor_id: # Should already be empty if we're here...
-                assert len(new_queue) == 0
+            #if ind_target == dst_tor_id: # Should already be empty if we're here...
+            #    assert len(new_queue) == 0
 
-            if len(new_queue) > 0 and dst.capacity[ind_target] > 0:
+            if self.buffers_dst_type_sizes[dst_tor_id]["rotor"] > 0 and dst.capacity[ind_target] > 0:
                 #vprint("%s: sending indirect %s.capacity[%s] = %s" % 
                         #(self, dst_tor_id, dst.capacity)
                 self.capacity[ind_target] += 1
@@ -404,36 +405,36 @@ class ToRSwitch(DebugLog):
         return None
         # New indirect traffic
         # TODO should actually load balance
-        delta = 1
-        aggregate = dict()
-        while remaining > 0 and delta > 0 and self.n_flows > 0:
-            delta = 0
-            for final_dst_tor_id, tor in enumerate(self.tors):
-                if dst.capacity[final_dst_tor_id] <= 0:
-                    continue
-                if len(self.flows_rotor[final_dst_tor_id]) == 0:
-                    continue
+        #delta = 1
+        #aggregate = dict()
+        #while remaining > 0 and delta > 0 and self.n_flows > 0:
+        #    delta = 0
+        #    for final_dst_tor_id, tor in enumerate(self.tors):
+        #        if dst.capacity[final_dst_tor_id] <= 0:
+        #            continue
+        #        if len(self.flows_rotor[final_dst_tor_id]) == 0:
+        #            continue
 
-                f = self.flows_rotor[final_dst_tor_id][0]
+        #        f = self.flows_rotor[final_dst_tor_id][0]
 
-                cur_n = aggregate.get(f.id, 0)
-                aggregate[f.id] = cur_n+1
-                remaining -= 1
-                delta += 1
-                dst.capacity[final_dst_tor_id] -= 1
-                self.capacity[final_dst_tor_id] += 1
+        #        cur_n = aggregate.get(f.id, 0)
+        #        aggregate[f.id] = cur_n+1
+        #        remaining -= 1
+        #        delta += 1
+        #        dst.capacity[final_dst_tor_id] -= 1
+        #        self.capacity[final_dst_tor_id] += 1
 
-                if cur_n+1 == f.remaining_packets:
-                    self.flows_rotor[final_dst_tor_id].pop(0)
-                    self.n_flows -= 1
-                if remaining == 0:
-                    break
+        #        if cur_n+1 == f.remaining_packets:
+        #            self.flows_rotor[final_dst_tor_id].pop(0)
+        #            self.n_flows -= 1
+        #        if remaining == 0:
+        #            break
 
-        for fid, n in aggregate.items():
-            lump = FLOWS[fid].pop_lump(n)
-            q.append(lump)
+        #for fid, n in aggregate.items():
+        #    lump = FLOWS[fid].pop_lump(n)
+        #    q.append(lump)
 
-        self.out_queue_t[port_id] = self.slot_id
+        #self.out_queue_t[port_id] = self.slot_id
         #dst_q.recv((dst_id, port_id, self.slot_t, q))
 
     #@Delay(0, priority = 100) #do last
@@ -480,7 +481,7 @@ class ToRSwitch(DebugLog):
         # Get all packets that wanna go that way
         possible_pkts = []
         for d in possible_tor_dsts:
-            if len(self.buffers_dst_type[d]["xpand"]) > 0:
+            if self.buffers_dst_type_sizes[d]["xpand"] > 0:
                 possible_pkts.append((d, self.buffers_dst_type[d]["xpand"][0]))
 
         # Find the earliest one
@@ -547,17 +548,19 @@ class ToRSwitch(DebugLog):
                         break
 
 
-
             # ROTOR requires some handling...
             # ...adapt our capacity on rx
             if packet.tag == "rotor":
                 self.capacity[next_tor_id] -= 1
 
             # ... if indirect, put it in higher queue...
+            dst_tag = packet.tag
             if packet.tag == "rotor" and packet.src_id not in self.local_dests:
-                self.buffers_dst_type[next_tor_id]["rotor-old"].append(packet)
-            else:
-                self.buffers_dst_type[next_tor_id][packet.tag].append(packet)
+                dst_tag = "rotor-old"
+
+            self.buffers_dst_type[next_tor_id][dst_tag].append(packet)
+            self.buffers_dst_type_sizes[next_tor_id][dst_tag] += 1
+
 
             # debug print
             if packet.flow_id == PARAMS.flow_print:
@@ -566,6 +569,9 @@ class ToRSwitch(DebugLog):
                     len(self.buffers_dst_type[next_tor_id][packet.tag])))
 
             # trigger send loop
+            buf = self.buffers_dst_type[next_tor_id][dst_tag]
+            sz  = self.buffers_dst_type_sizes[next_tor_id][dst_tag]
+            #assert len(buf) == sz, "%s: recv buffer[%s][%s] size %s, recorded %s" % (self, next_tor_id, dst_tag, len(buf), sz)
             self._send()
 
 
@@ -593,22 +599,26 @@ class ToRSwitch(DebugLog):
             buffers_type = self.buffers_dst_type[port_dst]
 
             for priority_type in priorities[port_type]:
+                buf = buffers_type[priority_type]
+                sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
+                #assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
+
                 if False:
                     vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
                             port_dst, priority_type,
-                            len(buffers_type[priority_type])),
+                            sz
                             #end = ""
-                            )
+                            ))
 
                 pkt = None
                 if priority_type in pull_fns:
                     # Eventually should all be here, for now, not all implemented...
                     pkt = pull_fns[priority_type](port_id = free_port, dst_tor_id = port_dst)
-                elif len(buffers_type[priority_type]) > 0:
+                elif sz > 0:
                     #vprint(" has packets!")
-                    pkt = buffers_type[priority_type].popleft()
+                    pkt = buf.popleft()
 
                 if pkt is not None:
                     pkt.intended_dest = port_dst
@@ -617,6 +627,8 @@ class ToRSwitch(DebugLog):
                     self.ports_tx[free_port].enq(pkt)
                     self.available_ports.remove(free_port)
                     self.available_types[port_type] -= 1
+                    pkt_tor_dst = self.dst_to_tor[pkt.dst_id]
+                    self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
                     break
 
 
