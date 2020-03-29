@@ -601,7 +601,7 @@ class ToRSwitch(DebugLog):
             for priority_type in priorities[port_type]:
                 buf = buffers_type[priority_type]
                 sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
-                #assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
+                assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
 
                 if False:
                     vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
