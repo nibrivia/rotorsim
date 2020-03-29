@@ -236,6 +236,7 @@ class ToRSwitch(DebugLog):
                     queue.append(con_tor)
 
         self.route = dict()
+        self.possible_tor_dsts = dict()
         for dst_tor_id, (path, _) in enumerate(self.route_tor):
             # Local destination, skip
             if dst_tor_id == self.id:
@@ -459,16 +460,21 @@ class ToRSwitch(DebugLog):
         # Get destinations that go that way
         #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_id))
         #vprint(self.route_tor)
-        if PARAMS.n_xpand > 0:
-            possible_tor_dsts = set(
-                    tor_id
-                    for tor_id, (path, _) in enumerate(self.route_tor)
-                            if dst_tor_id in path)
-            #possible_tor_dsts = set(self.dst_to_tor[dst]
-                    #for dst, p in self.dst_to_port.items() if p == port_id)
+        if dst_tor_id in self.possible_tor_dsts:
+            possible_tor_dsts = self.possible_tor_dsts[dst_tor_id]
         else:
-            # No expander, literally anything is better...
-            possible_tor_dsts = set(t for t in range(PARAMS.n_tor))
+            if PARAMS.n_xpand > 0:
+                possible_tor_dsts = set(
+                        tor_id
+                        for tor_id, (path, _) in enumerate(self.route_tor)
+                                if dst_tor_id in path)
+                #possible_tor_dsts = set(self.dst_to_tor[dst]
+                        #for dst, p in self.dst_to_port.items() if p == port_id)
+            else:
+                # No expander, literally anything is better...
+                possible_tor_dsts = set(t for t in range(PARAMS.n_tor))
+
+            self.possible_tor_dsts[dst_tor_id] = possible_tor_dsts
         #vprint(possible_tor_dsts)
 
         # Get all packets that wanna go that way
