@@ -145,13 +145,14 @@ flow_details <-
         arrange(time) %>%
         mutate(retransmit_n = dense_rank(creation),
                count = seq_along(time)-1) %>%
-    group_by(obj_name) %>%
-        mutate(position = min(count))
+    group_by(flow_id, obj_name) %>%
+        mutate(position = mean(count)) %>%
+        ungroup()
 
 flow_details %>%
-    #mutate(time = dense_rank(time)) %>%
-    filter(flow_id == 73, time < 3.6) %>%
+    filter(flow_id == 73, seq_num < 3) %>%
     #filter(class != "NIC") %>%
+    mutate(time = dense_rank(time)) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), position),
                #y = obj_name,
