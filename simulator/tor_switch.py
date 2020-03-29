@@ -242,7 +242,14 @@ class ToRSwitch(DebugLog):
                 continue
 
             # Figure out what the next path is...
-            next_tor = path[0]
+            try:
+                next_tor = path[0]
+            except:
+                print()
+                print(self.route_tor)
+                print(self, dst_tor_id, path)
+                print()
+                raise
             next_port_id = self.tor_to_port[next_tor]
 
             # Write that for each server at our destination
