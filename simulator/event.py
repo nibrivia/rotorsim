@@ -24,25 +24,26 @@ class Registry:
         # Not threadsafe
         assert callable(fn), "%s not callable" % fn
         self.count += 1
-        try:
-            parent_name = str(fn.__self__)
-            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-            parent_name = ansi_escape.sub('', parent_name)
-        except:
+        if False:
             try:
-                parent_name = repr(fn.__self__)
+                parent_name = str(fn.__self__)
+                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                parent_name = ansi_escape.sub('', parent_name)
+            except:
+                try:
+                    parent_name = repr(fn.__self__)
+                except:
+                    pass
+
+
+            try:
+                print("%f, %s, %s, %s, %s, %s, %s" %
+                    (self.time, "schedule",
+                        fn.__self__.__class__.__name__, id(fn.__self__), parent_name,
+                        fn.__qualname__, time),
+                    file = sys.stderr)
             except:
                 pass
-
-
-        try:
-            print("%f, %s, %s, %s, %s, %s, %s" %
-                (self.time, "schedule",
-                    fn.__self__.__class__.__name__, id(fn.__self__), parent_name,
-                    fn.__qualname__, time),
-                file = sys.stderr)
-        except:
-            pass
 
         heapq.heappush(self.queue, (time, priority, self.count, fn, args, kwargs))
         return count

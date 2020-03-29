@@ -5,6 +5,7 @@ from event import R
 from params import PARAMS
 
 list_objs = (list, set, dict, tuple)
+DEBUG = False
 def infect(obj):
     if isinstance(obj, list_objs):
         for child in obj:
@@ -119,5 +120,6 @@ class DebugLog:
         event(self, "set", key, value)
         self.__dict__[key] = value
 
-if False:
+if not DEBUG:
     DebugLog = object
+    logfn = lambda fn: fn
