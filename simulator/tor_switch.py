@@ -264,14 +264,6 @@ class ToRSwitch(DebugLog):
 
     # SENDING ALGORITHMS
     ####################
-    def next_queue(self, port_id):
-        p_type = get_port_type(port_id)
-        if p_type == "rotor":
-            return self.next_queue_rotor(port_id)
-        if p_type == "xpand":
-            return self.next_queue_xpand(port_id)
-        if p_type == "cache":
-            return self.next_queue_cache(port_id)
 
     def cache_port_for_flow(self, flow):
         for port in cache_ports:
@@ -341,40 +333,21 @@ class ToRSwitch(DebugLog):
 
     def next_packet_rotor(self, port_id, dst_tor_id):
         """Sends over a lump"""
-        # Check if we've computed this before
-        #queue_t  = self.out_queue_t[port_id]
-        #if queue_t == self.slot_id:
-            #return None
-
-        # Get connection info
-        #rotor_id = port_id # TODO translate this
-        #dst_q = self.ports_rx[rotor_id]
         dst   = self.tors[dst_tor_id]
 
         # Old indirect traffic goes first
-        
         old_queue = self.buffers_dst_type[dst_tor_id]["rotor-old"]
         if self.buffers_dst_type_sizes[dst_tor_id]["rotor-old"] > 0:
             self.capacity[dst_tor_id] += 1
             return old_queue.popleft()
-        #q = self.lumps_ind[dst_id]
-        #remaining = PARAMS.packets_per_slot - self.lumps_ind_n[dst_id]
-        #self.capacity[dst_id] += self.lumps_ind_n[dst_id]
-        #self.lumps_ind[dst_id]   = []
-        #self.lumps_ind_n[dst_id] = 0
-
-        #assert self.buffers_ind[dst_id].size == 0
-        #assert remaining >= 0, "@%.3f %s:%d->%s: %s remaining, q: %s (capacity %s)" % (
-        #        R.time, self, port_id, dst, remaining, q, str(self.capacity))
 
         # Direct traffic
-        #to_pop = 0
-
         dir_queue = self.buffers_dst_type[dst_tor_id]["rotor"]
         if self.buffers_dst_type_sizes[dst_tor_id]["rotor"] > 0:
             self.capacity[dst_tor_id] += 1
             return dir_queue.popleft()
 
+        # New indirect
         for ind_target in range(PARAMS.n_tor):
             new_queue = self.buffers_dst_type[ind_target]["rotor"]
             #if ind_target == dst_tor_id: # Should already be empty if we're here...
@@ -386,69 +359,8 @@ class ToRSwitch(DebugLog):
                 self.capacity[ind_target] += 1
                 return new_queue.popleft()
 
-        #for f in self.flows_rotor[dst_id]:
-        #    if remaining < f.remaining_packets:
-        #        p = f.pop_lump(remaining)
-        #        q.append(p)
-        #        remaining = 0
-        #        break
-        #    else:
-        #        p = f.pop_lump(f.remaining_packets)
-        #        q.append(p)
-        #        to_pop += 1
-
-        #self.n_flows -= to_pop
-        #for _ in range(to_pop):
-        #    self.flows_rotor[dst_id].pop(0)
-        #self.flows_rotor[dst_id] = [f for f in self.flows_rotor[dst_id] if f.remaining_packets > 0]
-
         return None
-        # New indirect traffic
-        # TODO should actually load balance
-        #delta = 1
-        #aggregate = dict()
-        #while remaining > 0 and delta > 0 and self.n_flows > 0:
-        #    delta = 0
-        #    for final_dst_tor_id, tor in enumerate(self.tors):
-        #        if dst.capacity[final_dst_tor_id] <= 0:
-        #            continue
-        #        if len(self.flows_rotor[final_dst_tor_id]) == 0:
-        #            continue
 
-        #        f = self.flows_rotor[final_dst_tor_id][0]
-
-        #        cur_n = aggregate.get(f.id, 0)
-        #        aggregate[f.id] = cur_n+1
-        #        remaining -= 1
-        #        delta += 1
-        #        dst.capacity[final_dst_tor_id] -= 1
-        #        self.capacity[final_dst_tor_id] += 1
-
-        #        if cur_n+1 == f.remaining_packets:
-        #            self.flows_rotor[final_dst_tor_id].pop(0)
-        #            self.n_flows -= 1
-        #        if remaining == 0:
-        #            break
-
-        #for fid, n in aggregate.items():
-        #    lump = FLOWS[fid].pop_lump(n)
-        #    q.append(lump)
-
-        #self.out_queue_t[port_id] = self.slot_id
-        #dst_q.recv((dst_id, port_id, self.slot_t, q))
-
-    #@Delay(0, priority = 100) #do last
-    #def rx_rotor(self, lumps):
-    #    t = R.time
-    #    for l in lumps:
-    #        flow, dst, n = l
-    #        t += n*PARAMS.packet_ttime
-
-    #        if self.id == dst:
-    #            FLOWS[flow].rx(n=n, t=t)
-    #        else:
-    #            self.lumps_ind[dst].append(l)
-    #            self.lumps_ind_n[dst] += n
 
     def next_packet_xpand(self, port_id, dst_tor_id):
         """Given a connection to a certain destination, give a packet
@@ -487,7 +399,7 @@ class ToRSwitch(DebugLog):
         # Find the earliest one
         if len(possible_pkts) > 0:
             dst, pkt = min(possible_pkts, key = lambda t: t[1]._tor_arrival)
-            pkt = self.buffers_dst_type[dst]["xpand"].pop()
+            pkt = self.buffers_dst_type[dst]["xpand"].popleft()
             return pkt
 
 
@@ -631,30 +543,6 @@ class ToRSwitch(DebugLog):
                     self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
                     break
 
-
-
-
-        # expander: use the routing table
-        #elif packet.tag == "xpand" and PARAMS.n_xpand > 0:
-        #    if packet.flow_id == PARAMS.flow_print:
-        #        vprint("%s: %s xpand destination" % (self, packet))
-        #    next_port_id = self.dst_to_port[packet.dst_id]  # Use routing table
-
-        ## rotor: figure out 1st/2nd hop and adjust
-        #elif packet.tag == "rotor":
-        #    # Add to rotor queue
-        #    if packet.flow_id == PARAMS.flow_print:
-        #        vprint("%s: %s rotor destination" % (self, packet))
-        #    #self.rotor_queue.enq(packet)
-        #    self.port_tx[0].enq(packet)
-        #    return
-
-        ## cache: TODO attempt to send it on cache, fallback on rotor
-        #elif packet.tag == "cache":
-        #    if packet.flow_id == PARAMS.flow_print:
-        #        vprint("%s: %s Cache destination" % (self, packet))
-        #    self.cache_queue.enq(packet)
-        #    return
 
 
 
