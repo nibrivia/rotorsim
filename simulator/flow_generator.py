@@ -135,22 +135,27 @@ def generate_flows(
     workload = WORKLOAD_FNS[workload_name]
     size_dist = workload.gen_sizes()
 
+
     # PAIRS
     pair_dist = pair_uniform(n_active_tor * PARAMS.servers_per_rack)
 
     # TIME
     # bits / Mbits/s / load * 1000 = 1000*s / load = ms
-    full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
-    n_flows = effective_load*full_capacity/(workload.size_B*8)
+    full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # b
+    n_flows = effective_load*bandwidth*1e6*time_limit/1e3/(workload.size_B*8)
     if arrive_at_start:
         time_dist = time_arrive_at_start
     else:
-        full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
-        n_flows = effective_load*full_capacity/(workload.size_B*8)
+        #full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
+        #n_flows = effective_load*full_capacity/(workload.size_B*8)
         iflow_wait = time_limit/n_flows
         time_dist = time_uniform(iflow_wait)
 
 
+    print("%d links @%dGb/s @%d%% load-> %.3fGb full capacity" % (n_links, bandwidth/1e3, 100*load, full_capacity/1e9))
+    print("%.3fGb at %.d%% load -> %dGb generated traffic" % (full_capacity/1e9, 100*link_load, effective_load))
+    print("%dGb at %.1fMb/flow -> %d flows" % (effective_load, workload.size_B*8/1e6, n_flows))
+    print("%d flows of %dMb -> %.3fGb traffic" % (n_flows, workload.size_B*8/1e6, n_flows*workload.size_B*8/1e9))
 
     # Actual generator loop
     for flow_id, (t, (src, dst), size) in enumerate(zip(time_dist, pair_dist, size_dist)):
