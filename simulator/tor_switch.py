@@ -580,7 +580,7 @@ class ToRSwitch(DebugLog):
             buffers_type = self.buffers_dst_type[port_dst]
 
             for priority_type in priorities[port_type]:
-                if R.time >= 15.0:
+                if False:
                     vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
