@@ -56,6 +56,7 @@ class ToRSwitch(DebugLog):
 
     def connect_backbone(self, port_id, switch, queue):
         # queue is an object with a .recv that can be called with (packets)
+        vprint("%s: %s connected on :%d" % (self, switch, port_id))
         self.switches[port_id] = switch
         self.ports_tx[port_id] = queue
         self.available_ports.add(port_id)
@@ -155,7 +156,7 @@ class ToRSwitch(DebugLog):
         #    self.connect_to(rotor_id, dst)
 
         # If Rotor
-        vprint("%s: capacity %s" % (self, self.capacity))
+        #vprint("%s: capacity %s" % (self, self.capacity))
         if PARAMS.slot_duration is not None:
             self.slot_id = self.slot_t % self.n_slots
             #vprint("%.3f %s switch to slot_id %d" % (R.time, self, self.slot_id))
@@ -171,7 +172,7 @@ class ToRSwitch(DebugLog):
     def connect_to(self, port_id, tor):
         """This gets called for every rotor and starts the process for that one"""
         # Set the connection
-        vprint("%s:%d -> %s" % (self, port_id, tor))
+        #vprint("%s:%d -> %s" % (self, port_id, tor))
         self.ports_dst[port_id] = tor
         R.call_in(0, self.ports_tx[port_id].resume)
         R.call_in(PARAMS.slot_duration - .002,
@@ -249,13 +250,6 @@ class ToRSwitch(DebugLog):
             for dst in dst_tor.local_dests:
                 # This is just for expander
                 self.dst_to_port[dst] = next_port_id
-
-
-        print()
-        print(self)
-        for dst, hop in self.dst_to_port.items():
-            print("%s: -> %s" % (dst, hop))
-
 
 
 
@@ -500,17 +494,21 @@ class ToRSwitch(DebugLog):
             self._send()
         return pull
 
+    def activate_cache_link(self, port_id, dst_tor_id):
+        vprint("%s: activate :%d -> %s" % (self, port_id, dst_tor_id))
+        self.ports_dst[port_id] = self.tors[dst_tor_id]
+        self._send()
+
     def recv(self, packet):
         """Receives packets for `port_id`"""
 
         if packet.flow_id == PARAMS.flow_print:
             vprint("%s: %s recv" % (self, packet))
 
-
         # Sanity check
         if packet.intended_dest != None:
             assert packet.intended_dest == self.id, \
-                "@%.3f %s received %s" % (R.time, self, packet)
+                "@%.3f %s received %s, was intendd for %s" % (R.time, self, packet, packet.intended_dest)
 
         # Update hop count
         packet.hop_count += 1
@@ -518,7 +516,6 @@ class ToRSwitch(DebugLog):
 
 
         # Deliver locally
-        #print(self.local_dests)
         if packet.dst_id in self.local_dests:
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Local destination" % (self, packet))
@@ -528,6 +525,15 @@ class ToRSwitch(DebugLog):
         else:
             packet._tor_arrival = R.time
             next_tor_id = self.dst_to_tor[packet.dst_id]
+
+            # CACHE handling
+            for port_id in cache_ports:
+                if self.ports_dst[port_id] is None:
+                    if self.switches[port_id].request_matching(self, next_tor_id):
+                        R.call_in(15, self.activate_cache_link, port_id, next_tor_id)
+                        break
+
+
 
             # ROTOR requires some handling...
             # ...adapt our capacity on rx
@@ -556,7 +562,7 @@ class ToRSwitch(DebugLog):
         priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
                 rotor = ["rotor", "xpand", "cache"],
-                cache = ["xpand", "cache", "rotor"],
+                cache = ["cache", "xpand", "rotor"],
                 )
         pull_fns = dict(
                 xpand = self.next_packet_xpand,
@@ -567,18 +573,23 @@ class ToRSwitch(DebugLog):
         #vprint("%s: available ports: %s" % (self, self.available_ports))
         for free_port in list(self.available_ports):
             port_type = get_port_type(free_port)
+            dst = self.ports_dst[free_port]
+            if dst is None:
+                continue
             port_dst  = self.ports_dst[free_port].id
             buffers_type = self.buffers_dst_type[port_dst]
 
             for priority_type in priorities[port_type]:
-                if False:
+                if R.time >= 15.0:
                     vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
                             port_dst, priority_type,
                             len(buffers_type[priority_type])),
-                            end = "")
+                            #end = ""
+                            )
 
+                pkt = None
                 if priority_type in pull_fns:
                     # Eventually should all be here, for now, not all implemented...
                     pkt = pull_fns[priority_type](port_id = free_port, dst_tor_id = port_dst)
@@ -588,6 +599,8 @@ class ToRSwitch(DebugLog):
 
                 if pkt is not None:
                     pkt.intended_dest = port_dst
+                    if pkt.flow_id == PARAMS.flow_print:
+                        vprint("%s: sending %s on :%s -> %s" % (self, pkt, free_port, port_dst))
                     self.ports_tx[free_port].enq(pkt)
                     self.available_ports.remove(free_port)
                     self.available_types[port_type] -= 1

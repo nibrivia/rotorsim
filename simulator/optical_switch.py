@@ -1,6 +1,7 @@
 from switch import Switch
 from params import PARAMS
 from event import R
+from helpers import pause, vprint
 
 class OpticalSwitch(Switch):
     def __init__(self, id):
@@ -23,12 +24,15 @@ class OpticalSwitch(Switch):
 
     # Returns True/False if the connection can be established
     def request_matching(self, tor, dst_id):
-        assert self.available_up[tor.id], "%s %s %s %s" % (
-                self, tor, dst_id, tor.active_flow[tor.debug])
+        #assert self.available_up[tor.id]
+        if not self.available_up[tor.id]:
+            return False
 
         # Make sure the connection can be established
         if not self.available_dn[dst_id]:
             return False
+
+        vprint("%s: %s req -> %s" % (self, tor, dst_id))
 
         # True it
         self.available_up[tor.id] = False

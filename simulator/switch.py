@@ -41,15 +41,18 @@ class Switch(DebugLog):
 
         def recv(packet):
             """Actually receives packets for `port_id`"""
-            if packet.flow_id == PARAMS.flow_print:
-                vprint("swtch: %s recv %s" % (packet, self))
 
             if not self.enabled:
                 assert False,\
                         "@%.3f%s: %s drop from :%s" % (R.time, self, packet, port_id)
 
+
             # Forward to destination
             dst_id = self.dests[port_id]
+
+            if packet.flow_id == PARAMS.flow_print:
+                vprint("swtch: %s recv %s -> %s" % (packet, self, dst_id))
+
             self.tx[dst_id].enq(packet)
 
             self.packets_by_port[port_id] += 1
