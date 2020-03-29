@@ -61,7 +61,7 @@ class ToRSwitch(DebugLog):
 
     def connect_backbone(self, port_id, switch, queue):
         # queue is an object with a .recv that can be called with (packets)
-        vprint("%s: %s connected on :%d" % (self, switch, port_id))
+        #vprint("%s: %s connected on :%d" % (self, switch, port_id))
         self.switches[port_id] = switch
         self.ports_tx[port_id] = queue
         self.available_ports.add(port_id)
@@ -510,7 +510,7 @@ class ToRSwitch(DebugLog):
             # debug print
             if packet.flow_id == PARAMS.flow_print:
                 vprint("%s: %s Outer destination %s/%s (%d)" % (
-                    self, packet, next_tor_id, packet.tag,
+                    self, packet, next_tor_id, dst_tag,
                     len(self.buffers_dst_type[next_tor_id][packet.tag])))
 
             # trigger send loop
@@ -548,8 +548,8 @@ class ToRSwitch(DebugLog):
                 sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
                 assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
 
-                if False:
-                    vprint("%s:   considering :%s/%s %s/%s (%d)..." % (
+                if self.id == 16:
+                    vprint("%s:   :%s (%s) considering %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
                             port_dst, priority_type,
@@ -568,7 +568,7 @@ class ToRSwitch(DebugLog):
 
                 if pkt is not None:
                     pkt.intended_dest = port_dst
-                    if pkt.flow_id == PARAMS.flow_print:
+                    if pkt.flow_id == PARAMS.flow_print or self.id == 16:
                         vprint("%s: sending %s on :%s -> %s" % (self, pkt, free_port, port_dst))
                     self.ports_tx[free_port].enq(pkt)
                     self.available_ports.remove(free_port)
