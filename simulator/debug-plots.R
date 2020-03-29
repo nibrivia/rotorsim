@@ -82,7 +82,7 @@ flows <- debug_log %>%
         summarize(arrival = min(time),
                   n_size = sum(key == "size_packets"),
                   size_packets = as.numeric(value[key == "size_packets"]),
-                  size_bits    = as.numeric(value[key == "size_bits"]),
+                  #size_bits    = as.numeric(value[key == "size_bits"]),
                   is_done = "Flow._done" %in% key,
                   end = ifelse(is_done, as.numeric(time[key == "Flow._done"]), max(time))
                   ) %>%
@@ -135,20 +135,25 @@ flow_details <-
            ) %>%
     group_by(flow_id, seq_num, packet_id) %>%
         mutate(creation = min(time),
-               timeout_n = str(time[str_detect(key, "timeout")]),
+               #timeout_n = str(time[str_detect(key, "timeout")]),
                #timeout_t = time[str_detect(key, "timeout")],
-               srcrecv_n = str(time[str_detect(key, "src_recv")]),
+               #srcrecv_n = str(time[str_detect(key, "src_recv")]),
                #srcrecv_t = time[str_detect(key, "src_recv")],
                #timedout = timeout_t < srcrect_t,
                ) %>%
     group_by(flow_id, seq_num) %>%
-        mutate(retransmit_n = dense_rank(creation))
+        arrange(time) %>%
+        mutate(retransmit_n = dense_rank(creation),
+               count = seq_along(time)-1) %>%
+    group_by(obj_name) %>%
+        mutate(position = min(count))
 
 flow_details %>%
     #mutate(time = dense_rank(time)) %>%
-    filter(flow_id == 79) %>%
+    filter(flow_id == 73, time < 3.6) %>%
+    #filter(class != "NIC") %>%
     ggplot(aes(x = time,
-               y = reorder(paste(class, obj_name), as.integer(factor(obj_id, levels = unique(obj_id)))),
+               y = reorder(paste(class, obj_name), position),
                #y = obj_name,
                label = key,
                group = paste(packet_id, class == "TCPFlow"),
@@ -179,7 +184,7 @@ queue_utilization <- debug_log %>%
 
 queue_utilization %>%
     ggplot(aes(x = reorder(paste(src, dst, sep = " -> "), n_obj),
-               y = n*1500*8/5e-3/1e9,
+               y = n*1500*8/10e-3/1e9,
                fill = is_good)) +
     geom_col(position = "stack") +
     coord_flip() +
