@@ -555,21 +555,3 @@ class ToRSwitch(DebugLog):
 
         return self.name
 
-    def buffer_str(self):
-        s = "\n" + str(self)
-        s += "\nOld Indirect\n  "
-        for dst, b in enumerate(self.buffers_ind):
-            s += "%2d " % b.size
-        s += "/%d" % self.packets_per_slot
-        return s
-
-        #s += "\nDirect\n  "
-        #for dst, b in enumerate(self.buffers_dir):
-        #    s += "%2d " % b.size
-
-        #s += "\nReceived\n  "
-        #for src, b in enumerate(self.buffers_rcv):
-        #    s += "%2d " % b.size
-
-        #return s
-
