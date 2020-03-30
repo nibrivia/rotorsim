@@ -52,7 +52,8 @@ class NIC(DebugLog):
         # Having a delay of 0 makes it so that even if we can send immediately,
         # it waits until the caller is done, making the behavior of enq
         # consistent regardless of current queue size
-        R.call_in(0, self._send)
+        #R.call_in(0, self._send)
+        self._send()
 
     # FIXME There's a bug here where pause and resume will make this send
     # FIXME faster than it should...
