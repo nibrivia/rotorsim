@@ -64,7 +64,7 @@ class Registry:
                 print("@%.3f: no more events in registry" % self.time)
                 break
             if self.time >= self.limit:
-                print("reached past simulation time limit")
+                print("reached past time limit after %d events" % self.count)
                 break
 
             # Also not threadsafe
