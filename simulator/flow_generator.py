@@ -59,6 +59,15 @@ def weights_to_cdf(weights):
     return cdf
 
 
+# in bytes
+flat_log = [
+        (1, 1e4),
+        (1, 1e5),
+        (1, 1e6),
+        (1, 1e7),
+        (1, 1e8),
+        (1, 1e9),
+        ]
 simple_weights = [
         ( 4.9, 10e3),
         (95.0,  1e6),
@@ -72,6 +81,7 @@ WORKLOAD_FNS = defaultdict(
         #websearch   = FlowDistribution(websearch_cdf),
         datamining  = dist_from_file("workloads/datamining.csv"),
         chen        = SizeDistribution(simple_cdf),
+        olivia      = SizeDistribution(flat_log),
         xpand       = SizeDistribution(xpand_cdf),
         rotor       = SizeDistribution(rotor_cdf),
         cache       = SizeDistribution(cache_cdf),
@@ -160,8 +170,10 @@ def generate_flows(
     # Actual generator loop
     for flow_id, (t, (src, dst), size) in enumerate(zip(time_dist, pair_dist, size_dist)):
         #print(t, src, dst, size)
-        yield TCPFlow(flow_id = flow_id,
+        flow =  TCPFlow(flow_id = flow_id,
                 arrival = t,
                 size_bits = size,
                 src = src, dst = dst)
+        #print(flow, flow.size_bits, flow.size_packets)
+        yield flow
 
