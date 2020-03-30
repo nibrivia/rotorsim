@@ -33,13 +33,13 @@ class Registry:
                 try:
                     parent_name = repr(fn.__self__)
                 except:
-                    pass
+                    parent_name = repr(fn)
 
 
             try:
                 print("%f, %s, %s, %s, %s, %s, %s" %
                     (self.time, "schedule",
-                        fn.__self__.__class__.__name__, id(fn.__self__), parent_name,
+                        parent_name, id(fn), parent_name,
                         fn.__qualname__, time),
                     file = sys.stderr)
             except:

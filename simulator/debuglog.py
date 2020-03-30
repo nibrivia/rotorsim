@@ -3,6 +3,7 @@ import re
 import traceback
 from event import R
 from params import PARAMS
+from functools import wraps
 
 list_objs = (list, set, dict, tuple)
 DEBUG = False
@@ -81,6 +82,7 @@ def logfn(obj, fn):
     if "logfn" in fn.__qualname__:
         return fn
 
+    @wraps(fn)
     def log(*args, **kwargs):
         pretty_args = ", ".join([str_repr(x) for x in args])
         pretty_kwargs = ", ".join(["%s = %s" % (k, str_repr(v)) for k, v in kwargs.items()])
