@@ -339,7 +339,7 @@ class ToRSwitch(DebugLog):
         normally do on expander..."""
         # TODO this whole thing is grossly inefficient...
 
-        assert self.ports_dst[port_id].id == dst_tor_id 
+        #assert self.ports_dst[port_id].id == dst_tor_id 
 
         # Get destinations that go that way
         #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_id))
@@ -363,13 +363,17 @@ class ToRSwitch(DebugLog):
 
         # Get all packets that wanna go that way
         possible_pkts = []
+        cur_min = float("inf")
+        dst = None
         for d in possible_tor_dsts:
             if self.buffers_dst_type_sizes[d]["xpand"] > 0:
-                possible_pkts.append((d, self.buffers_dst_type[d]["xpand"][0]))
+                d_min = self.buffers_dst_type[d]["xpand"][0]._tor_arrival
+                if d_min < cur_min:
+                    cur_min = d_min
+                    dst = d
 
         # Find the earliest one
-        if len(possible_pkts) > 0:
-            dst, pkt = min(possible_pkts, key = lambda t: t[1]._tor_arrival)
+        if dst is not None:
             pkt = self.buffers_dst_type[dst]["xpand"].popleft()
             self.buffers_dst_type_sizes[dst]["xpand"] -= 1
             return pkt
