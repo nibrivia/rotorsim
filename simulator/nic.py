@@ -60,9 +60,10 @@ class NIC(DebugLog):
         self._paused = True
 
     def resume(self):
-        self._paused = False
-        self._enabled = True 
-        self._send()
+        if self._paused:
+            self._paused = False
+            self._enabled = True 
+            self._send()
 
     def _enable(self):
         self._enabled = True

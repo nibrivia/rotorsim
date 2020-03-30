@@ -133,9 +133,9 @@ class ToRSwitch(DebugLog):
             self.new_slice = Delay(PARAMS.slot_duration  + PARAMS.reconfiguration_time, priority = 1000)(self.new_slice)
         #if PARAMS.slice_duration is not None:
         #    self.new_slice = Delay(self.slice_duration + self.reconf_time, priority = 1000)(self.new_slice)
-        self.new_slice()
-        self.make_route()
-        R.call_in(0, self._send)
+        R.call_in(0, self.make_route, priority = -10)
+        R.call_in(0, self.new_slice, priority = -1)
+        R.call_in(0, self._send, priority = 10)
 
         # Expander
         ##########
@@ -188,7 +188,7 @@ class ToRSwitch(DebugLog):
         # Set the connection
         #vprint("%s:%d -> %s" % (self, port_id, tor))
         self.ports_dst[port_id] = tor
-        R.call_in(0, self.ports_tx[port_id].resume)
+        self.ports_tx[port_id].resume()
         R.call_in(PARAMS.slot_duration - .002,
                 self.disconnect_from, port_id, priority = -1)
 
@@ -218,7 +218,7 @@ class ToRSwitch(DebugLog):
 
     # By having a delay 0 here, this means that every ToR will have gone
     # through its start, which will then mean that we can call link_state
-    @Delay(0, priority = -10)
+    #@Delay(0, priority = -10)
     def make_route(self, slice_id = None):
         """Builds a routing table"""
         for t in self.tors:
@@ -275,72 +275,6 @@ class ToRSwitch(DebugLog):
 
     # SENDING ALGORITHMS
     ####################
-
-    def cache_port_for_flow(self, flow):
-        for port in cache_ports:
-            # Port already busy
-            if self.active_flow[port] is not None:
-                continue
-
-            switch = self.switches[port]
-            if switch.request_matching(self, flow.dst):
-                return switch
-
-    def next_queue_cache(self, port_id):
-        switch = self.switches[port_id]
-
-        # Do the current flow
-        f = self.active_flow[port_id]
-        if f is not None:
-            return None # We're not simulating at the packet level
-
-        # Or try to establish a new one....
-        for i, f in enumerate(self.flows_cache):
-            if switch.request_matching(self, f.dst):
-                #print("@%.3f %s got matching" % (R.time, f))
-                vprint("\033[0;33mflow %d start (%s)\033[00m" % (f.id, f.tag))
-
-                # Get the flow
-                self.ports_dst[port_id] = self.tors[f.dst]
-                self.flows_cache.pop(i)
-
-                # Figure out how long it takes
-                fct = f.remaining_packets * PARAMS.packet_ttime
-                n_packets = f.size_packets
-                time_left = R.limit - R.time - PARAMS.reconf_cache
-
-                # Update book-keeping
-                self.active_flow[port_id] = f
-
-                # Make sure end-of-simulation gets handled gracefully
-                if fct > time_left:
-                    n_packets = math.floor(time_left/fct * n_packets)
-                    if n_packets < 0:
-                        return
-                    fct = n_packets * PARAMS.packet_ttime
-
-                # Get the packets from the flow
-                lump = f.pop_lump(n_packets)
-
-                # Come back when we're done
-                R.call_in(PARAMS.reconf_cache + fct,
-                        self.cache_flow_done,
-                        port_id = port_id, lump = lump)
-
-                return None # Still not simulating packet level
-
-    def cache_flow_done(self, port_id, lump):
-        vprint("\033[0;33mflow", self.active_flow[port_id].id, "is done (cache)")
-
-        # Figure out who was done
-        flow_id, dst, n = lump
-        FLOWS[flow_id].rx(n)
-
-        # Reset book-keeping
-        self.active_flow[port_id] = None
-
-        # Release the cache
-        self.switches[port_id].release_matching(self)
 
     def next_packet_rotor(self, port_id, dst_tor_id):
         """Sends over a lump"""
