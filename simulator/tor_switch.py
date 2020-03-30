@@ -281,15 +281,15 @@ class ToRSwitch(DebugLog):
         dst   = self.tors[dst_tor_id]
 
 
-        for _dst_tor_id in range(PARAMS.n_tor):
-            if _dst_tor_id in self.nonempty_rotor_dst:
-                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
-                    "%s: %s should be >0 %s" % (self,
-                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
-            else:
-                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
-                    "%s: %s should be ==0 %s" % (self,
-                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+        #for _dst_tor_id in range(PARAMS.n_tor):
+        #    if _dst_tor_id in self.nonempty_rotor_dst:
+        #        assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
+        #            "%s: %s should be >0 %s" % (self,
+        #                self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+        #    else:
+        #        assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
+        #            "%s: %s should be ==0 %s" % (self,
+        #                self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
 
 
         # Old indirect traffic goes first
@@ -480,7 +480,7 @@ class ToRSwitch(DebugLog):
             for priority_type in self.priorities[port_type]:
                 buf = buffers_type[priority_type]
                 sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
-                assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
+                # assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
 
                 if self.id == 16:
                     vprint("%s:   :%s (%s) considering %s/%s (%d)..." % (
