@@ -35,7 +35,6 @@ class ToRSwitch(DebugLog):
         self.buffers_dst_type = [{t: deque() for t in tags} for _ in range(PARAMS.n_tor)]
         self.buffers_dst_type_sizes = [{t: 0 for t in tags} for _ in range(PARAMS.n_tor)]
         self.available_ports = set()
-        self.available_types = {t: 0 for t in tags}
 
         # rotor
         self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
@@ -55,6 +54,17 @@ class ToRSwitch(DebugLog):
         self.nonempty_rotor_dst = set() # non-empty rotor queues
         self.possible_tor_dsts = dict() # "shortcut" map
 
+        self.priorities = dict(
+                xpand = ["xpand", "rotor", "cache"],
+                rotor = ["rotor", "xpand", "cache"],
+                cache = ["cache", "xpand", "rotor"],
+                )
+        self.pull_fns = dict(
+                xpand = self.next_packet_xpand,
+                rotor = self.next_packet_rotor,
+                #cache = self.next_packet_cache
+                )
+
 
     # One-time setup
     ################
@@ -65,7 +75,6 @@ class ToRSwitch(DebugLog):
         self.switches[port_id] = switch
         self.ports_tx[port_id] = queue
         self.available_ports.add(port_id)
-        self.available_types[get_port_type(port_id)] += 1
         queue.empty_callback = self.make_pull(port_id)
 
 
@@ -194,7 +203,6 @@ class ToRSwitch(DebugLog):
         self.ports_tx[port_id].pause()
         if port_id in self.available_ports:
             self.available_ports.remove(port_id)
-            self.available_types["rotor"] -= 1
         #vprint("%s: available ports: %s" % (self, self.available_ports))
 
 
@@ -446,8 +454,7 @@ class ToRSwitch(DebugLog):
         def pull():
             #vprint("%s: pull from port %s" % (self, port_id))
             self.available_ports.add(port_id)
-            self.available_types[port_type] += 1
-            self._send()
+            self._send([port_id])
         return pull
 
     def activate_cache_link(self, port_id, dst_tor_id):
@@ -521,21 +528,14 @@ class ToRSwitch(DebugLog):
 
 
 
-    def _send(self):
+    def _send(self, ports = None):
         #vprint("%s: _send()" % self)
-        priorities = dict(
-                xpand = ["xpand", "rotor", "cache"],
-                rotor = ["rotor", "xpand", "cache"],
-                cache = ["cache", "xpand", "rotor"],
-                )
-        pull_fns = dict(
-                xpand = self.next_packet_xpand,
-                rotor = self.next_packet_rotor,
-                #cache = self.next_packet_cache
-                )
+
+        if ports is None:
+            ports = list(self.available_ports)
 
         #vprint("%s: available ports: %s" % (self, self.available_ports))
-        for free_port in list(self.available_ports):
+        for free_port in ports:
             port_type = get_port_type(free_port)
             dst = self.ports_dst[free_port]
             if dst is None:
@@ -543,7 +543,7 @@ class ToRSwitch(DebugLog):
             port_dst  = self.ports_dst[free_port].id
             buffers_type = self.buffers_dst_type[port_dst]
 
-            for priority_type in priorities[port_type]:
+            for priority_type in self.priorities[port_type]:
                 buf = buffers_type[priority_type]
                 sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
                 assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
@@ -558,9 +558,9 @@ class ToRSwitch(DebugLog):
                             ))
 
                 pkt = None
-                if priority_type in pull_fns:
+                if priority_type in self.pull_fns:
                     # Eventually should all be here, for now, not all implemented...
-                    pkt = pull_fns[priority_type](port_id = free_port, dst_tor_id = port_dst)
+                    pkt = self.pull_fns[priority_type](port_id = free_port, dst_tor_id = port_dst)
                 elif sz > 0:
                     #vprint(" has packets!")
                     pkt = buf.popleft()
@@ -572,7 +572,6 @@ class ToRSwitch(DebugLog):
                         vprint("%s: sending %s on :%s -> %s" % (self, pkt, free_port, port_dst))
                     self.ports_tx[free_port].enq(pkt)
                     self.available_ports.remove(free_port)
-                    self.available_types[port_type] -= 1
                     pkt_tor_dst = self.dst_to_tor[pkt.dst_id]
                     #self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
 
