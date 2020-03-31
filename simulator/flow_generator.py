@@ -68,6 +68,7 @@ flat_log = [
         (1, 1e8),
         (1, 1e9),
         ]
+flat_log_cdf = weights_to_cdf(flat_log)
 simple_weights = [
         ( 4.9, 10e3),
         (95.0,  1e6),
@@ -81,7 +82,7 @@ WORKLOAD_FNS = defaultdict(
         #websearch   = FlowDistribution(websearch_cdf),
         datamining  = dist_from_file("workloads/datamining.csv"),
         chen        = SizeDistribution(simple_cdf),
-        olivia      = SizeDistribution(flat_log),
+        olivia      = SizeDistribution(flat_log_cdf),
         xpand       = SizeDistribution(xpand_cdf),
         rotor       = SizeDistribution(rotor_cdf),
         cache       = SizeDistribution(cache_cdf),
