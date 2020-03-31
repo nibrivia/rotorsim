@@ -50,7 +50,7 @@ def dist_from_file(filename):
     return SizeDistribution(cdf)
 
 def weights_to_cdf(weights):
-    w_sum = sum(w for w, s in simple_weights)
+    w_sum = sum(w for w, s in weights)
     c = 0
     cdf = []
     for w, s in weights:
