@@ -2,7 +2,7 @@ import math
 import heapq
 # from buffer import *
 from logger import LOG
-from helpers import get_port_type, rotor_ports, cache_ports, xpand_ports, vprint, color_str_
+from helpers import get_port_type, rotor_ports, cache_ports, xpand_ports, vprint, color_str_, pause
 from event import Delay, R
 from functools import lru_cache
 from collections import deque
@@ -278,6 +278,8 @@ class ToRSwitch(DebugLog):
 
     def next_packet_rotor(self, port_id, dst_tor_id):
         """Sends over a lump"""
+        if PARAMS.n_rotor == 0:
+            return None
         dst   = self.tors[dst_tor_id]
 
 
@@ -342,7 +344,7 @@ class ToRSwitch(DebugLog):
         #assert self.ports_dst[port_id].id == dst_tor_id 
 
         # Get destinations that go that way
-        #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_id))
+        #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_tor_id))
         #vprint(self.route_tor)
         if dst_tor_id in self.possible_tor_dsts:
             possible_tor_dsts = self.possible_tor_dsts[dst_tor_id]
@@ -379,11 +381,6 @@ class ToRSwitch(DebugLog):
             return pkt
 
 
-
-
-
-
-
     # Actual packets moving
     ########################
 
@@ -399,6 +396,34 @@ class ToRSwitch(DebugLog):
         vprint("%s: activate :%d -> %s" % (self, port_id, dst_tor_id))
         self.ports_dst[port_id] = self.tors[dst_tor_id]
         self._send()
+
+    @classmethod
+    @lru_cache(maxsize=None)
+    def packet_tag(c, cur_tag):
+        if cur_tag == "cache":
+            if PARAMS.n_cache > 0:
+                return "cache"
+            if PARAMS.n_rotor > 0:
+                return "rotor"
+            if PARAMS.n_xpand > 0:
+                return "xpand"
+
+        if cur_tag == "rotor":
+            if PARAMS.n_rotor > 0:
+                return "rotor"
+            if PARAMS.n_xpand > 0:
+                return "xpand"
+            if PARAMS.n_cache > 0:
+                return "cache"
+
+        if cur_tag == "xpand":
+            if PARAMS.n_xpand > 0:
+                return "xpand"
+            if PARAMS.n_rotor > 0:
+                return "rotor"
+            if PARAMS.n_cache > 0:
+                return "cache"
+
 
     def recv(self, packet):
         """Receives packets for `port_id`"""
@@ -437,16 +462,17 @@ class ToRSwitch(DebugLog):
 
             # ROTOR requires some handling...
             # ...adapt our capacity on rx
-            if packet.tag == "rotor":
-                self.capacity[next_tor_id] -= 1
+            dst_tag = ToRSwitch.packet_tag(packet.tag)
+            if PARAMS.n_rotor > 0:
+                if packet.tag == "rotor":
+                    self.capacity[next_tor_id] -= 1
 
-            # ... if indirect, put it in higher queue...
-            dst_tag = packet.tag
-            if packet.tag == "rotor" and packet.src_id not in self.local_dests:
-                dst_tag = "rotor-old"
+                # ... if indirect, put it in higher queue...
+                if packet.tag == "rotor" and packet.src_id not in self.local_dests:
+                    dst_tag = "rotor-old"
 
-            if dst_tag == "rotor":
-                self.nonempty_rotor_dst.add(next_tor_id)
+                if dst_tag == "rotor":
+                    self.nonempty_rotor_dst.add(next_tor_id)
 
             self.buffers_dst_type[next_tor_id][dst_tag].append(packet)
             self.buffers_dst_type_sizes[next_tor_id][dst_tag] += 1
@@ -473,20 +499,21 @@ class ToRSwitch(DebugLog):
             ports = list(self.available_ports)
 
         #vprint("%s: available ports: %s" % (self, self.available_ports))
-        for free_port in ports:
-            port_type = get_port_type(free_port)
-            dst = self.ports_dst[free_port]
-            if dst is None:
-                continue
-            port_dst  = self.ports_dst[free_port].id
-            buffers_type = self.buffers_dst_type[port_dst]
+        for priority_i in range(3):
+            for free_port in ports:
+                port_type = get_port_type(free_port)
+                dst = self.ports_dst[free_port]
+                if dst is None:
+                    continue
+                port_dst  = self.ports_dst[free_port].id
+                buffers_type = self.buffers_dst_type[port_dst]
 
-            for priority_type in self.priorities[port_type]:
+                priority_type = self.priorities[port_type][priority_i]
                 buf = buffers_type[priority_type]
                 sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
                 # assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
 
-                if self.id == 16:
+                if self.id == 32:
                     vprint("%s:   :%s (%s) considering %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
@@ -504,16 +531,15 @@ class ToRSwitch(DebugLog):
                     pkt = buf.popleft()
                     self.buffers_dst_type_sizes[port_dst][pkt.tag] -= 1
 
-                if pkt is not None:
+                if pkt is not None and free_port in self.available_ports:
                     pkt.intended_dest = port_dst
-                    if pkt.flow_id == PARAMS.flow_print or self.id == 16:
+                    if pkt.flow_id == PARAMS.flow_print: # or self.id == 16:
                         vprint("%s: sending %s on :%s -> %s" % (self, pkt, free_port, port_dst))
                     self.ports_tx[free_port].enq(pkt)
                     self.available_ports.remove(free_port)
                     pkt_tor_dst = self.dst_to_tor[pkt.dst_id]
                     #self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
 
-                    break
 
 
 

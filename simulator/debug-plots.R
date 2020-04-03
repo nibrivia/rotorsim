@@ -54,18 +54,18 @@ debug_log %>%
 
 
 # Queue sizes
-debug_log %>%
+q_sizes <- debug_log %>%
     filter(event == "set",
            class == "NIC",
            str_detect(key, "q_size_B")) %>%
     group_by(obj_id) %>%
-        mutate(value = as.numeric(value),
-               max_size = max(value)) %>%
-        ungroup() %>%
+    mutate(value = as.numeric(value),
+           max_size = max(value)) %>%
+    ungroup()
+
+q_sizes %>%
     mutate(queue_rank = dense_rank(-max_size)) %>%
     filter(queue_rank <= 10) %>%
-
-
     ggplot(aes(x = time,
                y = value/1500,
                color = reorder(obj_name, queue_rank))) +
@@ -79,13 +79,13 @@ debug_log %>%
 flows <- debug_log %>%
     filter(class == "TCPFlow", str_detect(obj_name, "TCPFlow object", negate = TRUE)) %>%
     group_by(obj_id, obj_name) %>%
-        summarize(arrival = min(time),
-                  n_size = sum(key == "size_packets"),
-                  size_packets = as.numeric(value[key == "size_packets"]),
-                  #size_bits    = as.numeric(value[key == "size_bits"]),
-                  is_done = "Flow._done" %in% key,
-                  end = ifelse(is_done, as.numeric(time[key == "Flow._done"]), max(time))
-                  ) %>%
+    summarize(arrival = min(time),
+              #n_size = sum(key == "size_packets"),
+              size_packets = as.numeric(value[key == "size_packets"]),
+              #size_bits    = as.numeric(value[key == "size_bits"]),
+              is_done = "Flow._done" %in% key,
+              end = ifelse(is_done, as.numeric(time[key == "Flow._done"]), max(time))
+    ) %>%
     separate(obj_name, c("tag", "id"), sep = " +")
 
 # General flows
@@ -120,11 +120,12 @@ flow_details <-
            str_detect(key, "log|rto|rtt|cwnd", negate = TRUE),
            event == "call"
            #time > .6, time < 1
-           ) %>%
+    ) %>%
     mutate(packet = ifelse(class == "Packet", obj_name, str_replace(value, ",.*$", "") )) %>%
     filter(str_detect(packet, paste0(flow_str, "#"))) %>%
     separate(packet, c("packet_seq", "packet_id"), sep = " \\$") %>%
     separate(packet_seq, c("flow", "seq_num"), sep = "#") %>%
+    mutate(flow_str = flow) %>%
     separate(flow, c("flow_id", "srcdst"), sep = "\\[") %>%
     mutate(srcdst = str_replace(srcdst, "\\]", "")) %>%
     separate(srcdst, c("src", "dst"), sep = "->") %>%
@@ -132,40 +133,67 @@ flow_details <-
            src     = as.integer(src),
            dst     = as.integer(dst),
            seq_num = as.integer(seq_num)
-           ) %>%
+    ) %>%
     group_by(flow_id, seq_num, packet_id) %>%
-        mutate(creation = min(time),
-               #timeout_n = str(time[str_detect(key, "timeout")]),
-               #timeout_t = time[str_detect(key, "timeout")],
-               #srcrecv_n = str(time[str_detect(key, "src_recv")]),
-               #srcrecv_t = time[str_detect(key, "src_recv")],
-               #timedout = timeout_t < srcrect_t,
-               ) %>%
+    mutate(creation = min(time),
+           #timeout_n = str(time[str_detect(key, "timeout")]),
+           #timeout_t = time[str_detect(key, "timeout")],
+           #srcrecv_n = str(time[str_detect(key, "src_recv")]),
+           #srcrecv_t = time[str_detect(key, "src_recv")],
+           #timedout = timeout_t < srcrect_t,
+    ) %>%
     group_by(flow_id, seq_num) %>%
-        arrange(time) %>%
-        mutate(retransmit_n = dense_rank(creation),
-               count = seq_along(time)-1) %>%
+    arrange(time) %>%
+    mutate(retransmit_n = dense_rank(creation),
+           count = seq_along(time)-1) %>%
     group_by(flow_id, obj_name) %>%
-        mutate(position = mean(count)) %>%
+    mutate(position = mean(count)) %>%
+    ungroup()
+
+# waterfall
+one_flow <- flow_details %>%
+    filter(flow_id == 0) %>%
+    #filter(class != "NIC") %>%
+    group_by(seq_num) %>%
+        mutate(has_retransmit = any(retransmit_n > 1)) %>%
         ungroup()
 
-flow_details %>%
-    filter(flow_id == 73, seq_num < 3) %>%
-    #filter(class != "NIC") %>%
+one_flow %>%
+    filter(has_retransmit) %>%
+    filter(seq_num == 42) %>%
     mutate(time = dense_rank(time)) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), position),
                #y = obj_name,
                label = key,
                group = paste(packet_id, class == "TCPFlow"),
-               color = packet_id)) +
+               color = as_factor(seq_num))) +
     geom_point() +
     geom_line() +
-    #geom_text(color = "black",
-    #          angle = 30) +
     labs(y = NULL, x = NULL) +
-    guides(color = F) +
+    #guides(color = F) +
     hrbrthemes::theme_ipsum_rc()
+
+# waterfall for 1 ToR
+tor_details <- flow_details %>%
+    filter(time > 2, time < 5,
+           class != "NIC" | str_detect(obj_name, "Tor 32")) %>%
+    group_by(flow_id, seq_num, packet_id) %>%
+    filter(any(str_detect(obj_name, "Tor 32"))) %>%
+    ungroup() %>%
+    filter(class != "Packet",
+           class != "TCPFlow")
+
+tor_details %>%
+    mutate(time = dense_rank(time)) %>%
+    ggplot(aes(x = time,
+               y = reorder(paste(class, obj_name), position),
+               group = packet_id,
+               color = flow_str)) +
+    geom_line() +
+    geom_point() +
+    labs(x=NULL, y = NULL)
+hrbrthemes::theme_ipsum_rc()
 
 # Link utilization
 queue_utilization <- debug_log %>%
@@ -174,13 +202,13 @@ queue_utilization <- debug_log %>%
 
     separate(value, c("pkt", "id"), " \\$") %>%
     group_by(obj_name, pkt) %>%
-        mutate(n_transmit = dense_rank(id),
-               is_good = n_transmit == 1) %>%
+    mutate(n_transmit = dense_rank(id),
+           is_good = n_transmit == 1) %>%
 
     group_by(obj_name, is_good) %>%
-        summarize(n = n()) %>%
+    summarize(n = n()) %>%
     group_by(obj_name) %>%
-        mutate(n_obj = sum(n)) %>%
+    mutate(n_obj = sum(n)) %>%
     separate(obj_name, c("src", "dst"), "->")
 
 queue_utilization %>%
