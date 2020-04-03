@@ -158,6 +158,10 @@ class TCPFlow(Flow):
         self.retransmit_q = deque()
 
     @property
+    def bits_sent(self):
+        return len(self.acked)*BYTES_PER_PACKET*8
+
+    @property
     def rto(self):
         return 1
         #rto =  self.rtt_ms + self.k*self.rtt_dev_ms

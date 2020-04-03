@@ -169,11 +169,11 @@ def generate_flows(
     print("%d flows of %dMb -> %.3fGb traffic" % (n_flows, workload.size_B*8/1e6, n_flows*workload.size_B*8/1e9))
 
     # Actual generator loop
-    for flow_id, (t, (src, dst), size) in enumerate(zip(time_dist, pair_dist, size_dist)):
+    for flow_id, (t, (src, dst), size_B) in enumerate(zip(time_dist, pair_dist, size_dist)):
         #print(t, src, dst, size)
         flow =  TCPFlow(flow_id = flow_id,
                 arrival = t,
-                size_bits = size,
+                size_bits = size_B*8,
                 src = src, dst = dst)
         #print(flow, flow.size_bits, flow.size_packets)
         yield flow
