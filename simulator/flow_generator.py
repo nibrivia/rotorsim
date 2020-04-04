@@ -165,7 +165,7 @@ def generate_flows(
 
     print("%d links @%dGb/s @%d%% load-> %.3fGb full capacity" % (n_links, bandwidth/1e3, 100*load, full_capacity/1e9))
     print("%.3fGb at %.d%% load -> %dGb generated traffic" % (full_capacity/1e9, 100*link_load, effective_load))
-    print("%dGb at %.1fMb/flow -> %d flows" % (effective_load, workload.size_B*8/1e6, n_flows))
+    print("%dGb at %.1fMb/flow -> %d flows" % (effective_load*bandwidth/1e3, workload.size_B*8/1e6, n_flows))
     print("%d flows of %dMb -> %.3fGb traffic" % (n_flows, workload.size_B*8/1e6, n_flows*workload.size_B*8/1e9))
 
     # Actual generator loop
