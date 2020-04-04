@@ -283,15 +283,16 @@ class ToRSwitch(DebugLog):
         dst   = self.tors[dst_tor_id]
 
 
-        #for _dst_tor_id in range(PARAMS.n_tor):
-        #    if _dst_tor_id in self.nonempty_rotor_dst:
-        #        assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
-        #            "%s: %s should be >0 %s" % (self,
-        #                self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
-        #    else:
-        #        assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
-        #            "%s: %s should be ==0 %s" % (self,
-        #                self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+        for _dst_tor_id in range(PARAMS.n_tor):
+            if _dst_tor_id in self.nonempty_rotor_dst:
+                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
+                    "%s: %s should be >0 %s" % (self,
+                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+            else:
+                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
+                    "%s: %s (nonempty: %s) should be ==0 %s" % (self,
+                        _dst_tor_id,
+                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
 
 
         # Old indirect traffic goes first
@@ -377,6 +378,8 @@ class ToRSwitch(DebugLog):
         # Find the earliest one
         if dst is not None:
             pkt = self.buffers_dst_type[dst]["xpand"].popleft()
+            #if pkt.flow_id == PARAMS.flow_print:
+                #print("%s: %s -> %s (route: %s" % (self, pkt, dst_tor_id, self.route_tor[dst]))
             self.buffers_dst_type_sizes[dst]["xpand"] -= 1
             return pkt
 
@@ -438,7 +441,7 @@ class ToRSwitch(DebugLog):
 
         # Update hop count
         packet.hop_count += 1
-        assert packet.hop_count < 1000, "Hop count >1000? %s" % packet
+        assert packet.hop_count < 50, "Hop count >50? %s" % packet
 
 
         # Deliver locally
@@ -452,26 +455,29 @@ class ToRSwitch(DebugLog):
             packet._tor_arrival = R.time
             next_tor_id = self.dst_to_tor[packet.dst_id]
 
+
+
+            dst_tag = ToRSwitch.packet_tag(packet.tag)
+
             # CACHE handling
             for port_id in cache_ports:
-                if self.ports_dst[port_id] is None:
+                if self.ports_dst[port_id] is None and dst_tag == "cache":
                     if self.switches[port_id].request_matching(self, next_tor_id):
                         R.call_in(15, self.activate_cache_link, port_id, next_tor_id)
                         break
 
-
             # ROTOR requires some handling...
             # ...adapt our capacity on rx
-            dst_tag = ToRSwitch.packet_tag(packet.tag)
-            if PARAMS.n_rotor > 0:
-                if packet.tag == "rotor":
-                    self.capacity[next_tor_id] -= 1
+            if dst_tag == "rotor":
+                self.capacity[next_tor_id] -= 1
 
                 # ... if indirect, put it in higher queue...
-                if packet.tag == "rotor" and packet.src_id not in self.local_dests:
+                if packet.src_id not in self.local_dests:
+                    if packet.flow_id == PARAMS.flow_print:
+                        vprint("%s: %s is old indirect" % (self, packet))
                     dst_tag = "rotor-old"
-
-                if dst_tag == "rotor":
+                else:
+                    vprint("%s: %s is direct" % (self, packet))
                     self.nonempty_rotor_dst.add(next_tor_id)
 
             self.buffers_dst_type[next_tor_id][dst_tag].append(packet)
