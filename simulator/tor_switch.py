@@ -283,16 +283,16 @@ class ToRSwitch(DebugLog):
         dst   = self.tors[dst_tor_id]
 
 
-        for _dst_tor_id in range(PARAMS.n_tor):
-            if _dst_tor_id in self.nonempty_rotor_dst:
-                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
-                    "%s: %s should be >0 %s" % (self,
-                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
-            else:
-                assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
-                    "%s: %s (nonempty: %s) should be ==0 %s" % (self,
-                        _dst_tor_id,
-                        self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+        #for _dst_tor_id in range(PARAMS.n_tor):
+        #    if _dst_tor_id in self.nonempty_rotor_dst:
+        #        assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] > 0, \
+        #            "%s: %s should be >0 %s" % (self,
+        #                self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
+        #    else:
+        #        assert self.buffers_dst_type_sizes[_dst_tor_id]["rotor"] == 0, \
+        #            "%s: %s (nonempty: %s) should be ==0 %s" % (self,
+        #                _dst_tor_id,
+        #                self.nonempty_rotor_dst, self.buffers_dst_type_sizes[_dst_tor_id])
 
 
         # Old indirect traffic goes first
