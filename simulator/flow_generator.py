@@ -46,7 +46,7 @@ def dist_from_file(filename):
     with open(filename) as f:
         reader = csv.reader(f)
         next(reader) # skip header
-        cdf    = [(float(prob), int(size)*8) for size, prob in reader]
+        cdf    = [(float(prob), int(size)) for size, prob in reader]
     return SizeDistribution(cdf)
 
 def weights_to_cdf(weights):
