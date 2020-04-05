@@ -61,6 +61,8 @@ def weights_to_cdf(weights):
 
 # in bytes
 flat_log = [
+        (1, 1e2),
+        (1, 1e3),
         (1, 1e4),
         (1, 1e5),
         (1, 1e6),
