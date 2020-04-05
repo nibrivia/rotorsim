@@ -81,7 +81,7 @@ class Flow(DebugLog):
         while bytes_sent < size_B:
             p_size = min(BYTES_PER_PACKET, size_B - bytes_sent)
             tag = "xpand"
-            if seq_num >= 83/2: # 100us
+            if seq_num >= 888: # 100us
                 tag = "rotor"
             if seq_num >= 25000/2: # 30ms
                 tag = "cache"
@@ -163,7 +163,7 @@ class TCPFlow(Flow):
 
     @property
     def rto(self):
-        return 1
+        return 2
         #rto =  self.rtt_ms + self.k*self.rtt_dev_ms
         #return max(self.rto_min, min(rto, self.rto_max))
     # Source
