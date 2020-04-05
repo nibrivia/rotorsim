@@ -7,9 +7,8 @@ debug_log <- read_csv("debug.csv",
 
 # CWNDs
 debug_log %>%
-    filter(key == "cwnd",
-           #time < .4,
-           str_detect(obj_name, "rotor")) %>%
+    filter(key == "cwnd") %>% 
+    #filter(str_detect(obj_name, "rotor")) %>%
     ggplot(aes(x = time,
                y = as.numeric(value),
                color = obj_name)) +
@@ -79,14 +78,15 @@ q_sizes %>%
 flows <- debug_log %>%
     filter(class == "TCPFlow", str_detect(obj_name, "TCPFlow object", negate = TRUE)) %>%
     group_by(obj_id, obj_name) %>%
-    summarize(arrival = min(time),
+    summarize(arrival = min(time[key == "TCPFlow.start"]),
               #n_size = sum(key == "size_packets"),
               size_packets = as.numeric(value[key == "size_packets"]),
               #size_bits    = as.numeric(value[key == "size_bits"]),
               is_done = "Flow._done" %in% key,
               end = ifelse(is_done, as.numeric(time[key == "Flow._done"]), max(time))
     ) %>%
-    separate(obj_name, c("tag", "id"), sep = " +")
+    separate(obj_name, c("tag", "id"), sep = " +") %>% 
+    arrange(id)
 
 # General flows
 flows %>%
@@ -101,18 +101,20 @@ flows %>%
 
 flows %>%
     filter(is_done) %>%
-    ggplot(aes(x = arrival,
-               y = (size_packets*1500*8)/1e9/((end-arrival)/1000),
+    mutate(bw = (size_packets*1500*8)/1e9/((end-arrival)/1000)) %>% 
+    arrange(bw) %>% 
+    ggplot(aes(x = size_packets,
+               y = bw,
                color = tag)) +
     geom_point() +
+    scale_x_log10() +
     hrbrthemes::theme_ipsum_rc() +
-    labs(x = "Flow start (ms)",
+    labs(x = "Flow size (packets)",
          y = "Effective rate-ish (Gb/s)",
          title = "Effective rate of done flows")
 
 # Specific flow
 flow_str <- "[0-9]+\\[[0-9]+->[0-9]+\\]"
-#flow_str <- "1\\[9->0\\]"
 flow_details <-
     debug_log %>%
     filter(str_detect(obj_name, flow_str) | str_detect(value, flow_str),
@@ -135,39 +137,43 @@ flow_details <-
            seq_num = as.integer(seq_num)
     ) %>%
     group_by(flow_id, seq_num, packet_id) %>%
-    mutate(creation = min(time),
-           #timeout_n = str(time[str_detect(key, "timeout")]),
-           #timeout_t = time[str_detect(key, "timeout")],
-           #srcrecv_n = str(time[str_detect(key, "src_recv")]),
-           #srcrecv_t = time[str_detect(key, "src_recv")],
-           #timedout = timeout_t < srcrect_t,
-    ) %>%
+        mutate(creation = min(time),
+               #timeout_n = str(time[str_detect(key, "timeout")]),
+               #timeout_t = time[str_detect(key, "timeout")],
+               #srcrecv_n = str(time[str_detect(key, "src_recv")]),
+               #srcrecv_t = time[str_detect(key, "src_recv")],
+               #timedout = timeout_t < srcrect_t,
+        ) %>%
     group_by(flow_id, seq_num) %>%
-    arrange(time) %>%
-    mutate(retransmit_n = dense_rank(creation),
-           count = seq_along(time)-1) %>%
+        arrange(time) %>%
+        mutate(retransmit_n = dense_rank(creation),
+               count = (seq_along(time)-1)/n()) %>%
     group_by(flow_id, obj_name) %>%
-    mutate(position = mean(count)) %>%
-    ungroup()
+        mutate(position = mean(count)) %>%
+        ungroup()
 
 # waterfall
 one_flow <- flow_details %>%
     filter(flow_id == 0) %>%
-    #filter(class != "NIC") %>%
     group_by(seq_num) %>%
         mutate(has_retransmit = any(retransmit_n > 1)) %>%
         ungroup()
 
 one_flow %>%
-    filter(has_retransmit) %>%
-    filter(seq_num == 42) %>%
-    mutate(time = dense_rank(time)) %>%
+    filter(class != "TCPFlow", class != "Packet") %>% 
+    #filter(class != "NIC") %>%
+    #filter(time > 24.5, time < 26.5) %>% 
+    #filter(has_retransmit) %>%
+    filter(seq_num %% 100 == 0) %>%
+    #mutate(time = dense_rank(time)) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), position),
                #y = obj_name,
                label = key,
-               group = paste(packet_id, class == "TCPFlow"),
-               color = as_factor(seq_num))) +
+               group = paste(packet_id, seq_num, class == "TCPFlow"),
+               #color = as_factor(retransmit_n))
+               color = (seq_num > 888) + (seq_num > 25000)
+           )) +
     geom_point() +
     geom_line() +
     labs(y = NULL, x = NULL) +
@@ -176,7 +182,7 @@ one_flow %>%
 
 # waterfall for 1 ToR
 tor_details <- flow_details %>%
-    filter(time > 2, time < 5,
+    filter(time < .2,
            class != "NIC" | str_detect(obj_name, "Tor 32")) %>%
     group_by(flow_id, seq_num, packet_id) %>%
     filter(any(str_detect(obj_name, "Tor 32"))) %>%
@@ -185,18 +191,19 @@ tor_details <- flow_details %>%
            class != "TCPFlow")
 
 tor_details %>%
-    mutate(time = dense_rank(time)) %>%
+    #mutate(time = dense_rank(time)) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), position),
                group = packet_id,
-               color = flow_str)) +
+               color = paste(flow_str, seq_num, packet_id))) +
     geom_line() +
     geom_point() +
     labs(x=NULL, y = NULL)
 hrbrthemes::theme_ipsum_rc()
 
 # Link utilization
-queue_utilization <- debug_log %>%
+#queue_utilization <- debug_log %>%
+queue_utilization <- read_csv("ni") %>%
     filter(class == "NIC",
            str_detect(key, "enq"), event == "call") %>%
 
