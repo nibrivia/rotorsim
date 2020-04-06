@@ -155,15 +155,37 @@ class TCPFlow(Flow):
 
         self.in_flight = set()
         self.acked = set()
+        self.n_acked = 0
+        self.last_acked = -1
         self.retransmit_q = deque()
+
+    def is_acked(self, seq_num):
+        return seq_num <= self.last_acked or seq_num in self.acked
+
+    def process_ack(self, ack_num):
+        # Already acked before
+        if ack_num in self.acked or ack_num <= self.last_acked:
+            return
+
+        # It's a new ack
+        self.n_acked += 1
+
+        if self.last_acked + 1 == ack_num:
+            self.last_acked += 1
+            # recurse?
+            while self.last_acked + 1 in self.acked:
+                self.last_acked += 1
+                self.acked.remove(self.last_acked)
+        else:
+            self.acked.add(ack_num)
 
     @property
     def bits_sent(self):
-        return len(self.acked)*BYTES_PER_PACKET*8
+        return self.n_acked*BYTES_PER_PACKET*8
 
     @property
     def rto(self):
-        return 2
+        return 3
         #rto =  self.rtt_ms + self.k*self.rtt_dev_ms
         #return max(self.rto_min, min(rto, self.rto_max))
     # Source
@@ -179,8 +201,10 @@ class TCPFlow(Flow):
             vprint("flow : %s acked" % (packet))
 
         # Mark the ack
-        self.acked.add(packet.seq_num)
-        if len(self.acked) == self.size_packets:
+        self.process_ack(packet.seq_num)
+
+        # Done! woot
+        if self.n_acked == self.size_packets:
             self._done()
             return
 
@@ -224,7 +248,7 @@ class TCPFlow(Flow):
                     break
 
             # Check it's not gotten acked...
-            if p.seq_num in self.acked:
+            if self.is_acked(p.seq_num):
                 continue
 
             if self.id == PARAMS.flow_print:
