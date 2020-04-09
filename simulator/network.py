@@ -229,6 +229,10 @@ class RotorNet(DebugLog):
         N_DONE[0] += 1
         del FLOWS[flow_id]
 
+        if PARAMS.arrive_at_start:
+            if N_DONE[0] == N_FLOWS[0]:
+                R.stop()
+
     def open_connection(self, flow):
         if flow is not None:
             # Server -> flow

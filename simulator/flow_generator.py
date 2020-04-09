@@ -101,8 +101,8 @@ def time_uniform(iflow_wait):
         t += random.expovariate(lambd=1/iflow_wait)
         yield t
 
-def time_arrive_at_start():
-    while True:
+def time_arrive_at_start(n_flows):
+    for i in range(n_flows):
         yield 0
 
 # PAIR --------------------------------
@@ -157,7 +157,7 @@ def generate_flows(
     full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # b
     n_flows = effective_load*bandwidth*1e6*time_limit/1e3/(workload.size_B*8)
     if arrive_at_start:
-        time_dist = time_arrive_at_start
+        time_dist = time_arrive_at_start(round(n_flows))
     else:
         #full_capacity = n_links*bandwidth*1e6*time_limit/1e3 # Gb
         #n_flows = effective_load*full_capacity/(workload.size_B*8)

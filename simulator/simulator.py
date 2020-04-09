@@ -261,8 +261,6 @@ def main(
     # Start the log
     if not no_log:
         #base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
-        if arrive_at_start:
-            base_fn = "drain-" + base_fn
         init_log(fn = None, **locals())
 
     # set up printing
