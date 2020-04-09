@@ -1,5 +1,6 @@
 #import numpy as np
 import math
+import heapq
 from itertools import product
 import collections
 
@@ -7,6 +8,7 @@ from workloads.websearch import websearch_distribution, websearch_size
 from workloads.chen import chen_distribution, chen_size
 from workloads.uniform import log_uniform_distribution, log_uniform_size
 
+# Ugly but it works
 BYTES_PER_PACKET = 1500
 global FLOWS, N_FLOWS, N_DONE
 FLOWS = dict()
@@ -179,4 +181,30 @@ def generate_flows(
                 src = src, dst = dst)
         #print(flow, flow.size_bits, flow.size_packets)
         yield flow
+
+def next_or_None(gen):
+    try:
+        return next(gen)
+    except:
+        return None
+
+def flow_combiner(gen_a, gen_b):
+    """Combines two flow generators in one"""
+    flow_a = next_or_None(gen_a)
+    flow_b = next_or_None(gen_b)
+
+    while True:
+        if flow_a is None and flow_b is None:
+            print("done")
+            return
+
+        if flow_b is None or flow_a.arrival <= flow_b.arrival:
+            yield flow_a
+            flow_a = next_or_None(gen_a)
+            continue
+
+        if flow_a is None or flow_b.arrival <= flow_a.arrival:
+            yield flow_b
+            flow_b = next_or_None(gen_b)
+            continue
 

@@ -235,6 +235,10 @@ class RotorNet(DebugLog):
 
     def open_connection(self, flow):
         if flow is not None:
+            global FLOWS, N_FLOWS
+
+            flow.id = N_FLOWS[0]
+
             # Server -> flow
             self.servers[flow.src].add_flow(flow, flow.src_recv)
             self.servers[flow.dst].add_flow(flow, flow.dst_recv)
@@ -244,7 +248,6 @@ class RotorNet(DebugLog):
             flow.add_dst_send(self.servers[flow.dst].uplink)
 
             # Global book-keeping
-            global FLOWS, N_FLOWS
             FLOWS[flow.id] = flow
             N_FLOWS[0] += 1
             flow.add_callback_done(self.del_flow)
