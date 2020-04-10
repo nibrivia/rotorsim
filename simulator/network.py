@@ -233,7 +233,7 @@ class RotorNet(DebugLog):
             if N_DONE[0] == N_FLOWS[0]:
                 R.stop()
 
-    def open_connection(self, flow):
+    def open_connection(self, flow, use_gen = True):
         if flow is not None:
             global FLOWS, N_FLOWS
 
@@ -255,13 +255,14 @@ class RotorNet(DebugLog):
             # Actually start things...
             flow.start()
 
-        try:
-            flow = next(self.flow_gen)
-            R.call_at(flow.arrival, priority = -1,
-                    fn = self.open_connection, flow = flow)
-        except:
-            # No more flows
-            pass
+        if use_gen:
+            try:
+                flow = next(self.flow_gen)
+                R.call_at(flow.arrival, priority = -1,
+                        fn = self.open_connection, flow = flow)
+            except:
+                # No more flows
+                pass
 
     #def print_demand(self):
     #    if PARAMS.verbose:

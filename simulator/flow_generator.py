@@ -24,6 +24,7 @@ from helpers import *
 from flow import Flow, TCPFlow
 from logger import LOG
 from params import PARAMS
+from event import R
 
 
 # HELPERS ========================================================
@@ -185,8 +186,64 @@ def generate_flows(
 def next_or_None(gen):
     try:
         return next(gen)
-    except:
+    except StopIteration:
         return None
+    except:
+        raise
+
+def gen_constant(val):
+    while True:
+        yield val
+
+def ml_size_generator(model_name):
+    model_sizes = dict(
+            resnet =  180e6,
+            vgg    = 1080e6,
+            gpt2   = 5300e6,
+            )
+    return gen_constant(model_sizes[model_name])
+
+def start_job(network, servers, size_dist):
+    pairs = [p for p in zip(servers[-1:]+servers[:-1], servers)]
+    n_waiting = 0
+    iter_done = -1
+
+    def flow_done(flow_id):
+        nonlocal n_waiting
+        n_waiting -= 1
+        vprint("ML flow %s done %s waiting" % (flow_id, n_waiting))
+        if n_waiting == 0:
+            ml_flow_gen()
+
+    def ml_flow_gen():
+        nonlocal n_waiting, iter_done
+        iter_done += 1
+        vprint("Iteration #%s!" % (iter_done), pairs)
+        start_t = R.time
+
+        for src, dst in pairs:
+            vprint("New iteration %s->%s" % (src, dst))
+            size = next(size_dist)
+            flow = TCPFlow(flow_id = 1,
+                    arrival = start_t,
+                    size_bits = size, # TODO use size distribution
+                    src = src, dst = dst)
+            flow.add_callback_done(flow_done)
+            network.open_connection(flow, use_gen = False)
+
+        n_waiting = len(pairs)
+
+    return ml_flow_gen()
+
+
+def ml_generator(network, n_jobs, servers_per_ring, model_name):
+    # establish rings
+    servers = [i for i in range(PARAMS.n_tor * PARAMS.servers_per_rack)]
+    size_dist = ml_size_generator(model_name)
+    for job_id in range(n_jobs):
+        ring = random.sample(servers, servers_per_ring)
+        start_job(network, ring, size_dist)
+
 
 def flow_combiner(gen_a, gen_b):
     """Combines two flow generators in one"""
@@ -198,13 +255,15 @@ def flow_combiner(gen_a, gen_b):
             print("done")
             return
 
+        to_yield = None
         if flow_b is None or flow_a.arrival <= flow_b.arrival:
-            yield flow_a
+            to_yield = flow_a
             flow_a = next_or_None(gen_a)
-            continue
-
-        if flow_a is None or flow_b.arrival <= flow_a.arrival:
-            yield flow_b
+        elif flow_a is None or flow_b.arrival <= flow_a.arrival:
+            to_yield = flow_b
             flow_b = next_or_None(gen_b)
-            continue
+
+        print("yield", to_yield, flow_a, flow_b)
+        yield to_yield
+        print("yielded", to_yield, flow_a, flow_b)
 

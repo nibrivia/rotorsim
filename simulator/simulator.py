@@ -2,8 +2,7 @@ from network import RotorNet
 import csv
 from event import R
 from logger import LOG, init_log
-#from tcp_flow import TCPFlow, BYTES_PER_PACKET
-from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PACKET
+from flow_generator import generate_flows, FLOWS, N_FLOWS, N_DONE, BYTES_PER_PACKET, flow_combiner, ml_generator
 import sys, uuid
 import click
 import uuid as _uuid
@@ -31,13 +30,8 @@ def load_flows(slot_duration):
     return flows
 
 
-# TODO fix time values
-#100us per slot +10s reconfiguration
-
-# use same seed
-
 @click.command()
-@click.option( # TODO change to some explicit control over network load
+@click.option(
         "--load",
         type=float,
         default=0.3,
@@ -171,6 +165,7 @@ def main(
         #debug
     ):
 
+
     # Set parameters
     # (Mb/s)*us/8 works out to (B/s)*s
     packets_per_slot = int(bandwidth*slice_duration/(BYTES_PER_PACKET*8))
@@ -206,7 +201,7 @@ def main(
 
     del slice_duration
     PARAMS.set_many(locals())
-    PARAMS.flow_print = 1
+    PARAMS.flow_print = -1
     print(PARAMS)
     gen_ports()
     print("Setting up network...")
@@ -275,6 +270,10 @@ def main(
     R.call_in(0, print_time, time_limit)
 
     print("Starting simulator...")
+    if is_ml:
+        ml_generator(network = net, n_jobs = 2, servers_per_ring = 2, model_name = "resnet")
+        #flow_gen = every_ms()
+
     # Start the simulator
     net.run(flow_gen = flow_gen, time_limit = time_limit)
 
@@ -317,7 +316,5 @@ def print_time(time_limit):
     #print("%dms of %dms \033[00m %d" % (R.time, time_limit, len(FLOWS)), end = "")
     R.call_in(.1, print_time, time_limit)
 
-
 if __name__ == "__main__":
-
     main()
