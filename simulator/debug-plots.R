@@ -1,20 +1,24 @@
 library(tidyverse)
+library(data.table)
 
 setwd("~/rotorsim/simulator/")
-debug_log <- read_csv("debug.csv",
-                      col_names = c("time", "event", "class", "obj_id", "obj_name", "key", "value"),
-                      col_types = "dcccccc")
+debug_log <- fread("debug.csv",
+                      col.names = c("time", "event", "class", "obj_id", "obj_name", "key", "value"),
+                      #col_types = "dcccccc"
+                   ) %>% 
+    as_tibble()
 
 # CWNDs
 debug_log %>%
     filter(key == "cwnd") %>% 
+    filter(as.numeric(value) > 1) %>% 
     #filter(str_detect(obj_name, "rotor")) %>%
     ggplot(aes(x = time,
                y = as.numeric(value),
                color = obj_name)) +
     geom_point() +
     geom_line() +
-    scale_y_log10() +
+    #scale_y_log10() +
     guides(color = F)
 
 packet_str <- "1\\[8->20\\]#0"
@@ -161,18 +165,22 @@ one_flow <- flow_details %>%
 
 one_flow %>%
     filter(class != "TCPFlow", class != "Packet") %>% 
-    #filter(class != "NIC") %>%
-    #filter(time > 24.5, time < 26.5) %>% 
-    #filter(has_retransmit) %>%
-    filter(seq_num %% 100 == 0) %>%
+    filter(class != "NIC") %>%
+    filter(time < 26.5) %>% 
+    #group_by(seq_num) %>% 
+        #mutate(keep = )
+    #filter(seq_num < 1630) %>% 
+    filter(has_retransmit) %>%
+    filter(seq_num %% 10 == 0) %>%
     #mutate(time = dense_rank(time)) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), position),
                #y = obj_name,
                label = key,
                group = paste(packet_id, seq_num, class == "TCPFlow"),
-               #color = as_factor(retransmit_n))
-               color = (seq_num > 888) + (seq_num > 25000)
+               color = as_factor(seq_num)
+               #color = as_factor(retransmit_n)
+               #color = (seq_num > 888) + (seq_num > 25000/2)
            )) +
     geom_point() +
     geom_line() +
@@ -182,24 +190,29 @@ one_flow %>%
 
 # waterfall for 1 ToR
 tor_details <- flow_details %>%
-    filter(time < .2,
-           class != "NIC" | str_detect(obj_name, "Tor 32")) %>%
+    #filter(time < .2) %>% 
+    #filter(str_detect(obj_name, "Tor 28")) %>%
     group_by(flow_id, seq_num, packet_id) %>%
-    filter(any(str_detect(obj_name, "Tor 32"))) %>%
-    ungroup() %>%
-    filter(class != "Packet",
-           class != "TCPFlow")
+        filter(any(str_detect(obj_name, "Tor 28"))) %>%
+        ungroup() %>% 
+    group_by(flow_id, seq_num) %>% 
+        mutate(has_retransmit= any(retransmit_n > 1))
 
 tor_details %>%
+    filter(time < 9) %>% 
+    filter(has_retransmit) %>% 
+    filter(class != "Packet",
+           class != "TCPFlow") %>% 
     #mutate(time = dense_rank(time)) %>%
     ggplot(aes(x = time,
                y = reorder(paste(class, obj_name), position),
-               group = packet_id,
-               color = paste(flow_str, seq_num, packet_id))) +
+               group = paste(flow_str, seq_num, packet_id),
+               color = as_factor(seq_num))) +
     geom_line() +
     geom_point() +
-    labs(x=NULL, y = NULL)
-hrbrthemes::theme_ipsum_rc()
+    labs(x=NULL, y = NULL) +
+    #guides(color = F) +
+    hrbrthemes::theme_ipsum_rc()
 
 # Link utilization
 #queue_utilization <- debug_log %>%
