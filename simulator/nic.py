@@ -44,7 +44,7 @@ class NIC(DebugLog):
             vprint("nic  : %s enq  %s" % (packet, self))
         if self.queue_size_max is not None and \
                 self.q_size_B + packet.size_B > self.queue_size_max:
-            if packet.flow_id == 0:
+            if packet.flow_id == PARAMS.flow_print:
                 vprint("%s dropped, full queue %s" % (packet, self))
             return
         self._queue.appendleft(packet)

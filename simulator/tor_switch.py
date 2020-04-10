@@ -477,7 +477,6 @@ class ToRSwitch(DebugLog):
                         vprint("%s: %s is old indirect" % (self, packet))
                     dst_tag = "rotor-old"
                 else:
-                    vprint("%s: %s is direct" % (self, packet))
                     self.nonempty_rotor_dst.add(next_tor_id)
 
             self.buffers_dst_type[next_tor_id][dst_tag].append(packet)
@@ -519,7 +518,7 @@ class ToRSwitch(DebugLog):
                 sz  = self.buffers_dst_type_sizes[port_dst][priority_type]
                 # assert len(buf) == sz, "%s: buffer[%s][%s] size %s, recorded %s" % (self, port_dst, priority_type, len(buf), sz)
 
-                if self.id == 32:
+                if False and self.id == 32:
                     vprint("%s:   :%s (%s) considering %s/%s (%d)..." % (
                             self,
                             free_port, port_type,
