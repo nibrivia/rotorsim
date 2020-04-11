@@ -457,7 +457,7 @@ class ToRSwitch(DebugLog):
                         break
 
             # If we don't have a cache yet, make it rotor
-            if packet.dst_id not in self.have_cache_to:
+            if dst_tag == "cache" and packet.dst_id not in self.have_cache_to:
                 dst_tag = "rotor"
 
             # ROTOR requires some handling...
