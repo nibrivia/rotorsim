@@ -99,8 +99,8 @@ class Flow(DebugLog):
                     size_B = p_size
                     )
 
-            if tag == "xpand":
-                p.dst_id = random.randrange(PARAMS.n_tor*PARAMS.servers_per_rack)
+            if tag == "xpand" and PARAMS.valiant:
+                p.dst_id = random.randrang(PARAMS.n_tor*PARAMS.servers_per_rack)
                 #p.dst_id = self.dst
                 pass
 
