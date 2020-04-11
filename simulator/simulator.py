@@ -137,6 +137,10 @@ def load_flows(slot_duration):
         is_flag=True
 )
 @click.option(
+        "--valiant",
+        is_flag=True
+)
+@click.option(
         "--arrive-at-start",
         is_flag=True
 )
@@ -162,6 +166,7 @@ def main(
         skewed,
         cache_policy,
         is_ml,
+        valiant
         #debug
     ):
 

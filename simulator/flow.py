@@ -1,4 +1,5 @@
 import math
+import random
 from logger import LOG
 from helpers import vprint, color_str_
 from flow_generator import BYTES_PER_PACKET, N_DONE, N_FLOWS, FLOWS, ML_JOBS, ML_QUEUE
@@ -14,6 +15,7 @@ class Packet(DebugLog):
             size_B = BYTES_PER_PACKET):
         self.src_id  = src_id
         self.dst_id  = dst_id
+        self.final_dst = dst_id
         self.seq_num = seq_num
         self.tag     = tag
         self.flow_id = flow_id
@@ -85,6 +87,8 @@ class Flow(DebugLog):
                 tag = "rotor"
             if seq_num >= 25000/2: # 30ms
                 tag = "cache"
+
+
             p = Packet(
                     src_id = self.src,
                     dst_id = self.dst,
@@ -94,6 +98,12 @@ class Flow(DebugLog):
                     flow_id =self.id,
                     size_B = p_size
                     )
+
+            if tag == "xpand":
+                p.dst_id = random.randrange(PARAMS.n_tor*PARAMS.servers_per_rack)
+                #p.dst_id = self.dst
+                pass
+
             seq_num += 1
             bytes_sent += p_size
 

@@ -22,6 +22,10 @@ class Server(DebugLog):
         if flow_id == PARAMS.flow_print:
             vprint("srvr : %s recv on %s" % (packet, self))
 
+        if packet.final_dst != self.id:
+            packet.dst_id = packet.final_dst
+            self.uplink.enq(packet)
+
         if flow_id in self.flows:
             # This is okay:
             # maybe a flow is over and stragglers are coming
