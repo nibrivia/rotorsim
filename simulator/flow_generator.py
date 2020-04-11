@@ -80,9 +80,9 @@ simple_weights = [
         ( 0.1,  1e9)]
 simple_cdf = weights_to_cdf(simple_weights)
 
-xpand_cdf = [(1, 10e3)]
-rotor_cdf = [(1, 1e6)]
-cache_cdf = [(1, 1e9)]
+xpand_cdf = [(1, 100e3)]
+rotor_cdf = [(1,   1e6)]
+cache_cdf = [(1,   1e9)]
 WORKLOAD_FNS = defaultdict(
         #websearch   = FlowDistribution(websearch_cdf),
         datamining  = dist_from_file("workloads/datamining.csv"),
