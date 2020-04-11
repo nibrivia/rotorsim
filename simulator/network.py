@@ -260,7 +260,7 @@ class RotorNet(DebugLog):
                 flow = next(self.flow_gen)
                 R.call_at(flow.arrival, priority = -1,
                         fn = self.open_connection, flow = flow)
-            except:
+            except StopIteration:
                 # No more flows
                 pass
 

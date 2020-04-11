@@ -188,8 +188,6 @@ def next_or_None(gen):
         return next(gen)
     except StopIteration:
         return None
-    except:
-        raise
 
 def gen_constant(val):
     while True:
