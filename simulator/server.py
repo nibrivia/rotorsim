@@ -25,6 +25,7 @@ class Server(DebugLog):
         if packet.final_dst != self.id:
             packet.dst_id = packet.final_dst
             self.uplink.enq(packet)
+            return
 
         if flow_id in self.flows:
             # This is okay:

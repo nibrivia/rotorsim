@@ -52,6 +52,8 @@ class Flow(DebugLog):
         self.arrival   = arrival
         self.size_bits = size_bits
 
+        self.valiant_dst = random.randrange(PARAMS.n_tor*PARAMS.servers_per_rack)
+
         #if size < 15e6*8:
         if size_bits < 1e6:
             self.tag = "xpand"
@@ -100,9 +102,7 @@ class Flow(DebugLog):
                     )
 
             if tag == "xpand" and PARAMS.valiant:
-                p.dst_id = random.randrang(PARAMS.n_tor*PARAMS.servers_per_rack)
-                #p.dst_id = self.dst
-                pass
+                p.dst_id = self.valiant_dst
 
             seq_num += 1
             bytes_sent += p_size
@@ -253,7 +253,7 @@ class TCPFlow(Flow):
             else:
                 try:
                     p = next(self.packets)
-                except:
+                except StopIteration:
                     # no more packets!
                     break
 
