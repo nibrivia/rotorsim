@@ -52,7 +52,11 @@ class Flow(DebugLog):
         self.arrival   = arrival
         self.size_bits = size_bits
 
+        # Make sure it's an actual intermediate node
         self.valiant_dst = random.randrange(PARAMS.n_tor*PARAMS.servers_per_rack)
+        while self.valiant_dst == self.src or self.valiant_dst == self.dst:
+            self.valiant_dst = random.randrange(PARAMS.n_tor*PARAMS.servers_per_rack)
+
 
         #if size < 15e6*8:
         if size_bits < 1e6:
