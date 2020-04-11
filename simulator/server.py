@@ -24,6 +24,7 @@ class Server(DebugLog):
 
         if packet.final_dst != self.id:
             packet.dst_id = packet.final_dst
+            packet.src_id = self.id
             self.uplink.enq(packet)
             return
 
