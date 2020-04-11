@@ -11,25 +11,6 @@ from params import PARAMS
 from helpers import *
 
 
-def generate_demand(min_demand = 0, max_demand = 1):
-    assert 0 <= min_demand
-    assert min_demand <= max_demand
-    # Demand is scaled: 1 how much can be sent in 1 matching slot
-    # Intra-rack traffic doesn't go over RotorNet
-    return [[random.uniform(min_demand, max_demand) if dst != src else 0
-        for dst in range(N_TOR)] for src in range(N_TOR)]
-
-def generate_static_demand(matching, max_demand = 1):
-    return [[1 if matching[src] == dst else 0
-        for dst in range(N_TOR)] for src in range(N_TOR)]
-
-def load_flows(slot_duration):
-    flows = TCPFlow.make_from_csv()
-    for f in flows:
-        f.slot_duration = slot_duration
-    return flows
-
-
 @click.command()
 @click.option(
         "--load",
@@ -112,10 +93,6 @@ def load_flows(slot_duration):
         type=str,
         default=None
 )
-#@click.option(
-#        "--debug",
-#        is_flag=True
-#)
 @click.option(
         "--verbose",
         is_flag=True
@@ -167,7 +144,6 @@ def main(
         cache_policy,
         is_ml,
         valiant
-        #debug
     ):
 
 
@@ -242,7 +218,6 @@ def main(
             workload_name = workload,
             arrive_at_start = arrive_at_start,
             skewed = skewed,
-            #is_ml = is_ml
             )
 
 
@@ -255,7 +230,6 @@ def main(
     while time < time_limit*10:
         time += slice_duration
         if verbose and not no_pause:
-            #R.call_in(time, print_demand, net.tors, priority=99)
             R.call_in(time, pause, priority=100)
 
     #print time
@@ -264,7 +238,6 @@ def main(
     print("Starting simulator...")
     if is_ml:
         ml_generator(network = net, n_jobs = 2, servers_per_ring = 2, model_name = "resnet")
-        #flow_gen = every_ms()
 
     # Start the simulator
     net.run(flow_gen = flow_gen, time_limit = time_limit)

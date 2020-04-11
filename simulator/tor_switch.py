@@ -1,6 +1,5 @@
 import math
 import heapq
-# from buffer import *
 from logger import LOG
 from helpers import get_port_type, rotor_ports, cache_ports, xpand_ports, vprint, color_str_, pause
 from event import Delay, R
@@ -22,9 +21,6 @@ class ToRSwitch(DebugLog):
         self.switches = [None for _ in range(PARAMS.n_switches)]
         self.local_dests = dict()
 
-        # receiving tor, queues
-        #self.ports_src = [None for _ in range(PARAMS.n_switches)]
-
         # transmit queue an dest
         self.ports_tx  = [None for _ in range(PARAMS.n_switches)]
         self.ports_dst = [None for _ in range(PARAMS.n_switches)]
@@ -39,20 +35,17 @@ class ToRSwitch(DebugLog):
         # rotor
         self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
         self.capacity   = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
-        #self.out_queue_t = [-1 for rotor_id in rotor_ports]
 
         # xpander
-        #self.connections = dict() # Destination ToRs
         self.dst_to_port = dict() # routing table
         self.dst_to_tor  = dict() # for virtual queue purposes
         self.tor_to_port = dict() # for individual moment decisions
-        #self.port_to_tor = dict()
-
-        #self.t = [0]
 
         # optimizations
         self.nonempty_rotor_dst = set() # non-empty rotor queues
         self.possible_tor_dsts = dict() # "shortcut" map
+
+        self.have_cache_to = set() # The set of ToR IDs we have a cache link to
 
         self.priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
@@ -340,10 +333,6 @@ class ToRSwitch(DebugLog):
         """Given a connection to a certain destination, give a packet
         that we can either shortcut, or is equivalent, to something we'd
         normally do on expander..."""
-        # TODO this whole thing is grossly inefficient...
-
-        #assert self.ports_dst[port_id].id == dst_tor_id 
-
         # Get destinations that go that way
         #vprint("%s: xpand :%s -> Tor #%s" % (self, port_id, dst_tor_id))
         #vprint(self.route_tor)
@@ -398,6 +387,7 @@ class ToRSwitch(DebugLog):
     def activate_cache_link(self, port_id, dst_tor_id):
         vprint("%s: activate :%d -> %s" % (self, port_id, dst_tor_id))
         self.ports_dst[port_id] = self.tors[dst_tor_id]
+        self.have_cache_to.add(port_id) # TODO remove if need be, not currently
         self._send()
 
     @classmethod
@@ -543,9 +533,6 @@ class ToRSwitch(DebugLog):
                     self.ports_tx[free_port].enq(pkt)
                     self.available_ports.remove(free_port)
                     pkt_tor_dst = self.dst_to_tor[pkt.dst_id]
-                    #self.buffers_dst_type_sizes[pkt_tor_dst][pkt.tag] -= 1
-
-
 
 
 
