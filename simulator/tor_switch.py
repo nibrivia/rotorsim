@@ -456,6 +456,10 @@ class ToRSwitch(DebugLog):
                         R.call_in(15, self.activate_cache_link, port_id, next_tor_id)
                         break
 
+            # If we don't have a cache yet, make it rotor
+            if packet.dst_id not in self.have_cache_to:
+                dst_tag = "rotor"
+
             # ROTOR requires some handling...
             # ...adapt our capacity on rx
             if dst_tag == "rotor":
