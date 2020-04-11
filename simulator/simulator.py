@@ -212,17 +212,7 @@ def main(
     print("Setting up network...")
 
     # Uses global params object
-    net = RotorNet()#n_switches = n_switches,
-                   #n_cache = n_cache,
-                   #n_xpand = n_xpand,
-                   #n_tor   = n_tor,
-                   #arrive_at_start = arrive_at_start,
-                   #packets_per_slot     = packets_per_slot,
-                   #reconfiguration_time = reconfiguration_time/1000,
-                   #slice_duration       = slice_duration, # R.time will be in ms
-                   #jitter               = jitter,
-                   #verbose = verbose,
-                   #do_pause = not no_pause)
+    net = RotorNet()
 
     if n_rotor > 0:
         n_slots = math.ceil(time_limit/slot_duration)
@@ -235,8 +225,6 @@ def main(
     #cycle_duration = slot_duration*n_slots
     slice_duration = slot_duration
 
-    #print("%d ToRs, %d rotors, %d packets/slot for %d cycles" %
-            #(n_tor, n_rotor, packets_per_slot, n_cycles))
     print("Time limit %dms, cycle %.3fms, slot %.3fms, slice %.3fms" %
             (PARAMS.time_limit, PARAMS.cycle_duration, PARAMS.slot_duration, slice_duration))
     print("#tor: %d, #rotor: %d, #links: %d, bw: %dGb/s, capacity: %.3fGb/s" %
@@ -260,7 +248,6 @@ def main(
 
     # Start the log
     if not no_log:
-        #base_fn = "{n_tor}-{n_switches}:{n_cache},{n_xpand}-{workload}-{load}-{time_limit}ms".format(**locals())
         init_log(fn = None, **locals())
 
     # set up printing
