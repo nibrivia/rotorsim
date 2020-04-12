@@ -9,7 +9,7 @@ from workloads.chen import chen_distribution, chen_size
 from workloads.uniform import log_uniform_distribution, log_uniform_size
 
 # Ugly but it works
-BYTES_PER_PACKET = 1500
+BYTES_PER_PACKET = 9000
 global FLOWS, N_FLOWS, N_DONE
 FLOWS = dict()
 ML_JOBS = []
