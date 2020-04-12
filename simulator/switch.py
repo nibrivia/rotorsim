@@ -51,7 +51,7 @@ class Switch(DebugLog):
             dst_id = self.dests[port_id]
 
             if packet.flow_id == PARAMS.flow_print:
-                vprint("swtch: %s recv %s -> %s" % (packet, self, dst_id))
+                vprint("sw % 2d: %s recv %s -> %s" % (self.id, packet, self, dst_id))
 
             self.tx[dst_id].enq(packet)
 

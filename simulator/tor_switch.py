@@ -32,6 +32,10 @@ class ToRSwitch(DebugLog):
         self.buffers_dst_type_sizes = [{t: 0 for t in tags} for _ in range(PARAMS.n_tor)]
         self.available_ports = set()
 
+        # cache
+        self.have_cache_to = set() # The set of ToR IDs we have a cache link to
+        self.will_have_cache_to = set() # The set of ToR IDs we have a cache link to
+
         # rotor
         self.capacities = [0    for _ in range(PARAMS.n_tor)] # of destination
         self.capacity   = [PARAMS.packets_per_slot for _ in range(PARAMS.n_tor)]
@@ -45,7 +49,6 @@ class ToRSwitch(DebugLog):
         self.nonempty_rotor_dst = set() # non-empty rotor queues
         self.possible_tor_dsts = dict() # "shortcut" map
 
-        self.have_cache_to = set() # The set of ToR IDs we have a cache link to
 
         self.priorities = dict(
                 xpand = ["xpand", "rotor", "cache"],
@@ -385,10 +388,18 @@ class ToRSwitch(DebugLog):
         return pull
 
     def activate_cache_link(self, port_id, dst_tor_id):
-        vprint("%s: activate :%d -> %s" % (self, port_id, dst_tor_id))
+        if self.id == 26:
+            vprint("%s: activate :%d -> %s" % (self, port_id, dst_tor_id))
         self.ports_dst[port_id] = self.tors[dst_tor_id]
-        self.have_cache_to.add(port_id) # TODO remove if need be, not currently
+        self.have_cache_to.add(dst_tor_id)
         self._send()
+
+    def deactivate_cache_link(self, tor_dst_id):
+        def deactivate(flow_id):
+            vprint("%s: release cache link to %s" % (self, tor_dst_id))
+            self.have_cache_to.remove(tor_dst_id)
+            self.will_have_cache_to.remove(tor_dst_id)
+        return deactivate
 
     @classmethod
     @lru_cache(maxsize=None)
@@ -450,15 +461,23 @@ class ToRSwitch(DebugLog):
             dst_tag = ToRSwitch.packet_tag(packet.tag)
 
             # CACHE handling
-            for port_id in cache_ports:
-                if self.ports_dst[port_id] is None and dst_tag == "cache":
-                    if self.switches[port_id].request_matching(self, next_tor_id):
-                        R.call_in(15, self.activate_cache_link, port_id, next_tor_id)
-                        break
+            if packet.src_id in self.local_dests and dst_tag == "cache" and next_tor_id not in self.will_have_cache_to:
+                for port_id in cache_ports:
+                    if self.ports_dst[port_id] is None:
+                        if self.switches[port_id].request_matching(self, next_tor_id):
+                            # Stops us from requesting this again
+                            self.will_have_cache_to.add(next_tor_id)
+                            R.call_in(15, self.activate_cache_link, port_id, next_tor_id)
+                            FLOWS[packet.flow_id].add_callback_done(self.deactivate_cache_link(next_tor_id))
+                            break
 
             # If we don't have a cache yet, make it rotor
-            if dst_tag == "cache" and packet.dst_id not in self.have_cache_to:
+            if dst_tag == "cache" and next_tor_id not in self.have_cache_to:
                 dst_tag = "rotor"
+
+            # TODO can just enqueue right here?
+            #if dst_tag == "cache":
+                #vprint("%s %s going to cache" % (self, packet))
 
             # ROTOR requires some handling...
             # ...adapt our capacity on rx
