@@ -150,7 +150,7 @@ class TCPFlow(Flow):
         super().__init__(*args, **kwargs)
 
         # Init our TCP fields
-        self.cwnd   = 1
+        self.cwnd   = 100
 
         self.rtt_ms = .2
         self.rtt_dev_ms = 0
