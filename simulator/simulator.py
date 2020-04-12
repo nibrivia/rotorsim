@@ -237,7 +237,9 @@ def main(
 
     print("Starting simulator...")
     if is_ml:
-        ml_generator(network = net, n_jobs = 2, servers_per_ring = 2, model_name = "resnet")
+        ml_generator(network = net, n_jobs = 3, servers_per_ring = 4, model_name = "resnet")
+        ml_generator(network = net, n_jobs = 3, servers_per_ring = 4, model_name = "vgg")
+        ml_generator(network = net, n_jobs = 3, servers_per_ring = 4, model_name = "gpt2")
 
     # Start the simulator
     net.run(flow_gen = flow_gen, time_limit = time_limit)
