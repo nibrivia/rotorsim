@@ -397,8 +397,9 @@ class ToRSwitch(DebugLog):
     def deactivate_cache_link(self, tor_dst_id):
         def deactivate(flow_id):
             vprint("%s: release cache link to %s" % (self, tor_dst_id))
-            self.have_cache_to.remove(tor_dst_id)
-            self.will_have_cache_to.remove(tor_dst_id)
+            # TODO mechanism to allow multiple flows to the same dst to use the same cache link
+            self.have_cache_to.discard(tor_dst_id)
+            self.will_have_cache_to.discard(tor_dst_id)
         return deactivate
 
     @classmethod
