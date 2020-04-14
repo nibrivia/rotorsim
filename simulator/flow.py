@@ -89,11 +89,12 @@ class Flow(DebugLog):
         while bytes_sent < size_B:
             p_size = min(BYTES_PER_PACKET, size_B - bytes_sent)
             tag = "xpand"
-            if seq_num >= 888: # 100us
+            if seq_num >= 888/4: # 100us
                 tag = "rotor"
-            if seq_num >= 25000/2: # 30ms
+            if seq_num >= 25000/4/2: # 30ms
                 tag = "cache"
 
+            #tag = self.tag
 
             p = Packet(
                     src_id = self.src,
