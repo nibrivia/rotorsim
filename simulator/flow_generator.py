@@ -75,8 +75,8 @@ flat_log = [
         ]
 flat_log_cdf = weights_to_cdf(flat_log)
 simple_weights = [
-        (2000,  1e6),
-        (   1,  2e9)]
+        (100, 10e6),
+        (  1,  2e9)]
 simple_cdf = weights_to_cdf(simple_weights)
 chen_weights = [
         ( 4.9, 10e3),
