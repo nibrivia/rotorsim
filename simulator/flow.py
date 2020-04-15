@@ -94,7 +94,7 @@ class Flow(DebugLog):
             if seq_num >= 25000/4/2: # 30ms
                 tag = "cache"
 
-            tag = self.tag
+            #tag = self.tag
 
             p = Packet(
                     src_id = self.src,
