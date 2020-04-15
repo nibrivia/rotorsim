@@ -51,9 +51,9 @@ class ToRSwitch(DebugLog):
 
 
         self.priorities = dict(
-                xpand = ["xpand", "rotor", "cache"],
-                rotor = ["rotor", "xpand", "cache"],
-                cache = ["cache", "xpand", "rotor"],
+                xpand = ["xpand"],#, "rotor", "cache"],
+                rotor = ["rotor"],#, "xpand", "cache"],
+                cache = ["cache"],#, "xpand", "rotor"],
                 )
         self.pull_fns = dict(
                 xpand = self.next_packet_xpand,
