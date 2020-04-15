@@ -61,7 +61,7 @@ class RotorNet(DebugLog):
                         name = "%s->%s" % (t, s),
                         delay_ns = 500/2,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
-                        max_size_bytes = 40e6,
+                        #max_size_bytes = 40e6,
                         )
                 t.connect_backbone(s.id, s, uplink)
             downlinks = [NIC(
@@ -69,7 +69,7 @@ class RotorNet(DebugLog):
                     name = "%s->%s" % (s, t),
                     delay_ns = 500/2,
                     bandwidth_Bms = PARAMS.bandwidth_Bms,
-                    max_size_bytes = 40e6,
+                    #max_size_bytes = 40e6,
                     )
                     for t in self.tors]
 
@@ -93,14 +93,14 @@ class RotorNet(DebugLog):
                         name = "%s->%s" % (server, tor),
                         delay_ns = 10,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
-                        max_size_bytes = 1000*BYTES_PER_PACKET,
+                        #max_size_bytes = 1000*BYTES_PER_PACKET,
                         )
                 downlink = NIC(
                         server.recv,
                         name = "%s->%s" % (tor, server),
                         delay_ns = 10,
                         bandwidth_Bms = PARAMS.bandwidth_Bms,
-                        max_size_bytes = 40e6,
+                        #max_size_bytes = 40e6,
                         )
 
                 server.connect_tor(uplink)
