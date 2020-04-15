@@ -200,7 +200,7 @@ class TCPFlow(Flow):
 
     @property
     def rto(self):
-        return 3
+        return 30000
         #rto =  self.rtt_ms + self.k*self.rtt_dev_ms
         #return max(self.rto_min, min(rto, self.rto_max))
     # Source
