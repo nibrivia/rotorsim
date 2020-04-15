@@ -518,7 +518,7 @@ class ToRSwitch(DebugLog):
             ports = list(self.available_ports)
 
         #vprint("%s: available ports: %s" % (self, self.available_ports))
-        for priority_i in range(3):
+        for priority_i in range(1):
             for free_port in ports:
                 port_type = get_port_type(free_port)
                 dst = self.ports_dst[free_port]
