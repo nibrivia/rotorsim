@@ -247,7 +247,7 @@ class TCPFlow(Flow):
     def _send_loop(self):
         if self.is_done:
             return
-        self.cwnd = 1000
+        self.cwnd = 100
 
         # Get next packet, send it
         while len(self.in_flight) + 1 <= self.cwnd:
