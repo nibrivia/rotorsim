@@ -59,9 +59,9 @@ class Flow(DebugLog):
 
 
         #if size < 15e6*8:
-        if size_bits < 1e6:
+        if size_bits < 0:
             self.tag = "xpand"
-        elif size_bits < 1e9:
+        elif size_bits < 2e6*8:
             self.tag = "rotor"
         else:
             self.tag = "cache"
